@@ -16,11 +16,13 @@ export abstract class BaseField {
     public readonly name: string;
     public readonly type: string;
     public readonly attrs: BaseFieldAttrs;
+    public path?: string | null;
 
     constructor(name: string, type: string, attrs: BaseFieldAttrs = {}) {
         this.name = name;
         this.type = type;
         this.attrs = attrs;
+        this.path = undefined;
     }
 }
 

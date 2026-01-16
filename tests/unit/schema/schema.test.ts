@@ -151,5 +151,114 @@ describe('IndexSchema Tests', () => {
             expect(fieldNames).toContain('age');
         });
     });
+
+    describe('IndexSchema Field Management', () => {
+        it('should add a single field using addField', () => {
+            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const schema = new IndexSchema({ index: indexInfo });
+
+            schema.addField({ name: 'title', type: 'text' });
+
+            expect(schema.fields['title']).toBeDefined();
+            expect(schema.fields['title']).toBeInstanceOf(TextField);
+            expect(schema.fieldNames).toContain('title');
+        });
+
+        it('should add multiple fields using addFields', () => {
+            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const schema = new IndexSchema({ index: indexInfo });
+
+            schema.addFields([
+                { name: 'title', type: 'text' },
+                { name: 'category', type: 'tag' },
+                { name: 'price', type: 'numeric' },
+            ]);
+
+            expect(schema.fieldNames).toHaveLength(3);
+            expect(schema.fields['title']).toBeInstanceOf(TextField);
+            expect(schema.fields['category']).toBeInstanceOf(TagField);
+            expect(schema.fields['price']).toBeInstanceOf(NumericField);
+        });
+
+        it('should throw error when adding duplicate field name', () => {
+            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const schema = new IndexSchema({ index: indexInfo });
+            schema.addField({ name: 'title', type: 'text' });
+
+            expect(() => {
+                schema.addField({ name: 'title', type: 'tag' });
+            }).toThrow('Duplicate field name');
+        });
+
+        it('should remove a field using removeField', () => {
+            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const schema = new IndexSchema({ index: indexInfo });
+            schema.addField({ name: 'title', type: 'text' });
+
+            schema.removeField('title');
+
+            expect(schema.fields['title']).toBeUndefined();
+            expect(schema.fieldNames).not.toContain('title');
+        });
+
+        it('should not throw error when removing non-existent field', () => {
+            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const schema = new IndexSchema({ index: indexInfo });
+
+            expect(() => {
+                schema.removeField('non-existent');
+            }).not.toThrow();
+        });
+    });
+
+    describe('IndexSchema Field Path Validation', () => {
+        it('should auto-set path to $.fieldname for JSON storage', () => {
+            const indexInfo = new IndexInfo({
+                name: 'test-index',
+                storageType: StorageType.JSON,
+            });
+            const schema = new IndexSchema({ index: indexInfo });
+
+            schema.addField({ name: 'title', type: 'text' });
+
+            expect(schema.fields['title'].path).toBe('$.title');
+        });
+
+        it('should use custom path for JSON storage if provided', () => {
+            const indexInfo = new IndexInfo({
+                name: 'test-index',
+                storageType: StorageType.JSON,
+            });
+            const schema = new IndexSchema({ index: indexInfo });
+
+            schema.addField({ name: 'bio', type: 'text', path: '$.profile.bio' });
+
+            expect(schema.fields['bio'].path).toBe('$.profile.bio');
+        });
+
+        it('should set path to null for HASH storage', () => {
+            const indexInfo = new IndexInfo({
+                name: 'test-index',
+                storageType: StorageType.HASH,
+            });
+            const schema = new IndexSchema({ index: indexInfo });
+
+            schema.addField({ name: 'title', type: 'text' });
+
+            expect(schema.fields['title'].path).toBeNull();
+        });
+
+        it('should ignore custom path for HASH storage', () => {
+            const indexInfo = new IndexInfo({
+                name: 'test-index',
+                storageType: StorageType.HASH,
+            });
+            const schema = new IndexSchema({ index: indexInfo });
+
+            schema.addField({ name: 'title', type: 'text', path: '$.title' });
+
+            expect(schema.fields['title'].path).toBeNull();
+        });
+    });
 });
 

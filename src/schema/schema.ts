@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { StorageType } from './types.js';
-import { BaseField } from './fields.js';
+import { BaseField, FieldFactory } from './fields.js';
 
 /**
  * Zod schema for IndexInfo validation.
@@ -70,6 +70,16 @@ export const IndexSchemaOptionsSchema = z.object({
 export type IndexSchemaOptions = z.input<typeof IndexSchemaOptionsSchema>;
 
 /**
+ * Field input type for addField and addFields methods
+ */
+export interface FieldInput {
+    name: string;
+    type: string;
+    attrs?: Record<string, unknown>;
+    path?: string;
+}
+
+/**
  * A schema definition for a search index in Redis, used in RedisVL for
  * configuring index settings and organizing vector and metadata fields.
  */
@@ -97,6 +107,110 @@ export class IndexSchema {
      */
     get fieldNames(): string[] {
         return Object.keys(this.fields);
+    }
+
+    /**
+     * Internal helper to create a field and set its path based on storage type.
+     * For JSON storage: auto-sets path to $.fieldname if not provided.
+     * For HASH storage: sets path to null (paths not used).
+     */
+    private makeField(storageType: StorageType, fieldInputs: FieldInput): BaseField {
+        // Extract field properties from inputs
+        const { name, type, attrs, path } = fieldInputs;
+
+        if (!name) {
+            throw new Error('Field name is required');
+        }
+        if (!type) {
+            throw new Error('Field type is required');
+        }
+
+        // Create field from inputs using FieldFactory
+        const field = FieldFactory.createField(type, name, attrs);
+
+        // Handle field path based on storage type
+        if (storageType === StorageType.JSON) {
+            // For JSON storage, auto-set path to $.fieldname if not provided
+            field.path = path ?? `$.${field.name}`;
+        } else {
+            // For HASH storage, path should always be null
+            if (path !== null && path !== undefined) {
+                // TODO: log a warning
+            }
+            field.path = null;
+        }
+
+        return field;
+    }
+
+    /**
+     * Adds a single field to the index schema.
+     *
+     * @param fieldInputs - Field definition object with name, type, and optional attributes
+     * @throws {Error} If a field with the same name already exists
+     *
+     * @example
+     * ```typescript
+     * schema.addField({ name: 'title', type: 'text' });
+     * schema.addField({
+     *   name: 'embedding',
+     *   type: 'vector',
+     *   attrs: { dims: 1536, algorithm: 'hnsw' }
+     * });
+     * ```
+     */
+    addField(fieldInputs: FieldInput): void {
+        // Create field with proper path handling
+        const field = this.makeField(this.index.storageType, fieldInputs);
+
+        // Check for duplicates
+        if (field.name in this.fields) {
+            throw new Error(
+                `Duplicate field name: ${field.name}. Field names must be unique across all fields for this index.`,
+            );
+        }
+
+        // Add field to schema
+        this.fields[field.name] = field;
+    }
+
+    /**
+     * Adds multiple fields to the index schema.
+     *
+     * @param fields - Array of field definition objects
+     * @throws {Error} If any field has a duplicate name
+     *
+     * @example
+     * ```typescript
+     * schema.addFields([
+     *   { name: 'title', type: 'text' },
+     *   { name: 'category', type: 'tag' },
+     *   { name: 'price', type: 'numeric' }
+     * ]);
+     * ```
+     */
+    addFields(fields: FieldInput[]): void {
+        for (const fieldInput of fields) {
+            this.addField(fieldInput);
+        }
+    }
+
+    /**
+     * Removes a field from the schema by name.
+     *
+     * @param fieldName - The name of the field to remove
+     *
+     * @example
+     * ```typescript
+     * schema.removeField('old_field');
+     * ```
+     */
+    removeField(fieldName: string): void {
+        if (!(fieldName in this.fields)) {
+            // TODO: log a warning
+            return;
+        }
+        delete this.fields[fieldName];
     }
 }
 
