@@ -164,7 +164,7 @@ export class IndexSchema {
         const field = this.makeField(this.index.storageType, fieldInputs);
 
         // Check for duplicates
-        if (field.name in this.fields) {
+        if (Object.hasOwn(this.fields, field.name)) {
             throw new Error(
                 `Duplicate field name: ${field.name}. Field names must be unique across all fields for this index.`,
             );
@@ -206,7 +206,7 @@ export class IndexSchema {
      * ```
      */
     removeField(fieldName: string): void {
-        if (!(fieldName in this.fields)) {
+        if (!Object.hasOwn(this.fields, fieldName)) {
             // TODO: log a warning
             return;
         }
