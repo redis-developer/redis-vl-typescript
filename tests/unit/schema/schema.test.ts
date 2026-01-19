@@ -262,3 +262,125 @@ describe('IndexSchema Tests', () => {
     });
 });
 
+describe('IndexSchema.fromDict()', () => {
+    it('should create IndexSchema from dict with fields as array', () => {
+        const schema = IndexSchema.fromDict({
+            index: {
+                name: 'example_index',
+                prefix: 'ex',
+                key_separator: '|',  // snake_case input (from YAML/JSON)
+                storage_type: StorageType.JSON,  // snake_case input (from YAML/JSON)
+            },
+            fields: [
+                { name: 'example_text', type: 'text', attrs: { sortable: false } },
+                { name: 'example_numeric', type: 'tag', attrs: { sortable: true } },
+            ],
+        });
+
+        expect(schema.index.name).toBe('example_index');
+        expect(schema.index.keySeparator).toBe('|');  // camelCase property
+        expect(schema.index.prefix).toBe('ex');
+        expect(schema.index.storageType).toBe(StorageType.JSON);  // camelCase property
+        expect(schema.fieldNames).toHaveLength(2);  // camelCase property
+        expect(schema.fieldNames).toContain('example_text');
+        expect(schema.fieldNames).toContain('example_numeric');
+    });
+
+    it('should create IndexSchema from dict with IndexInfo instance', () => {
+        const indexInfo = new IndexInfo({
+            name: 'test-index',
+            prefix: 'test',
+            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+        });
+
+        const schema = IndexSchema.fromDict({
+            index: indexInfo,
+            fields: [{ name: 'field1', type: 'text' }],
+        });
+
+        expect(schema.index).toBe(indexInfo);
+        expect(schema.fieldNames).toHaveLength(1);  // camelCase property
+        expect(schema.fieldNames).toContain('field1');
+    });
+
+    it('should create IndexSchema from dict with fields as object', () => {
+        const schema = IndexSchema.fromDict({
+            index: {
+                name: 'test-index',
+                prefix: 'test',
+            },
+            fields: {
+                title: { name: 'title', type: 'text' },
+                price: { name: 'price', type: 'numeric' },
+            },
+        });
+
+        expect(schema.fieldNames).toHaveLength(2);  // camelCase property
+        expect(schema.fieldNames).toContain('title');
+        expect(schema.fieldNames).toContain('price');
+    });
+
+    it('should throw error when field name in object does not match key', () => {
+        expect(() => {
+            IndexSchema.fromDict({
+                index: {
+                    name: 'test-index',
+                    prefix: 'test',
+                },
+                fields: {
+                    title: { name: 'wrong_name', type: 'text' },
+                },
+            });
+        }).toThrow('Field name mismatch');
+    });
+
+    it('should create IndexSchema without fields', () => {
+        const schema = IndexSchema.fromDict({
+            index: {
+                name: 'test-index',
+                prefix: 'test',
+            },
+        });
+
+        expect(schema.fieldNames).toHaveLength(0);  // camelCase property
+    });
+
+    it('should set version if provided', () => {
+        const schema = IndexSchema.fromDict({
+            index: {
+                name: 'test-index',
+                prefix: 'test',
+            },
+            version: '0.1.0',
+        });
+
+        expect(schema.version).toBe('0.1.0');
+    });
+
+    it('should handle JSON storage with auto-path setting', () => {
+        const schema = IndexSchema.fromDict({
+            index: {
+                name: 'test-index',
+                prefix: 'test',
+                storage_type: StorageType.JSON,  // snake_case input (from YAML/JSON)
+            },
+            fields: [{ name: 'title', type: 'text' }],
+        });
+
+        expect(schema.fields['title'].path).toBe('$.title');
+    });
+
+    it('should handle HASH storage with null paths', () => {
+        const schema = IndexSchema.fromDict({
+            index: {
+                name: 'test-index',
+                prefix: 'test',
+                storage_type: StorageType.HASH,  // snake_case input (from YAML/JSON)
+            },
+            fields: [{ name: 'title', type: 'text' }],
+        });
+
+        expect(schema.fields['title'].path).toBe(null);
+    });
+});
+

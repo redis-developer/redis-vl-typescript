@@ -212,5 +212,84 @@ export class IndexSchema {
         }
         delete this.fields[fieldName];
     }
+
+    /**
+     * Create an IndexSchema from a dictionary.
+     * Accepts both snake_case (from YAML/JSON files) and camelCase (from TypeScript) property names.
+     *
+     * @param data - The index schema data
+     * @returns A new IndexSchema instance
+     *
+     * @example
+     * ```typescript
+     * // From YAML/JSON (snake_case)
+     * const schema = IndexSchema.fromDict({
+     *   index: {
+     *     name: 'docs-index',
+     *     prefix: 'docs',
+     *     storage_type: 'hash',  // snake_case from YAML/JSON
+     *   },
+     *   fields: [
+     *     { name: 'doc-id', type: 'tag' },
+     *     { name: 'title', type: 'text' }
+     *   ]
+     * });
+     * ```
+     */
+    static fromDict(data: {
+        index: IndexInfoOptions | IndexInfo | Record<string, unknown>;
+        fields?: FieldInput[] | Record<string, FieldInput>;
+        version?: '0.1.0';
+    }): IndexSchema {
+        // 1. Create IndexInfo if it's a plain object
+        let indexInfo: IndexInfo;
+        if (data.index instanceof IndexInfo) {
+            indexInfo = data.index;
+        } else {
+            // Convert snake_case to camelCase for IndexInfo properties
+            const indexData: Record<string, unknown> = { ...data.index };
+
+            // Handle storage_type -> storageType conversion
+            if ('storage_type' in indexData && !('storageType' in indexData)) {
+                indexData.storageType = indexData.storage_type;
+                delete indexData.storage_type;
+            }
+
+            // Handle key_separator -> keySeparator conversion
+            if ('key_separator' in indexData && !('keySeparator' in indexData)) {
+                indexData.keySeparator = indexData.key_separator;
+                delete indexData.key_separator;
+            }
+
+            indexInfo = new IndexInfo(indexData as IndexInfoOptions);
+        }
+
+        // 2. Create empty schema
+        const schema = new IndexSchema({
+            index: indexInfo,
+            version: data.version,
+        });
+
+        // 3. Add fields if provided
+        if (data.fields) {
+            if (Array.isArray(data.fields)) {
+                // Handle array format
+                schema.addFields(data.fields);
+            } else {
+                // Handle object format
+                for (const [key, fieldData] of Object.entries(data.fields)) {
+                    // Validate field name matches key
+                    if (fieldData.name !== key) {
+                        throw new Error(
+                            `Field name mismatch: key is "${key}" but field.name is "${fieldData.name}"`,
+                        );
+                    }
+                    schema.addField(fieldData);
+                }
+            }
+        }
+
+        return schema;
+    }
 }
 
