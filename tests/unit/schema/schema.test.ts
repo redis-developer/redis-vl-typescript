@@ -384,3 +384,144 @@ describe('IndexSchema.fromDict()', () => {
     });
 });
 
+describe('IndexSchema.toDict()', () => {
+    it('should serialize IndexSchema to dictionary', () => {
+        const indexInfo = new IndexInfo({
+            name: 'test-index',
+            prefix: 'test',
+            keySeparator: ':',  // camelCase input (TypeScript API)
+            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+        });
+        const schema = new IndexSchema({ index: indexInfo });
+        schema.addFields([  // camelCase method
+            { name: 'title', type: 'text' },
+            { name: 'category', type: 'tag' },
+        ]);
+
+        const dict = schema.toDict();
+
+        expect(dict.index.name).toBe('test-index');
+        expect(dict.index.prefix).toBe('test');
+        expect(dict.index.key_separator).toBe(':');  // snake_case in output (YAML/JSON)
+        expect(dict.index.storage_type).toBe('hash');  // snake_case in output (YAML/JSON)
+        expect(dict.fields).toBeInstanceOf(Array);
+        expect(dict.fields).toHaveLength(2);
+        expect(dict.version).toBe('0.1.0');
+    });
+
+    it('should serialize fields as array with all properties', () => {
+        const indexInfo = new IndexInfo({ name: 'test-index' });
+        const schema = new IndexSchema({ index: indexInfo });
+        schema.addField({ name: 'title', type: 'text', attrs: { sortable: true } });  // camelCase method
+
+        const dict = schema.toDict();
+
+        expect(dict.fields[0].name).toBe('title');
+        expect(dict.fields[0].type).toBe('text');
+        expect(dict.fields[0].attrs).toEqual({ sortable: true });
+    });
+
+    it('should handle prefix as array', () => {
+        const indexInfo = new IndexInfo({
+            name: 'test-index',
+            prefix: ['user', 'product'],
+        });
+        const schema = new IndexSchema({ index: indexInfo });
+
+        const dict = schema.toDict();
+
+        expect(dict.index.prefix).toEqual(['user', 'product']);
+    });
+
+    it('should handle stopwords', () => {
+        const indexInfo = new IndexInfo({
+            name: 'test-index',
+            stopwords: ['the', 'a', 'an'],
+        });
+        const schema = new IndexSchema({ index: indexInfo });
+
+        const dict = schema.toDict();
+
+        expect(dict.index.stopwords).toEqual(['the', 'a', 'an']);
+    });
+
+    it('should be able to recreate schema from toDict output', () => {
+        const indexInfo = new IndexInfo({
+            name: 'test-index',
+            prefix: 'test',
+            storageType: StorageType.JSON,  // camelCase input (TypeScript API)
+        });
+        const schema = new IndexSchema({ index: indexInfo });
+        schema.addFields([  // camelCase method
+            { name: 'title', type: 'text' },
+            { name: 'price', type: 'numeric' },
+        ]);
+
+        const dict = schema.toDict();
+        const recreated = IndexSchema.fromDict(dict);
+
+        expect(recreated.index.name).toBe(schema.index.name);
+        expect(recreated.index.prefix).toBe(schema.index.prefix);
+        expect(recreated.index.storageType).toBe(schema.index.storageType);  // camelCase property
+        expect(recreated.fieldNames).toEqual(schema.fieldNames);  // camelCase property
+    });
+});
+
+describe('IndexSchema.toYAML()', () => {
+    it('should write schema to YAML file', async () => {
+        const indexInfo = new IndexInfo({
+            name: 'test-index',
+            prefix: 'test',
+            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+        });
+        const schema = new IndexSchema({ index: indexInfo });
+        schema.addFields([  // camelCase method
+            { name: 'title', type: 'text' },
+            { name: 'category', type: 'tag' },
+        ]);
+
+        const filePath = 'test-schema.yaml';
+        await schema.toYAML(filePath);
+
+        const fs = await import('fs/promises');
+        const fileExists = await fs
+            .access(filePath)
+            .then(() => true)
+            .catch(() => false);
+        expect(fileExists).toBe(true);
+
+        await fs.unlink(filePath);
+    });
+
+    it('should throw error if file exists and overwrite is false', async () => {
+        const indexInfo = new IndexInfo({ name: 'test-index' });
+        const schema = new IndexSchema({ index: indexInfo });
+
+        const filePath = 'test-schema-exists.yaml';
+        await schema.toYAML(filePath);
+
+        await expect(schema.toYAML(filePath, false)).rejects.toThrow('already exists');
+
+        const fs = await import('fs/promises');
+        await fs.unlink(filePath);
+    });
+
+    it('should overwrite file if overwrite is true', async () => {
+        const indexInfo = new IndexInfo({ name: 'test-index' });
+        const schema = new IndexSchema({ index: indexInfo });
+
+        const filePath = 'test-schema-overwrite.yaml';
+        await schema.toYAML(filePath);
+        await schema.toYAML(filePath, true);
+
+        const fs = await import('fs/promises');
+        const fileExists = await fs
+            .access(filePath)
+            .then(() => true)
+            .catch(() => false);
+        expect(fileExists).toBe(true);
+
+        await fs.unlink(filePath);
+    });
+});
+

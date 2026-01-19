@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import * as yaml from 'js-yaml';
+import { promises as fs } from 'fs';
+import { resolve } from 'path';
 import { StorageType } from './types.js';
 import { BaseField, FieldFactory } from './fields.js';
 
@@ -290,6 +293,112 @@ export class IndexSchema {
         }
 
         return schema;
+    }
+
+    /**
+     * Serialize the index schema to a dictionary.
+     * Converts camelCase properties to snake_case for YAML/JSON compatibility.
+     *
+     * @returns The index schema as a plain object with snake_case keys
+     *
+     * @example
+     * ```typescript
+     * const schema = new IndexSchema({ index: indexInfo });
+     * const dict = schema.toDict();
+     * console.log(dict.index.name);
+     * console.log(dict.index.storage_type);  // snake_case in output
+     * ```
+     */
+    toDict(): {
+        index: {
+            name: string;
+            prefix: string | string[];
+            key_separator: string;
+            storage_type: string;
+            stopwords?: string[];
+        };
+        fields: Array<{
+            name: string;
+            type: string;
+            attrs?: Record<string, unknown>;
+            path?: string | null;
+        }>;
+        version: '0.1.0';
+    } {
+        // Serialize index info - convert camelCase to snake_case
+        const indexDict = {
+            name: this.index.name,
+            prefix: this.index.prefix,
+            key_separator: this.index.keySeparator,  // camelCase -> snake_case
+            storage_type: this.index.storageType,  // camelCase -> snake_case (enum value is already string)
+            ...(this.index.stopwords !== undefined && { stopwords: this.index.stopwords }),
+        };
+
+        // Serialize fields as array
+        const fieldsArray = Object.values(this.fields).map((field) => {
+            const fieldDict: {
+                name: string;
+                type: string;
+                attrs?: Record<string, unknown>;
+                path?: string | null;
+            } = {
+                name: field.name,
+                type: field.type,
+            };
+
+            if (Object.keys(field.attrs).length > 0) {
+                fieldDict.attrs = field.attrs as Record<string, unknown>;
+            }
+
+            if (field.path !== undefined) {
+                fieldDict.path = field.path;
+            }
+
+            return fieldDict;
+        });
+
+        return {
+            index: indexDict,
+            fields: fieldsArray,
+            version: this.version,
+        };
+    }
+
+    /**
+     * Write the index schema to a YAML file.
+     *
+     * @param filePath - The path to the YAML file
+     * @param overwrite - Whether to overwrite the file if it already exists (default: true)
+     *
+     * @throws Error if the file already exists and overwrite is false
+     *
+     * @example
+     * ```typescript
+     * const schema = new IndexSchema({ index: indexInfo });
+     * await schema.toYAML('schema.yaml');
+     * ```
+     */
+    async toYAML(filePath: string, overwrite: boolean = true): Promise<void> {
+        const resolvedPath = resolve(filePath);
+
+        // Check if file exists
+        if (!overwrite) {
+            try {
+                await fs.access(resolvedPath);
+                throw new Error(`Schema file ${filePath} already exists.`);
+            } catch (error: unknown) {
+                // File doesn't exist, which is what we want
+                if (error instanceof Error && error.message.includes('already exists')) {
+                    throw error;
+                }
+                // Otherwise, file doesn't exist, continue
+            }
+        }
+
+        // Convert to dict and write as YAML
+        const dictData = this.toDict();
+        const yamlData = yaml.dump(dictData, { sortKeys: false });
+        await fs.writeFile(resolvedPath, yamlData, 'utf-8');
     }
 }
 
