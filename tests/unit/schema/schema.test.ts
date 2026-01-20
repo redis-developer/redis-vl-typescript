@@ -525,3 +525,93 @@ describe('IndexSchema.toYAML()', () => {
     });
 });
 
+describe('IndexSchema.fromYAML()', () => {
+    it('should load schema from YAML file', async () => {
+        const indexInfo = new IndexInfo({
+            name: 'test-index',
+            prefix: 'test',
+            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+        });
+        const schema = new IndexSchema({ index: indexInfo });
+        schema.addFields([  // camelCase method
+            { name: 'title', type: 'text' },
+            { name: 'category', type: 'tag' },
+        ]);
+
+        const filePath = 'test-from-yaml.yaml';
+        await schema.toYAML(filePath);
+
+        const loaded = await IndexSchema.fromYAML(filePath);
+
+        expect(loaded.index.name).toBe('test-index');
+        expect(loaded.index.prefix).toBe('test');
+        expect(loaded.index.storageType).toBe(StorageType.HASH);  // camelCase property
+        expect(loaded.fieldNames).toEqual(['title', 'category']);  // camelCase property
+
+        const fs = await import('fs/promises');
+        await fs.unlink(filePath);
+    });
+
+    it('should throw error if file does not exist', async () => {
+        await expect(IndexSchema.fromYAML('nonexistent-file.yaml')).rejects.toThrow(
+            'does not exist',
+        );
+    });
+
+    it('should handle round-trip: toYAML -> fromYAML', async () => {
+        const indexInfo = new IndexInfo({
+            name: 'round-trip-test',
+            prefix: ['user', 'product'],
+            keySeparator: '|',  // camelCase input (TypeScript API)
+            storageType: StorageType.JSON,  // camelCase input (TypeScript API)
+            stopwords: ['the', 'a'],
+        });
+        const schema = new IndexSchema({ index: indexInfo });
+        schema.addFields([  // camelCase method
+            { name: 'title', type: 'text', attrs: { sortable: true } },
+            { name: 'price', type: 'numeric' },
+        ]);
+
+        const filePath = 'test-round-trip.yaml';
+        await schema.toYAML(filePath);
+
+        const loaded = await IndexSchema.fromYAML(filePath);
+
+        expect(loaded.index.name).toBe(schema.index.name);
+        expect(loaded.index.prefix).toEqual(schema.index.prefix);
+        expect(loaded.index.keySeparator).toBe(schema.index.keySeparator);  // camelCase property
+        expect(loaded.index.storageType).toBe(schema.index.storageType);  // camelCase property
+        expect(loaded.index.stopwords).toEqual(schema.index.stopwords);
+        expect(loaded.fieldNames).toEqual(schema.fieldNames);  // camelCase property
+        expect(loaded.toDict()).toEqual(schema.toDict());
+
+        const fs = await import('fs/promises');
+        await fs.unlink(filePath);
+    });
+
+    it('should load YAML with fields as array', async () => {
+        const yamlContent = `index:
+  name: test-index
+  prefix: test
+  key_separator: ':'
+  storage_type: hash
+fields:
+  - name: title
+    type: text
+  - name: category
+    type: tag
+version: 0.1.0
+`;
+        const filePath = 'test-array-fields.yaml';
+        const fs = await import('fs/promises');
+        await fs.writeFile(filePath, yamlContent, 'utf-8');
+
+        const loaded = await IndexSchema.fromYAML(filePath);
+
+        expect(loaded.index.name).toBe('test-index');
+        expect(loaded.fieldNames).toEqual(['title', 'category']);  // camelCase property
+
+        await fs.unlink(filePath);
+    });
+});
+

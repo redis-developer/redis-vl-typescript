@@ -296,6 +296,43 @@ export class IndexSchema {
     }
 
     /**
+     * Create an IndexSchema from a YAML file.
+     *
+     * @param filePath - The path to the YAML file
+     * @returns A new IndexSchema instance
+     *
+     * @throws Error if the file path is invalid
+     * @throws Error if the file does not exist
+     *
+     * @example
+     * ```typescript
+     * const schema = await IndexSchema.fromYAML('schema.yaml');
+     * console.log(schema.index.name);
+     * ```
+     */
+    static async fromYAML(filePath: string): Promise<IndexSchema> {
+        const resolvedPath = resolve(filePath);
+
+        // Check if file exists
+        try {
+            await fs.access(resolvedPath);
+        } catch {
+            throw new Error(`Schema file ${filePath} does not exist`);
+        }
+
+        // Read and parse YAML file
+        const yamlContent = await fs.readFile(resolvedPath, 'utf-8');
+        const data = yaml.load(yamlContent) as {
+            index: IndexInfoOptions | IndexInfo;
+            fields?: FieldInput[] | Record<string, FieldInput>;
+            version?: '0.1.0';
+        };
+
+        // Use fromDict to create the schema
+        return IndexSchema.fromDict(data);
+    }
+
+    /**
      * Serialize the index schema to a dictionary.
      * Converts camelCase properties to snake_case for YAML/JSON compatibility.
      *
