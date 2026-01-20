@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-
 /**
  * Field types supported by RedisVL
  */

@@ -19,6 +19,13 @@ export default [
                 sourceType: 'module',
                 project: './tsconfig.json',
             },
+            globals: {
+                process: 'readonly',
+                console: 'readonly',
+                Buffer: 'readonly',
+                __dirname: 'readonly',
+                __filename: 'readonly',
+            },
         },
         plugins: {
             '@typescript-eslint': tseslint,
@@ -26,6 +33,7 @@ export default [
         rules: {
             // TypeScript-specific rules
             '@typescript-eslint/no-explicit-any': 'warn',
+            'no-unused-vars': 'off', // Disable base rule as it conflicts with @typescript-eslint/no-unused-vars
             '@typescript-eslint/no-unused-vars': [
                 'error',
                 {
