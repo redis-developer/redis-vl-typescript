@@ -4,9 +4,23 @@
  * The AI-native Redis client for vector operations
  */
 
+// Version
 export const version = '0.0.1';
 
-// Placeholder - will be implemented
-export function createVectorClient() {
-    throw new Error('Not implemented yet');
-}
+// Schema exports
+export { IndexSchema, IndexInfo } from './schema/schema.js';
+export {
+    BaseField,
+    TextField,
+    TagField,
+    NumericField,
+    GeoField,
+    FlatVectorField,
+    HNSWVectorField,
+    FieldFactory,
+} from './schema/fields.js';
+export * from './schema/types.js';
+
+// Index exports
+export { SearchIndex } from './indexes/search-index.js';
+export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-index.js';
