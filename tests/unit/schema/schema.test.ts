@@ -262,9 +262,9 @@ describe('IndexSchema Tests', () => {
     });
 });
 
-describe('IndexSchema.fromDict()', () => {
+describe('IndexSchema.fromObject()', () => {
     it('should create IndexSchema from dict with fields as array', () => {
-        const schema = IndexSchema.fromDict({
+        const schema = IndexSchema.fromObject({
             index: {
                 name: 'example_index',
                 prefix: 'ex',
@@ -293,7 +293,7 @@ describe('IndexSchema.fromDict()', () => {
             storageType: StorageType.HASH,  // camelCase input (TypeScript API)
         });
 
-        const schema = IndexSchema.fromDict({
+        const schema = IndexSchema.fromObject({
             index: indexInfo,
             fields: [{ name: 'field1', type: 'text' }],
         });
@@ -304,7 +304,7 @@ describe('IndexSchema.fromDict()', () => {
     });
 
     it('should create IndexSchema from dict with fields as object', () => {
-        const schema = IndexSchema.fromDict({
+        const schema = IndexSchema.fromObject({
             index: {
                 name: 'test-index',
                 prefix: 'test',
@@ -322,7 +322,7 @@ describe('IndexSchema.fromDict()', () => {
 
     it('should throw error when field name in object does not match key', () => {
         expect(() => {
-            IndexSchema.fromDict({
+            IndexSchema.fromObject({
                 index: {
                     name: 'test-index',
                     prefix: 'test',
@@ -335,7 +335,7 @@ describe('IndexSchema.fromDict()', () => {
     });
 
     it('should create IndexSchema without fields', () => {
-        const schema = IndexSchema.fromDict({
+        const schema = IndexSchema.fromObject({
             index: {
                 name: 'test-index',
                 prefix: 'test',
@@ -346,7 +346,7 @@ describe('IndexSchema.fromDict()', () => {
     });
 
     it('should set version if provided', () => {
-        const schema = IndexSchema.fromDict({
+        const schema = IndexSchema.fromObject({
             index: {
                 name: 'test-index',
                 prefix: 'test',
@@ -358,7 +358,7 @@ describe('IndexSchema.fromDict()', () => {
     });
 
     it('should handle JSON storage with auto-path setting', () => {
-        const schema = IndexSchema.fromDict({
+        const schema = IndexSchema.fromObject({
             index: {
                 name: 'test-index',
                 prefix: 'test',
@@ -371,7 +371,7 @@ describe('IndexSchema.fromDict()', () => {
     });
 
     it('should handle HASH storage with null paths', () => {
-        const schema = IndexSchema.fromDict({
+        const schema = IndexSchema.fromObject({
             index: {
                 name: 'test-index',
                 prefix: 'test',
@@ -384,7 +384,7 @@ describe('IndexSchema.fromDict()', () => {
     });
 });
 
-describe('IndexSchema.toDict()', () => {
+describe('IndexSchema.toObject()', () => {
     it('should serialize IndexSchema to dictionary', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
@@ -398,7 +398,7 @@ describe('IndexSchema.toDict()', () => {
             { name: 'category', type: 'tag' },
         ]);
 
-        const dict = schema.toDict();
+        const dict = schema.toObject();
 
         expect(dict.index.name).toBe('test-index');
         expect(dict.index.prefix).toBe('test');
@@ -414,7 +414,7 @@ describe('IndexSchema.toDict()', () => {
         const schema = new IndexSchema({ index: indexInfo });
         schema.addField({ name: 'title', type: 'text', attrs: { sortable: true } });  // camelCase method
 
-        const dict = schema.toDict();
+        const dict = schema.toObject();
 
         expect(dict.fields[0].name).toBe('title');
         expect(dict.fields[0].type).toBe('text');
@@ -428,7 +428,7 @@ describe('IndexSchema.toDict()', () => {
         });
         const schema = new IndexSchema({ index: indexInfo });
 
-        const dict = schema.toDict();
+        const dict = schema.toObject();
 
         expect(dict.index.prefix).toEqual(['user', 'product']);
     });
@@ -440,12 +440,12 @@ describe('IndexSchema.toDict()', () => {
         });
         const schema = new IndexSchema({ index: indexInfo });
 
-        const dict = schema.toDict();
+        const dict = schema.toObject();
 
         expect(dict.index.stopwords).toEqual(['the', 'a', 'an']);
     });
 
-    it('should be able to recreate schema from toDict output', () => {
+    it('should be able to recreate schema from toObject output', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
             prefix: 'test',
@@ -457,8 +457,8 @@ describe('IndexSchema.toDict()', () => {
             { name: 'price', type: 'numeric' },
         ]);
 
-        const dict = schema.toDict();
-        const recreated = IndexSchema.fromDict(dict);
+        const dict = schema.toObject();
+        const recreated = IndexSchema.fromObject(dict);
 
         expect(recreated.index.name).toBe(schema.index.name);
         expect(recreated.index.prefix).toBe(schema.index.prefix);
@@ -583,7 +583,7 @@ describe('IndexSchema.fromYAML()', () => {
         expect(loaded.index.storageType).toBe(schema.index.storageType);  // camelCase property
         expect(loaded.index.stopwords).toEqual(schema.index.stopwords);
         expect(loaded.fieldNames).toEqual(schema.fieldNames);  // camelCase property
-        expect(loaded.toDict()).toEqual(schema.toDict());
+        expect(loaded.toObject()).toEqual(schema.toObject());
 
         const fs = await import('fs/promises');
         await fs.unlink(filePath);

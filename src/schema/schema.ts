@@ -217,7 +217,7 @@ export class IndexSchema {
     }
 
     /**
-     * Create an IndexSchema from a dictionary.
+     * Create an IndexSchema from a plain object.
      * Accepts both snake_case (from YAML/JSON files) and camelCase (from TypeScript) property names.
      *
      * @param data - The index schema data
@@ -226,7 +226,7 @@ export class IndexSchema {
      * @example
      * ```typescript
      * // From YAML/JSON (snake_case)
-     * const schema = IndexSchema.fromDict({
+     * const schema = IndexSchema.fromObject({
      *   index: {
      *     name: 'docs-index',
      *     prefix: 'docs',
@@ -239,7 +239,7 @@ export class IndexSchema {
      * });
      * ```
      */
-    static fromDict(data: {
+    static fromObject(data: {
         index: IndexInfoOptions | IndexInfo | Record<string, unknown>;
         fields?: FieldInput[] | Record<string, FieldInput>;
         version?: '0.1.0';
@@ -328,12 +328,12 @@ export class IndexSchema {
             version?: '0.1.0';
         };
 
-        // Use fromDict to create the schema
-        return IndexSchema.fromDict(data);
+        // Use fromObject to create the schema
+        return IndexSchema.fromObject(data);
     }
 
     /**
-     * Serialize the index schema to a dictionary.
+     * Serialize the index schema to a plain object.
      * Converts camelCase properties to snake_case for YAML/JSON compatibility.
      *
      * @returns The index schema as a plain object with snake_case keys
@@ -341,12 +341,12 @@ export class IndexSchema {
      * @example
      * ```typescript
      * const schema = new IndexSchema({ index: indexInfo });
-     * const dict = schema.toDict();
-     * console.log(dict.index.name);
-     * console.log(dict.index.storage_type);  // snake_case in output
+     * const obj = schema.toObject();
+     * console.log(obj.index.name);
+     * console.log(obj.index.storage_type);  // snake_case in output
      * ```
      */
-    toDict(): {
+    toObject(): {
         index: {
             name: string;
             prefix: string | string[];
@@ -432,9 +432,9 @@ export class IndexSchema {
             }
         }
 
-        // Convert to dict and write as YAML
-        const dictData = this.toDict();
-        const yamlData = yaml.dump(dictData, { sortKeys: false });
+        // Convert to object and write as YAML
+        const objData = this.toObject();
+        const yamlData = yaml.dump(objData, { sortKeys: false });
         await fs.writeFile(resolvedPath, yamlData, 'utf-8');
     }
 }
