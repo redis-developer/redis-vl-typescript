@@ -101,9 +101,9 @@ describe('IndexSchema Tests', () => {
         it('should create IndexSchema with IndexInfo and fields', () => {
             const indexInfo = new IndexInfo({ name: 'user-index' });
             const fields = {
-                username: new TagField({ name: 'username' }),
-                bio: new TextField({ name: 'bio' }),
-                age: new NumericField({ name: 'age' }),
+                username: new TagField('username'),
+                bio: new TextField('bio'),
+                age: new NumericField('age'),
             };
 
             const schema = new IndexSchema({ index: indexInfo, fields });
@@ -115,7 +115,7 @@ describe('IndexSchema Tests', () => {
 
         it('should access fields by name', () => {
             const indexInfo = new IndexInfo({ name: 'user-index' });
-            const usernameField = new TagField({ name: 'username' });
+            const usernameField = new TagField('username');
             const fields = { username: usernameField };
 
             const schema = new IndexSchema({ index: indexInfo, fields });
@@ -137,9 +137,9 @@ describe('IndexSchema Tests', () => {
         it('should return array of field names', () => {
             const indexInfo = new IndexInfo({ name: 'user-index' });
             const fields = {
-                username: new TagField({ name: 'username' }),
-                bio: new TextField({ name: 'bio' }),
-                age: new NumericField({ name: 'age' }),
+                username: new TagField('username'),
+                bio: new TextField('bio'),
+                age: new NumericField('age'),
             };
             const schema = new IndexSchema({ index: indexInfo, fields });
 
@@ -268,8 +268,8 @@ describe('IndexSchema.fromObject()', () => {
             index: {
                 name: 'example_index',
                 prefix: 'ex',
-                key_separator: '|',  // snake_case input (from YAML/JSON)
-                storage_type: StorageType.JSON,  // snake_case input (from YAML/JSON)
+                key_separator: '|', // snake_case input (from YAML/JSON)
+                storage_type: StorageType.JSON, // snake_case input (from YAML/JSON)
             },
             fields: [
                 { name: 'example_text', type: 'text', attrs: { sortable: false } },
@@ -278,10 +278,10 @@ describe('IndexSchema.fromObject()', () => {
         });
 
         expect(schema.index.name).toBe('example_index');
-        expect(schema.index.keySeparator).toBe('|');  // camelCase property
+        expect(schema.index.keySeparator).toBe('|'); // camelCase property
         expect(schema.index.prefix).toBe('ex');
-        expect(schema.index.storageType).toBe(StorageType.JSON);  // camelCase property
-        expect(schema.fieldNames).toHaveLength(2);  // camelCase property
+        expect(schema.index.storageType).toBe(StorageType.JSON); // camelCase property
+        expect(schema.fieldNames).toHaveLength(2); // camelCase property
         expect(schema.fieldNames).toContain('example_text');
         expect(schema.fieldNames).toContain('example_numeric');
     });
@@ -290,7 +290,7 @@ describe('IndexSchema.fromObject()', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
             prefix: 'test',
-            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+            storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
 
         const schema = IndexSchema.fromObject({
@@ -299,7 +299,7 @@ describe('IndexSchema.fromObject()', () => {
         });
 
         expect(schema.index).toBe(indexInfo);
-        expect(schema.fieldNames).toHaveLength(1);  // camelCase property
+        expect(schema.fieldNames).toHaveLength(1); // camelCase property
         expect(schema.fieldNames).toContain('field1');
     });
 
@@ -315,7 +315,7 @@ describe('IndexSchema.fromObject()', () => {
             },
         });
 
-        expect(schema.fieldNames).toHaveLength(2);  // camelCase property
+        expect(schema.fieldNames).toHaveLength(2); // camelCase property
         expect(schema.fieldNames).toContain('title');
         expect(schema.fieldNames).toContain('price');
     });
@@ -342,7 +342,7 @@ describe('IndexSchema.fromObject()', () => {
             },
         });
 
-        expect(schema.fieldNames).toHaveLength(0);  // camelCase property
+        expect(schema.fieldNames).toHaveLength(0); // camelCase property
     });
 
     it('should set version if provided', () => {
@@ -362,7 +362,7 @@ describe('IndexSchema.fromObject()', () => {
             index: {
                 name: 'test-index',
                 prefix: 'test',
-                storage_type: StorageType.JSON,  // snake_case input (from YAML/JSON)
+                storage_type: StorageType.JSON, // snake_case input (from YAML/JSON)
             },
             fields: [{ name: 'title', type: 'text' }],
         });
@@ -375,7 +375,7 @@ describe('IndexSchema.fromObject()', () => {
             index: {
                 name: 'test-index',
                 prefix: 'test',
-                storage_type: StorageType.HASH,  // snake_case input (from YAML/JSON)
+                storage_type: StorageType.HASH, // snake_case input (from YAML/JSON)
             },
             fields: [{ name: 'title', type: 'text' }],
         });
@@ -389,11 +389,12 @@ describe('IndexSchema.toObject()', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
             prefix: 'test',
-            keySeparator: ':',  // camelCase input (TypeScript API)
-            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+            keySeparator: ':', // camelCase input (TypeScript API)
+            storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
         const schema = new IndexSchema({ index: indexInfo });
-        schema.addFields([  // camelCase method
+        schema.addFields([
+            // camelCase method
             { name: 'title', type: 'text' },
             { name: 'category', type: 'tag' },
         ]);
@@ -402,8 +403,8 @@ describe('IndexSchema.toObject()', () => {
 
         expect(dict.index.name).toBe('test-index');
         expect(dict.index.prefix).toBe('test');
-        expect(dict.index.key_separator).toBe(':');  // snake_case in output (YAML/JSON)
-        expect(dict.index.storage_type).toBe('hash');  // snake_case in output (YAML/JSON)
+        expect(dict.index.key_separator).toBe(':'); // snake_case in output (YAML/JSON)
+        expect(dict.index.storage_type).toBe('hash'); // snake_case in output (YAML/JSON)
         expect(dict.fields).toBeInstanceOf(Array);
         expect(dict.fields).toHaveLength(2);
         expect(dict.version).toBe('0.1.0');
@@ -412,7 +413,7 @@ describe('IndexSchema.toObject()', () => {
     it('should serialize fields as array with all properties', () => {
         const indexInfo = new IndexInfo({ name: 'test-index' });
         const schema = new IndexSchema({ index: indexInfo });
-        schema.addField({ name: 'title', type: 'text', attrs: { sortable: true } });  // camelCase method
+        schema.addField({ name: 'title', type: 'text', attrs: { sortable: true } }); // camelCase method
 
         const dict = schema.toObject();
 
@@ -449,10 +450,11 @@ describe('IndexSchema.toObject()', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
             prefix: 'test',
-            storageType: StorageType.JSON,  // camelCase input (TypeScript API)
+            storageType: StorageType.JSON, // camelCase input (TypeScript API)
         });
         const schema = new IndexSchema({ index: indexInfo });
-        schema.addFields([  // camelCase method
+        schema.addFields([
+            // camelCase method
             { name: 'title', type: 'text' },
             { name: 'price', type: 'numeric' },
         ]);
@@ -462,8 +464,8 @@ describe('IndexSchema.toObject()', () => {
 
         expect(recreated.index.name).toBe(schema.index.name);
         expect(recreated.index.prefix).toBe(schema.index.prefix);
-        expect(recreated.index.storageType).toBe(schema.index.storageType);  // camelCase property
-        expect(recreated.fieldNames).toEqual(schema.fieldNames);  // camelCase property
+        expect(recreated.index.storageType).toBe(schema.index.storageType); // camelCase property
+        expect(recreated.fieldNames).toEqual(schema.fieldNames); // camelCase property
     });
 });
 
@@ -472,10 +474,11 @@ describe('IndexSchema.toYAML()', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
             prefix: 'test',
-            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+            storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
         const schema = new IndexSchema({ index: indexInfo });
-        schema.addFields([  // camelCase method
+        schema.addFields([
+            // camelCase method
             { name: 'title', type: 'text' },
             { name: 'category', type: 'tag' },
         ]);
@@ -530,10 +533,11 @@ describe('IndexSchema.fromYAML()', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
             prefix: 'test',
-            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+            storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
         const schema = new IndexSchema({ index: indexInfo });
-        schema.addFields([  // camelCase method
+        schema.addFields([
+            // camelCase method
             { name: 'title', type: 'text' },
             { name: 'category', type: 'tag' },
         ]);
@@ -545,8 +549,8 @@ describe('IndexSchema.fromYAML()', () => {
 
         expect(loaded.index.name).toBe('test-index');
         expect(loaded.index.prefix).toBe('test');
-        expect(loaded.index.storageType).toBe(StorageType.HASH);  // camelCase property
-        expect(loaded.fieldNames).toEqual(['title', 'category']);  // camelCase property
+        expect(loaded.index.storageType).toBe(StorageType.HASH); // camelCase property
+        expect(loaded.fieldNames).toEqual(['title', 'category']); // camelCase property
 
         const fs = await import('fs/promises');
         await fs.unlink(filePath);
@@ -554,7 +558,7 @@ describe('IndexSchema.fromYAML()', () => {
 
     it('should throw error if file does not exist', async () => {
         await expect(IndexSchema.fromYAML('nonexistent-file.yaml')).rejects.toThrow(
-            'does not exist',
+            'does not exist'
         );
     });
 
@@ -562,12 +566,13 @@ describe('IndexSchema.fromYAML()', () => {
         const indexInfo = new IndexInfo({
             name: 'round-trip-test',
             prefix: ['user', 'product'],
-            keySeparator: '|',  // camelCase input (TypeScript API)
-            storageType: StorageType.JSON,  // camelCase input (TypeScript API)
+            keySeparator: '|', // camelCase input (TypeScript API)
+            storageType: StorageType.JSON, // camelCase input (TypeScript API)
             stopwords: ['the', 'a'],
         });
         const schema = new IndexSchema({ index: indexInfo });
-        schema.addFields([  // camelCase method
+        schema.addFields([
+            // camelCase method
             { name: 'title', type: 'text', attrs: { sortable: true } },
             { name: 'price', type: 'numeric' },
         ]);
@@ -579,10 +584,10 @@ describe('IndexSchema.fromYAML()', () => {
 
         expect(loaded.index.name).toBe(schema.index.name);
         expect(loaded.index.prefix).toEqual(schema.index.prefix);
-        expect(loaded.index.keySeparator).toBe(schema.index.keySeparator);  // camelCase property
-        expect(loaded.index.storageType).toBe(schema.index.storageType);  // camelCase property
+        expect(loaded.index.keySeparator).toBe(schema.index.keySeparator); // camelCase property
+        expect(loaded.index.storageType).toBe(schema.index.storageType); // camelCase property
         expect(loaded.index.stopwords).toEqual(schema.index.stopwords);
-        expect(loaded.fieldNames).toEqual(schema.fieldNames);  // camelCase property
+        expect(loaded.fieldNames).toEqual(schema.fieldNames); // camelCase property
         expect(loaded.toObject()).toEqual(schema.toObject());
 
         const fs = await import('fs/promises');
@@ -609,9 +614,8 @@ version: 0.1.0
         const loaded = await IndexSchema.fromYAML(filePath);
 
         expect(loaded.index.name).toBe('test-index');
-        expect(loaded.fieldNames).toEqual(['title', 'category']);  // camelCase property
+        expect(loaded.fieldNames).toEqual(['title', 'category']); // camelCase property
 
         await fs.unlink(filePath);
     });
 });
-

@@ -1,0 +1,12 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        // Override to NOT emit files (we only want type checking)
+        "noEmit": true,
+
+        // Allow importing from vitest
+        "types": ["vitest/globals", "node"]
+    },
+    "include": ["src/**/*", "tests/**/*", "examples/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

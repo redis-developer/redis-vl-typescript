@@ -169,7 +169,7 @@ export class IndexSchema {
         // Check for duplicates
         if (Object.hasOwn(this.fields, field.name)) {
             throw new Error(
-                `Duplicate field name: ${field.name}. Field names must be unique across all fields for this index.`,
+                `Duplicate field name: ${field.name}. Field names must be unique across all fields for this index.`
             );
         }
 
@@ -284,7 +284,7 @@ export class IndexSchema {
                     // Validate field name matches key
                     if (fieldData.name !== key) {
                         throw new Error(
-                            `Field name mismatch: key is "${key}" but field.name is "${fieldData.name}"`,
+                            `Field name mismatch: key is "${key}" but field.name is "${fieldData.name}"`
                         );
                     }
                     schema.addField(fieldData);
@@ -358,7 +358,7 @@ export class IndexSchema {
             name: string;
             type: string;
             attrs?: Record<string, unknown>;
-            path?: string | null;
+            path?: string;
         }>;
         version: '0.1.0';
     } {
@@ -366,8 +366,8 @@ export class IndexSchema {
         const indexDict = {
             name: this.index.name,
             prefix: this.index.prefix,
-            key_separator: this.index.keySeparator,  // camelCase -> snake_case
-            storage_type: this.index.storageType,  // camelCase -> snake_case (enum value is already string)
+            key_separator: this.index.keySeparator, // camelCase -> snake_case
+            storage_type: this.index.storageType, // camelCase -> snake_case (enum value is already string)
             ...(this.index.stopwords !== undefined && { stopwords: this.index.stopwords }),
         };
 
@@ -377,7 +377,7 @@ export class IndexSchema {
                 name: string;
                 type: string;
                 attrs?: Record<string, unknown>;
-                path?: string | null;
+                path?: string;
             } = {
                 name: field.name,
                 type: field.type,
@@ -387,7 +387,7 @@ export class IndexSchema {
                 fieldDict.attrs = field.attrs as Record<string, unknown>;
             }
 
-            if (field.path !== undefined) {
+            if (field.path !== undefined && field.path !== null) {
                 fieldDict.path = field.path;
             }
 
@@ -438,4 +438,3 @@ export class IndexSchema {
         await fs.writeFile(resolvedPath, yamlData, 'utf-8');
     }
 }
-

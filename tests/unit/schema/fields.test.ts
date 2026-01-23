@@ -8,6 +8,7 @@ import {
     FlatVectorField,
     HNSWVectorField,
 } from '../../../src/schema/fields.js';
+import { VectorDistanceMetric, VectorDataType } from '../../../src/schema/types.js';
 
 describe('Field Creation Tests', () => {
     describe('Standard Field Creation', () => {
@@ -49,7 +50,7 @@ describe('Field Creation Tests', () => {
             expect(() => {
                 FieldFactory.createField('vector', 'example_vector_field', {
                     dims: 128,
-                });
+                } as any); // Intentionally incomplete for error testing
             }).toThrow('Must provide algorithm param');
         });
 
@@ -57,7 +58,7 @@ describe('Field Creation Tests', () => {
             expect(() => {
                 FieldFactory.createField('vector', 'example_vector_field', {
                     algorithm: 'flat',
-                });
+                } as any); // Intentionally incomplete for error testing
             }).toThrow('Must provide dims param');
         });
     });
@@ -160,12 +161,12 @@ describe('FlatVectorField Tests', () => {
         const field = new FlatVectorField('example_flatvectorfield', {
             algorithm: 'flat',
             dims: 128,
-            distanceMetric: 'COSINE',
-            datatype: 'FLOAT32',
+            distanceMetric: VectorDistanceMetric.COSINE,
+            datatype: VectorDataType.FLOAT32,
             blockSize: 100,
         });
-        expect(field.attrs.distanceMetric).toBe('COSINE');
-        expect(field.attrs.datatype).toBe('FLOAT32');
+        expect(field.attrs.distanceMetric).toBe(VectorDistanceMetric.COSINE);
+        expect(field.attrs.datatype).toBe(VectorDataType.FLOAT32);
         expect(field.attrs.blockSize).toBe(100);
     });
 
