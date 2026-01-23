@@ -1,0 +1,42 @@
+# Source files
+src/
+tests/
+examples/
+
+# Config files
+tsconfig.json
+vitest.config.ts
+eslint.config.mjs
+.prettierrc
+.prettierignore
+
+# Development files
+*.test.ts
+*.spec.ts
+DEVELOPMENT.md
+
+# Git
+.git
+.gitignore
+.husky
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules
+
