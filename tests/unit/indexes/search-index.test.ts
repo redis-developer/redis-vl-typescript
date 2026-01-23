@@ -21,6 +21,15 @@ describe('SearchIndex', () => {
         schema.addField({ name: 'title', type: 'text' }); // camelCase method
 
         // Create a mock Redis client
+        const mockPipeline = {
+            hSet: vi.fn().mockReturnThis(),
+            expire: vi.fn().mockReturnThis(),
+            execAsPipeline: vi.fn().mockResolvedValue([]),
+            json: {
+                set: vi.fn().mockReturnThis(),
+            },
+        };
+
         mockClient = {
             ft: {
                 create: vi.fn(),
@@ -28,7 +37,16 @@ describe('SearchIndex', () => {
                 dropIndex: vi.fn(),
                 info: vi.fn(),
             },
+            multi: vi.fn().mockReturnValue(mockPipeline),
+            hSet: vi.fn().mockResolvedValue(1),
+            expire: vi.fn().mockResolvedValue(1),
+            json: {
+                set: vi.fn().mockResolvedValue('OK'),
+            },
         } as unknown as RedisClientType;
+
+        // Store pipeline reference for test assertions
+        (mockClient as any).mockPipeline = mockPipeline;
     });
 
     describe('constructor', () => {
@@ -196,6 +214,240 @@ describe('SearchIndex', () => {
             const index = new SearchIndex(schema, mockClient);
 
             await expect(index.info()).rejects.toThrow();
+        });
+    });
+
+    describe('load()', () => {
+        let hashSchema: IndexSchema;
+        let jsonSchema: IndexSchema;
+
+        beforeEach(() => {
+            // HASH storage schema
+            const hashIndexInfo = new IndexInfo({
+                name: 'hash-index',
+                prefix: 'doc',
+                storageType: StorageType.HASH,
+            });
+            hashSchema = new IndexSchema({ index: hashIndexInfo });
+            hashSchema.addField({ name: 'id', type: 'tag' });
+            hashSchema.addField({ name: 'title', type: 'text' });
+            hashSchema.addField({ name: 'score', type: 'numeric' });
+
+            // JSON storage schema
+            const jsonIndexInfo = new IndexInfo({
+                name: 'json-index',
+                prefix: 'doc',
+                storageType: StorageType.JSON,
+            });
+            jsonSchema = new IndexSchema({ index: jsonIndexInfo });
+            jsonSchema.addField({ name: 'id', type: 'tag' });
+            jsonSchema.addField({ name: 'title', type: 'text' });
+            jsonSchema.addField({ name: 'score', type: 'numeric' });
+
+            // Mock HASH operations
+            (mockClient as any).hSet = vi.fn().mockResolvedValue(1);
+            (mockClient as any).expire = vi.fn().mockResolvedValue(1);
+
+            // Mock JSON operations
+            (mockClient as any).json = {
+                set: vi.fn().mockResolvedValue('OK'),
+            };
+        });
+
+        describe('HASH storage', () => {
+            it('should load documents with auto-generated keys', async () => {
+                const index = new SearchIndex(hashSchema, mockClient);
+                const data = [
+                    { id: '1', title: 'Document 1', score: 100 },
+                    { id: '2', title: 'Document 2', score: 200 },
+                ];
+
+                const keys = await index.load(data);
+
+                expect(keys).toHaveLength(2);
+                expect(keys[0]).toMatch(/^doc:/); // Should start with prefix
+                expect(keys[1]).toMatch(/^doc:/);
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(2);
+                expect((mockClient as any).mockPipeline.execAsPipeline).toHaveBeenCalled();
+            });
+
+            it('should load documents with idField extraction', async () => {
+                const index = new SearchIndex(hashSchema, mockClient);
+                const data = [
+                    { id: 'user1', title: 'Document 1', score: 100 },
+                    { id: 'user2', title: 'Document 2', score: 200 },
+                ];
+
+                const keys = await index.load(data, { idField: 'id' });
+
+                expect(keys).toEqual(['doc:user1', 'doc:user2']);
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(2);
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledWith(
+                    'doc:user1',
+                    expect.objectContaining({ id: 'user1', title: 'Document 1', score: 100 })
+                );
+            });
+
+            it('should load documents with explicit keys', async () => {
+                const index = new SearchIndex(hashSchema, mockClient);
+                const data = [
+                    { title: 'Document 1', score: 100 },
+                    { title: 'Document 2', score: 200 },
+                ];
+                const customKeys = ['doc:custom1', 'doc:custom2'];
+
+                const keys = await index.load(data, { keys: customKeys });
+
+                expect(keys).toEqual(customKeys);
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(2);
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledWith(
+                    'doc:custom1',
+                    expect.objectContaining({ title: 'Document 1', score: 100 })
+                );
+            });
+
+            it('should load documents with TTL', async () => {
+                const index = new SearchIndex(hashSchema, mockClient);
+                const data = [{ title: 'Document 1', score: 100 }];
+
+                await index.load(data, { ttl: 3600 });
+
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(1);
+                expect((mockClient as any).mockPipeline.expire).toHaveBeenCalledWith(
+                    expect.any(String),
+                    3600
+                );
+            });
+
+            it('should load documents with preprocessing', async () => {
+                const index = new SearchIndex(hashSchema, mockClient);
+                const data = [
+                    { title: 'Document 1', score: 100 },
+                    { title: 'Document 2', score: 200 },
+                ];
+
+                const preprocess = (doc: Record<string, unknown>) => ({
+                    ...doc,
+                    processed: true,
+                    timestamp: Date.now(),
+                });
+
+                await index.load(data, { preprocess });
+
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(2);
+                expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledWith(
+                    expect.any(String),
+                    expect.objectContaining({ processed: true, timestamp: expect.any(Number) })
+                );
+            });
+
+            it('should throw error if idField not found in document', async () => {
+                const index = new SearchIndex(hashSchema, mockClient);
+                const data = [{ title: 'Document 1', score: 100 }]; // Missing 'userId' field
+
+                await expect(index.load(data, { idField: 'userId' })).rejects.toThrow();
+            });
+
+            it('should throw error if keys length does not match data length', async () => {
+                const index = new SearchIndex(hashSchema, mockClient);
+                const data = [{ title: 'Document 1' }, { title: 'Document 2' }];
+                const keys = ['doc:1']; // Only 1 key for 2 documents
+
+                await expect(index.load(data, { keys })).rejects.toThrow();
+            });
+        });
+
+        describe('JSON storage', () => {
+            it('should load documents with auto-generated keys', async () => {
+                const index = new SearchIndex(jsonSchema, mockClient);
+                const data = [
+                    { id: '1', title: 'Document 1', score: 100 },
+                    { id: '2', title: 'Document 2', score: 200 },
+                ];
+
+                const keys = await index.load(data);
+
+                expect(keys).toHaveLength(2);
+                expect(keys[0]).toMatch(/^doc:/);
+                expect(keys[1]).toMatch(/^doc:/);
+                expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(2);
+                expect((mockClient as any).mockPipeline.execAsPipeline).toHaveBeenCalled();
+            });
+
+            it('should load documents with idField extraction', async () => {
+                const index = new SearchIndex(jsonSchema, mockClient);
+                const data = [
+                    { id: 'user1', title: 'Document 1', score: 100 },
+                    { id: 'user2', title: 'Document 2', score: 200 },
+                ];
+
+                const keys = await index.load(data, { idField: 'id' });
+
+                expect(keys).toEqual(['doc:user1', 'doc:user2']);
+                expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(2);
+                expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledWith(
+                    'doc:user1',
+                    '$',
+                    expect.objectContaining({ id: 'user1', title: 'Document 1', score: 100 })
+                );
+            });
+
+            it('should load documents with explicit keys', async () => {
+                const index = new SearchIndex(jsonSchema, mockClient);
+                const data = [
+                    { title: 'Document 1', score: 100 },
+                    { title: 'Document 2', score: 200 },
+                ];
+                const customKeys = ['doc:custom1', 'doc:custom2'];
+
+                const keys = await index.load(data, { keys: customKeys });
+
+                expect(keys).toEqual(customKeys);
+                expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(2);
+            });
+
+            it('should load documents with TTL', async () => {
+                const index = new SearchIndex(jsonSchema, mockClient);
+                const data = [{ title: 'Document 1', score: 100 }];
+
+                await index.load(data, { ttl: 3600 });
+
+                expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(1);
+                expect((mockClient as any).mockPipeline.expire).toHaveBeenCalledWith(
+                    expect.any(String),
+                    3600
+                );
+            });
+
+            it('should load documents with preprocessing', async () => {
+                const index = new SearchIndex(jsonSchema, mockClient);
+                const data = [
+                    { title: 'Document 1', score: 100 },
+                    { title: 'Document 2', score: 200 },
+                ];
+
+                const preprocess = (doc: Record<string, unknown>) => ({
+                    ...doc,
+                    processed: true,
+                });
+
+                await index.load(data, { preprocess });
+
+                expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(2);
+                expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledWith(
+                    expect.any(String),
+                    '$',
+                    expect.objectContaining({ processed: true })
+                );
+            });
+        });
+
+        it('should return empty array when loading empty data', async () => {
+            const index = new SearchIndex(hashSchema, mockClient);
+            const keys = await index.load([]);
+
+            expect(keys).toEqual([]);
+            expect(mockClient.hSet).not.toHaveBeenCalled();
         });
     });
 });

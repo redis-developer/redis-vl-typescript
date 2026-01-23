@@ -1,4 +1,4 @@
-import { VectorDistanceMetric, VectorDataType } from './types.js';
+import { FieldType, VectorDistanceMetric, VectorDataType } from './types.js';
 import type {
     SchemaTextField,
     SchemaTextFieldPhonetic,
@@ -363,15 +363,15 @@ export class FieldFactory {
         attrs?: BaseFieldAttrs | VectorFieldAttrs
     ): BaseField {
         switch (fieldType) {
-            case 'tag':
+            case FieldType.TAG:
                 return new TagField(name, attrs as TagFieldAttrs);
-            case 'text':
+            case FieldType.TEXT:
                 return new TextField(name, attrs as TextFieldAttrs);
-            case 'numeric':
+            case FieldType.NUMERIC:
                 return new NumericField(name, attrs as NumericFieldAttrs);
-            case 'geo':
+            case FieldType.GEO:
                 return new GeoField(name, attrs as GeoFieldAttrs);
-            case 'vector':
+            case FieldType.VECTOR:
                 return this.createVectorField(name, attrs as VectorFieldAttrs);
             default:
                 throw new Error(`Unknown field type: ${fieldType}`);
