@@ -1,4 +1,5 @@
 import type { RedisClientType, RedisClusterType } from 'redis';
+import type { RediSearchSchema } from '@redis/search';
 import { IndexSchema } from '../schema/schema.js';
 
 /**
@@ -93,12 +94,34 @@ export class SearchIndex {
     }
 
     /**
+     * Convert schema fields to Redis field schema format.
+     * Each field class knows how to convert itself via the toRedisField() method.
+     * @private
+     */
+    private convertFieldsToRedisSchema(): RediSearchSchema {
+        const redisSchema: RediSearchSchema = {};
+        const isJson = this.schema.index.storageType.toLowerCase() === 'json';
+
+        for (const field of Object.values(this.schema.fields)) {
+            // Determine the field path
+            const fieldPath = field.path || field.name;
+            const key = isJson ? `$.${fieldPath}` : fieldPath;
+
+            // Converts each field to Redis format
+            redisSchema[key] = field.toRedisField(isJson);
+        }
+
+        return redisSchema;
+    }
+
+    /**
      * Create the index in Redis.
      *
      * @param options - Creation options
      * @throws {Error} If no fields are defined for the index
+     * @returns The result from Redis FT.CREATE command
      */
-    async create(options: CreateIndexOptions = {}): Promise<void> {
+    async create(options: CreateIndexOptions = {}) {
         const { overwrite = false, drop = false } = options;
 
         // Check that fields are defined
@@ -118,17 +141,12 @@ export class SearchIndex {
         }
 
         // Create the index using Redis FT.CREATE
-        // TODO: Convert schema fields to Redis field definitions
-        // For now, this is a placeholder
-        await this.client.ft.create(
-            this.name,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            {} as any, // Field schema - will be implemented in next step
-            {
-                ON: this.schema.index.storageType.toUpperCase() as 'HASH' | 'JSON',
-                PREFIX: this.schema.index.prefix,
-            },
-        );
+        const fieldSchema = this.convertFieldsToRedisSchema();
+
+        return this.client.ft.create(this.name, fieldSchema, {
+            ON: this.schema.index.storageType.toUpperCase() as 'HASH' | 'JSON',
+            PREFIX: this.schema.index.prefix,
+        });
     }
 
     /**
@@ -137,25 +155,31 @@ export class SearchIndex {
      * @returns True if the index exists, false otherwise
      */
     async exists(): Promise<boolean> {
-        // Use FT._LIST to get all indices
-        const indices = (await this.client.ft._list()) as string[];
-        return indices.includes(this.name);
+        try {
+            // Try to get index info - if it exists, this will succeed
+            await this.client.ft.info(this.name);
+            return true;
+        } catch {
+            // If index doesn't exist, FT.INFO will throw an error
+            return false;
+        }
     }
 
     /**
      * Delete the index from Redis.
      *
      * @param options - Deletion options
+     * @returns The result from Redis FT.DROPINDEX command
      */
-    async delete(options: DeleteIndexOptions = {}): Promise<void> {
+    async delete(options: DeleteIndexOptions = {}) {
         const { drop = false } = options;
 
         if (drop) {
             // Drop index and associated data
-            await this.client.ft.dropIndex(this.name, { DD: true });
+            return this.client.ft.dropIndex(this.name, { DD: true });
         } else {
             // Drop index only, keep data
-            await this.client.ft.dropIndex(this.name);
+            return this.client.ft.dropIndex(this.name);
         }
     }
 
@@ -164,9 +188,7 @@ export class SearchIndex {
      *
      * @returns Index information from Redis
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async info(): Promise<Record<string, any>> {
-        return await this.client.ft.info(this.name);
+    async info() {
+        return this.client.ft.info(this.name);
     }
 }
-

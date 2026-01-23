@@ -1,10 +1,12 @@
 {
-    "name": "redis-vl-typescript",
-    "private": true,
+    "name": "@booleanhunter/redisvl",
     "version": "0.0.1",
     "description": "The AI-native Redis TypeScript/Node.js client for vector operations",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
+    "publishConfig": {
+        "access": "public"
+    },
     "scripts": {
         "build": "tsc",
         "build:watch": "tsc --watch",
@@ -36,6 +38,11 @@
     ],
     "license": "MIT",
     "type": "module",
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -64,5 +71,14 @@
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
         "vitest": "^4.0.17"
+    },
+    "lint-staged": {
+        "*.{ts,tsx}": [
+            "eslint --fix",
+            "prettier --write"
+        ],
+        "*.{json,md,yaml,yml}": [
+            "prettier --write"
+        ]
     }
 }

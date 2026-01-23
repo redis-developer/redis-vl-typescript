@@ -13,12 +13,12 @@ describe('SearchIndex', () => {
         const indexInfo = new IndexInfo({
             name: 'test-index',
             prefix: 'test',
-            storageType: StorageType.HASH,  // camelCase input (TypeScript API)
+            storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
 
         schema = new IndexSchema({ index: indexInfo });
-        schema.addField({ name: 'id', type: 'tag' });  // camelCase method
-        schema.addField({ name: 'title', type: 'text' });  // camelCase method
+        schema.addField({ name: 'id', type: 'tag' }); // camelCase method
+        schema.addField({ name: 'title', type: 'text' }); // camelCase method
 
         // Create a mock Redis client
         mockClient = {
@@ -56,24 +56,30 @@ describe('SearchIndex', () => {
     describe('create()', () => {
         it('should create an index in Redis', async () => {
             (mockClient.ft.create as any).mockResolvedValue('OK');
-            (mockClient.ft._list as any).mockResolvedValue([]); // Index doesn't exist
+            (mockClient.ft.info as any).mockRejectedValue(new Error('Unknown index')); // Index doesn't exist
 
             const index = new SearchIndex(schema, mockClient);
             await index.create();
 
             expect(mockClient.ft.create).toHaveBeenCalledWith(
                 'test-index',
-                {},
+                expect.objectContaining({
+                    title: expect.objectContaining({ type: 'TEXT' }),
+                }),
                 expect.objectContaining({
                     ON: 'HASH',
                     PREFIX: 'test',
-                }),
+                })
             );
         });
 
         it('should throw error if no fields are defined', async () => {
             const emptySchema = new IndexSchema({
-                index: new IndexInfo({ name: 'empty', prefix: 'empty', storageType: StorageType.HASH }),
+                index: new IndexInfo({
+                    name: 'empty',
+                    prefix: 'empty',
+                    storageType: StorageType.HASH,
+                }),
             });
 
             const index = new SearchIndex(emptySchema, mockClient);
@@ -83,13 +89,13 @@ describe('SearchIndex', () => {
 
         it('should not overwrite existing index by default', async () => {
             (mockClient.ft.create as any).mockResolvedValue('OK');
-            (mockClient.ft._list as any).mockResolvedValue(['test-index']); // Index exists
+            (mockClient.ft.info as any).mockResolvedValue({ index_name: 'test-index' }); // Index exists
 
             const index = new SearchIndex(schema, mockClient);
             await index.create();
 
             // Should check if exists and not create
-            expect(mockClient.ft._list).toHaveBeenCalled();
+            expect(mockClient.ft.info).toHaveBeenCalled();
             expect(mockClient.ft.create).not.toHaveBeenCalled();
         });
 
@@ -120,17 +126,17 @@ describe('SearchIndex', () => {
 
     describe('exists()', () => {
         it('should return true if index exists', async () => {
-            (mockClient.ft._list as any).mockResolvedValue(['test-index', 'other-index']);
+            (mockClient.ft.info as any).mockResolvedValue({ index_name: 'test-index' });
 
             const index = new SearchIndex(schema, mockClient);
             const exists = await index.exists();
 
             expect(exists).toBe(true);
-            expect(mockClient.ft._list).toHaveBeenCalled();
+            expect(mockClient.ft.info).toHaveBeenCalledWith('test-index');
         });
 
         it('should return false if index does not exist', async () => {
-            (mockClient.ft._list as any).mockResolvedValue(['other-index']);
+            (mockClient.ft.info as any).mockRejectedValue(new Error('Unknown index'));
 
             const index = new SearchIndex(schema, mockClient);
             const exists = await index.exists();
@@ -138,9 +144,6 @@ describe('SearchIndex', () => {
             expect(exists).toBe(false);
         });
     });
-
-
-
 
     describe('delete()', () => {
         it('should delete index without dropping data by default', async () => {

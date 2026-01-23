@@ -1,4 +1,16 @@
 import { VectorDistanceMetric, VectorDataType } from './types.js';
+import type {
+    SchemaTextField,
+    SchemaTextFieldPhonetic,
+    SchemaNumericField,
+    SchemaGeoField,
+    SchemaTagField,
+    SchemaFlatVectorField,
+    SchemaHNSWVectorField,
+    SchemaVectorFieldType,
+    SchemaVectorFieldDistanceMetric,
+    RedisSchemaFieldType,
+} from '../redis/schema-types.js';
 
 /**
  * Base interface for all field attributes
@@ -24,6 +36,13 @@ export abstract class BaseField {
         this.attrs = attrs;
         this.path = undefined;
     }
+
+    /**
+     * Convert this field to Redis schema field format.
+     * Each subclass must implement this method to return the appropriate Redis field type.
+     * @param isJson - Whether the index uses JSON storage (affects field naming with $.prefix)
+     */
+    abstract toRedisField(isJson: boolean): RedisSchemaFieldType;
 }
 
 /**
@@ -32,7 +51,7 @@ export abstract class BaseField {
 export interface TextFieldAttrs extends BaseFieldAttrs {
     weight?: number;
     noStem?: boolean;
-    phonetic?: string;
+    phonetic?: SchemaTextFieldPhonetic;
     withSuffixTrie?: boolean;
 }
 
@@ -45,6 +64,44 @@ export class TextField extends BaseField {
         public readonly attrs: TextFieldAttrs = {}
     ) {
         super(name, 'text', attrs);
+    }
+
+    toRedisField(isJson: boolean): SchemaTextField {
+        const field: SchemaTextField = {
+            type: 'TEXT',
+        };
+
+        // Add AS field for JSON storage
+        if (isJson) {
+            field.AS = this.name;
+        }
+
+        // Add text-specific attributes
+        if (this.attrs.weight !== undefined) {
+            field.WEIGHT = this.attrs.weight;
+        }
+        if (this.attrs.noStem) {
+            field.NOSTEM = true;
+        }
+        if (this.attrs.phonetic) {
+            field.PHONETIC = this.attrs.phonetic; // Phonetic matcher string
+        }
+        if (this.attrs.withSuffixTrie) {
+            field.WITHSUFFIXTRIE = true;
+        }
+
+        // Add common attributes
+        if (this.attrs.sortable) {
+            field.SORTABLE = true;
+        }
+        if (this.attrs.indexMissing) {
+            field.INDEXMISSING = true;
+        }
+        if (this.attrs.indexEmpty) {
+            field.INDEXEMPTY = true;
+        }
+
+        return field;
     }
 }
 
@@ -70,6 +127,38 @@ export class TagField extends BaseField {
             this.attrs.separator = ',';
         }
     }
+
+    toRedisField(isJson: boolean): SchemaTagField {
+        const field: SchemaTagField = {
+            type: 'TAG',
+        };
+
+        // Add AS field for JSON storage
+        if (isJson) {
+            field.AS = this.name;
+        }
+
+        // Add tag-specific attributes
+        if (this.attrs.separator) {
+            field.SEPARATOR = this.attrs.separator;
+        }
+        if (this.attrs.caseSensitive) {
+            field.CASESENSITIVE = true;
+        }
+
+        // Add common attributes
+        if (this.attrs.sortable) {
+            field.SORTABLE = true;
+        }
+        if (this.attrs.indexMissing) {
+            field.INDEXMISSING = true;
+        }
+        if (this.attrs.indexEmpty) {
+            field.INDEXEMPTY = true;
+        }
+
+        return field;
+    }
 }
 
 /**
@@ -87,6 +176,27 @@ export class NumericField extends BaseField {
     ) {
         super(name, 'numeric', attrs);
     }
+
+    toRedisField(isJson: boolean): SchemaNumericField {
+        const field: SchemaNumericField = {
+            type: 'NUMERIC',
+        };
+
+        // Add AS field for JSON storage
+        if (isJson) {
+            field.AS = this.name;
+        }
+
+        // Add common attributes
+        if (this.attrs.sortable) {
+            field.SORTABLE = true;
+        }
+        if (this.attrs.indexMissing) {
+            field.INDEXMISSING = true;
+        }
+
+        return field;
+    }
 }
 
 /**
@@ -103,6 +213,27 @@ export class GeoField extends BaseField {
         public readonly attrs: GeoFieldAttrs = {}
     ) {
         super(name, 'geo', attrs);
+    }
+
+    toRedisField(isJson: boolean): SchemaGeoField {
+        const field: SchemaGeoField = {
+            type: 'GEO',
+        };
+
+        // Add AS field for JSON storage
+        if (isJson) {
+            field.AS = this.name;
+        }
+
+        // Add common attributes
+        if (this.attrs.sortable) {
+            field.SORTABLE = true;
+        }
+        if (this.attrs.indexMissing) {
+            field.INDEXMISSING = true;
+        }
+
+        return field;
     }
 }
 
@@ -135,6 +266,33 @@ export class FlatVectorField extends BaseField {
     ) {
         super(name, 'vector', attrs);
     }
+
+    toRedisField(isJson: boolean): SchemaFlatVectorField {
+        const field: SchemaFlatVectorField = {
+            type: 'VECTOR',
+            ALGORITHM: 'FLAT',
+            TYPE: (this.attrs.datatype || 'FLOAT32').toUpperCase() as SchemaVectorFieldType,
+            DIM: this.attrs.dims,
+            DISTANCE_METRIC: (
+                this.attrs.distanceMetric || 'COSINE'
+            ).toUpperCase() as SchemaVectorFieldDistanceMetric,
+        };
+
+        // Add AS field for JSON storage
+        if (isJson) {
+            field.AS = this.name;
+        }
+
+        // Add FLAT-specific attributes
+        if (this.attrs.blockSize !== undefined) {
+            field.BLOCK_SIZE = this.attrs.blockSize;
+        }
+        if (this.attrs.initialCap !== undefined) {
+            field.INITIAL_CAP = this.attrs.initialCap;
+        }
+
+        return field;
+    }
 }
 
 /**
@@ -162,6 +320,36 @@ export class HNSWVectorField extends BaseField {
         if (this.attrs.efConstruction === undefined) this.attrs.efConstruction = 200;
         if (this.attrs.efRuntime === undefined) this.attrs.efRuntime = 10;
         if (this.attrs.epsilon === undefined) this.attrs.epsilon = 0.01;
+    }
+
+    toRedisField(isJson: boolean): SchemaHNSWVectorField {
+        const field: SchemaHNSWVectorField = {
+            type: 'VECTOR',
+            ALGORITHM: 'HNSW',
+            TYPE: (this.attrs.datatype || 'FLOAT32').toUpperCase() as SchemaVectorFieldType,
+            DIM: this.attrs.dims,
+            DISTANCE_METRIC: (
+                this.attrs.distanceMetric || 'COSINE'
+            ).toUpperCase() as SchemaVectorFieldDistanceMetric,
+        };
+
+        // Add AS field for JSON storage
+        if (isJson) {
+            field.AS = this.name;
+        }
+
+        // Add HNSW-specific attributes
+        if (this.attrs.m !== undefined) {
+            field.M = this.attrs.m;
+        }
+        if (this.attrs.efConstruction !== undefined) {
+            field.EF_CONSTRUCTION = this.attrs.efConstruction;
+        }
+        if (this.attrs.efRuntime !== undefined) {
+            field.EF_RUNTIME = this.attrs.efRuntime;
+        }
+
+        return field;
     }
 }
 
