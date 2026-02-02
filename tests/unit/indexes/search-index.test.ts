@@ -450,4 +450,376 @@ describe('SearchIndex', () => {
             expect(mockClient.hSet).not.toHaveBeenCalled();
         });
     });
+
+    describe('Data Fetching', () => {
+        describe('fetch()', () => {
+            it('should fetch single document by key (HASH storage)', async () => {
+                // Create index with HASH storage
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'name', type: 'text' });
+                hashSchema.addField({ name: 'age', type: 'numeric' });
+
+                // Mock document
+                const mockDoc = { id: '123', name: 'John Doe', age: '30' };
+
+                // Mock pipeline for get operation
+                const mockHGetAll = vi.fn();
+                const mockPipeline = {
+                    hGetAll: mockHGetAll,
+                    execAsPipeline: vi.fn().mockResolvedValue([mockDoc]),
+                };
+
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                // Fetch the document
+                const result = await index.fetch('123');
+
+                // Assert document matches
+                expect(result).toEqual(mockDoc);
+                expect(mockHGetAll).toHaveBeenCalledWith('user:123');
+            });
+
+            it('should fetch single document by key (JSON storage)', async () => {
+                // Create index with JSON storage
+                const indexInfo = new IndexInfo({
+                    name: 'product-index',
+                    prefix: 'product',
+                    storageType: StorageType.JSON,
+                });
+                const jsonSchema = new IndexSchema({ index: indexInfo });
+                jsonSchema.addField({ name: 'id', type: 'tag' });
+                jsonSchema.addField({ name: 'title', type: 'text' });
+                jsonSchema.addField({ name: 'price', type: 'numeric' });
+
+                // Mock document
+                const mockDoc = { id: '456', title: 'Laptop', price: 999 };
+
+                // Mock pipeline for JSON get operation
+                const mockJsonGet = vi.fn();
+                const mockPipeline = {
+                    json: {
+                        get: mockJsonGet,
+                    },
+                    execAsPipeline: vi.fn().mockResolvedValue([mockDoc]),
+                };
+
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(jsonSchema, mockClient);
+
+                // Fetch the document
+                const result = await index.fetch('456');
+
+                // Assert document matches
+                expect(result).toEqual(mockDoc);
+                expect(mockJsonGet).toHaveBeenCalledWith('product:456');
+            });
+
+            it('should return null for non-existent key (HASH storage)', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                // Mock hGetAll to return empty object (key doesn't exist)
+                const mockHGetAll = vi.fn();
+                const mockPipeline = {
+                    hGetAll: mockHGetAll,
+                    execAsPipeline: vi.fn().mockResolvedValue([{}]),
+                };
+
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                // Fetch non-existent key
+                const result = await index.fetch('999');
+
+                // Assert returns null
+                expect(result).toBeNull();
+                expect(mockHGetAll).toHaveBeenCalledWith('user:999');
+            });
+
+            it('should return null for non-existent key (JSON storage)', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'product-index',
+                    prefix: 'product',
+                    storageType: StorageType.JSON,
+                });
+                const jsonSchema = new IndexSchema({ index: indexInfo });
+                jsonSchema.addField({ name: 'id', type: 'tag' });
+
+                // Mock json.get to return null (key doesn't exist)
+                const mockJsonGet = vi.fn();
+                const mockPipeline = {
+                    json: {
+                        get: mockJsonGet,
+                    },
+                    execAsPipeline: vi.fn().mockResolvedValue([null]),
+                };
+
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(jsonSchema, mockClient);
+
+                // Fetch non-existent key
+                const result = await index.fetch('999');
+
+                // Assert returns null
+                expect(result).toBeNull();
+                expect(mockJsonGet).toHaveBeenCalledWith('product:999');
+            });
+
+            it('should handle keys with custom separator', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    keySeparator: '::',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                const mockDoc = { id: '123', name: 'John' };
+                const mockHGetAll = vi.fn();
+                const mockPipeline = {
+                    hGetAll: mockHGetAll,
+                    execAsPipeline: vi.fn().mockResolvedValue([mockDoc]),
+                };
+
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const result = await index.fetch('123');
+
+                expect(result).toEqual(mockDoc);
+                expect(mockHGetAll).toHaveBeenCalledWith('user::123');
+            });
+
+            it('should handle array prefix (use first prefix)', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: ['user', 'person'],
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                const mockDoc = { id: '123', name: 'John' };
+                const mockHGetAll = vi.fn();
+                const mockPipeline = {
+                    hGetAll: mockHGetAll,
+                    execAsPipeline: vi.fn().mockResolvedValue([mockDoc]),
+                };
+
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const result = await index.fetch('123');
+
+                expect(result).toEqual(mockDoc);
+                // Should use first prefix 'user'
+                expect(mockHGetAll).toHaveBeenCalledWith('user:123');
+            });
+        });
+
+        describe('fetchMany()', () => {
+            it('should fetch multiple documents (HASH storage)', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'name', type: 'text' });
+
+                // Mock pipeline for batch fetching
+                const mockDocs = [
+                    { id: '1', name: 'Alice' },
+                    { id: '2', name: 'Bob' },
+                    { id: '3', name: 'Charlie' },
+                ];
+
+                const mockPipeline = {
+                    hGetAll: vi
+                        .fn()
+                        .mockReturnValueOnce(Promise.resolve(mockDocs[0]))
+                        .mockReturnValueOnce(Promise.resolve(mockDocs[1]))
+                        .mockReturnValueOnce(Promise.resolve(mockDocs[2])),
+                    execAsPipeline: vi.fn().mockResolvedValue(mockDocs),
+                };
+
+                mockClient.multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const results = await index.fetchMany(['1', '2', '3']);
+
+                expect(results).toHaveLength(3);
+                expect(results[0]).toEqual(mockDocs[0]);
+                expect(results[1]).toEqual(mockDocs[1]);
+                expect(results[2]).toEqual(mockDocs[2]);
+            });
+
+            it('should fetch multiple documents (JSON storage)', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'product-index',
+                    prefix: 'product',
+                    storageType: StorageType.JSON,
+                });
+                const jsonSchema = new IndexSchema({ index: indexInfo });
+                jsonSchema.addField({ name: 'id', type: 'tag' });
+                jsonSchema.addField({ name: 'title', type: 'text' });
+
+                // Mock pipeline for batch fetching
+                const mockDocs = [
+                    { id: '1', title: 'Laptop' },
+                    { id: '2', title: 'Mouse' },
+                    { id: '3', title: 'Keyboard' },
+                ];
+
+                const mockPipeline = {
+                    json: {
+                        get: vi
+                            .fn()
+                            .mockReturnValueOnce(Promise.resolve(mockDocs[0]))
+                            .mockReturnValueOnce(Promise.resolve(mockDocs[1]))
+                            .mockReturnValueOnce(Promise.resolve(mockDocs[2])),
+                    },
+                    execAsPipeline: vi.fn().mockResolvedValue(mockDocs),
+                };
+
+                mockClient.multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(jsonSchema, mockClient);
+                const results = await index.fetchMany(['1', '2', '3']);
+
+                expect(results).toHaveLength(3);
+                expect(results[0]).toEqual(mockDocs[0]);
+                expect(results[1]).toEqual(mockDocs[1]);
+                expect(results[2]).toEqual(mockDocs[2]);
+            });
+
+            it('should return null for missing keys in array', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                // Mock pipeline - key '2' doesn't exist (returns empty object)
+                const mockPipeline = {
+                    hGetAll: vi.fn(),
+                    execAsPipeline: vi.fn().mockResolvedValue([
+                        { id: '1', name: 'Alice' },
+                        {}, // Missing key
+                        { id: '3', name: 'Charlie' },
+                    ]),
+                };
+
+                mockClient.multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const results = await index.fetchMany(['1', '2', '3']);
+
+                expect(results).toHaveLength(3);
+                expect(results[0]).toEqual({ id: '1', name: 'Alice' });
+                expect(results[1]).toBeNull(); // Missing key
+                expect(results[2]).toEqual({ id: '3', name: 'Charlie' });
+            });
+
+            it('should return empty array for empty keys array', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const results = await index.fetchMany([]);
+
+                expect(results).toEqual([]);
+                expect(mockClient.multi).not.toHaveBeenCalled();
+            });
+
+            it('should maintain order of results', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                // Mock pipeline - fetch in order: c, a, b
+                const mockPipeline = {
+                    hGetAll: vi.fn(),
+                    execAsPipeline: vi.fn().mockResolvedValue([
+                        { id: 'c', name: 'Charlie' },
+                        { id: 'a', name: 'Alice' },
+                        { id: 'b', name: 'Bob' },
+                    ]),
+                };
+
+                mockClient.multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const results = await index.fetchMany(['c', 'a', 'b']);
+
+                // Results should match requested order
+                expect(results[0]).toEqual({ id: 'c', name: 'Charlie' });
+                expect(results[1]).toEqual({ id: 'a', name: 'Alice' });
+                expect(results[2]).toEqual({ id: 'b', name: 'Bob' });
+            });
+
+            it('should use custom batch size', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                // Create 5 documents
+                const mockDocs = Array.from({ length: 5 }, (_, i) => ({
+                    id: String(i + 1),
+                    name: `User ${i + 1}`,
+                }));
+
+                const mockPipeline = {
+                    hGetAll: vi.fn(),
+                    execAsPipeline: vi
+                        .fn()
+                        .mockResolvedValueOnce([mockDocs[0], mockDocs[1]]) // Batch 1: docs 0-1
+                        .mockResolvedValueOnce([mockDocs[2], mockDocs[3]]) // Batch 2: docs 2-3
+                        .mockResolvedValueOnce([mockDocs[4]]), // Batch 3: doc 4
+                };
+
+                mockClient.multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const results = await index.fetchMany(['1', '2', '3', '4', '5'], 2);
+
+                expect(results).toHaveLength(5);
+                // With batchSize=2, should execute pipeline 3 times (2+2+1)
+                expect(mockPipeline.execAsPipeline).toHaveBeenCalledTimes(3);
+            });
+        });
+    });
 });

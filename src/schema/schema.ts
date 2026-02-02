@@ -10,16 +10,55 @@ import { BaseField, FieldFactory } from './fields.js';
  * Validates index configuration including name, prefix, key separator, storage type, and stopwords.
  */
 export const IndexInfoSchema = z.object({
-    /** The unique name of the index (required, non-empty) */
-    name: z.string().min(1, 'IndexInfo name cannot be empty'),
-    /** The prefix(es) used for Redis keys associated with this index */
-    prefix: z.union([z.string(), z.array(z.string())]).default('rvl'),
-    /** The separator character used in designing Redis keys */
-    keySeparator: z.string().default(':'),
-    /** The storage type used in Redis (StorageType.HASH or StorageType.JSON) */
-    storageType: z.enum(StorageType).default(StorageType.HASH),
-    /** Index-level stopwords configuration */
-    stopwords: z.array(z.string()).optional(),
+    name: z
+        .string()
+        .min(1, 'IndexInfo name cannot be empty')
+        .meta({
+            title: 'Index Name',
+            description: 'The unique name of the index (required, non-empty)',
+            examples: ['user-index', 'product-search', 'document-embeddings'],
+        }),
+    prefix: z
+        .union([z.string(), z.array(z.string())])
+        .default('rvl')
+        .meta({
+            title: 'Key Prefix',
+            description:
+                'The prefix(es) used for Redis keys associated with this index. ' +
+                'Can be a single string or array of strings. ' +
+                'When multiple prefixes are provided, the first one is used for write operations, but the index searches across all prefixes.',
+            examples: ['user', ['user', 'person', 'customer'], 'product'],
+        }),
+    keySeparator: z
+        .string()
+        .default(':')
+        .meta({
+            title: 'Key Separator',
+            description: 'The separator character used between prefix and key in Redis keys',
+            examples: [':', '::', '-', '_'],
+        }),
+    storageType: z
+        .enum(StorageType)
+        .default(StorageType.HASH)
+        .meta({
+            title: 'Storage Type',
+            description:
+                'The storage type used in Redis. ' +
+                'Options: "hash" (HASH storage) or "json" (JSON storage)',
+            examples: ['hash', 'json'],
+        }),
+    stopwords: z
+        .array(z.string())
+        .optional()
+        .meta({
+            title: 'Stopwords',
+            description:
+                'Index-level stopwords configuration for full-text search. ' +
+                'undefined (default) uses Redis default stopwords, ' +
+                'empty array [] disables stopwords (STOPWORDS 0), ' +
+                'or provide a custom list',
+            examples: [[], ['the', 'a', 'an', 'and', 'or']],
+        }),
 });
 
 /**
@@ -343,7 +382,7 @@ export class IndexSchema {
      * const schema = new IndexSchema({ index: indexInfo });
      * const obj = schema.toObject();
      * console.log(obj.index.name);
-     * console.log(obj.index.storage_type);  // snake_case in output
+     * console.log(obj.index.storage_type);
      * ```
      */
     toObject(): {

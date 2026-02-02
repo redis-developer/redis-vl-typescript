@@ -327,4 +327,71 @@ export class SearchIndex {
             );
         }
     }
+
+    /**
+     * Fetch a single document by key.
+     *
+     * @param key - The document key (without prefix)
+     * @returns The document or null if not found
+     *
+     * @example
+     * ```typescript
+     * const doc = await index.fetch('123');
+     */
+    async fetch(key: string): Promise<Record<string, unknown> | null> {
+        try {
+            // Normalize prefix (use first prefix if array)
+            const prefix = Array.isArray(this.schema.index.prefix)
+                ? this.schema.index.prefix[0]
+                : this.schema.index.prefix;
+
+            // Build full key with prefix and separator
+            const fullKey = `${prefix}${this.schema.index.keySeparator}${key}`;
+
+            // Fetch using storage layer
+            const results = await this.storage.get(this.client, [fullKey]);
+
+            // Return first result (or null)
+            return results[0];
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to fetch document: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+    }
+
+    /**
+     * Fetch multiple documents by keys.
+     * Uses pipelining for efficient batch retrieval.
+     *
+     * @param keys - Array of document keys (without prefix)
+     * @param batchSize - Number of commands per pipeline batch (default: 200)
+     * @returns Array of documents (null for missing keys)
+     *
+     * @example
+     * ```typescript
+     * const docs = await index.fetchMany(['123', '456', '789']);
+     */
+    async fetchMany(keys: string[], batchSize = 200): Promise<(Record<string, unknown> | null)[]> {
+        try {
+            if (!keys || keys.length === 0) {
+                return [];
+            }
+
+            // Normalize prefix (use first prefix if array)
+            const prefix = Array.isArray(this.schema.index.prefix)
+                ? this.schema.index.prefix[0]
+                : this.schema.index.prefix;
+
+            // Build full keys with prefix and separator
+            const fullKeys = keys.map((key) => `${prefix}${this.schema.index.keySeparator}${key}`);
+
+            // Fetch using storage layer with pipelining
+            return await this.storage.get(this.client, fullKeys, batchSize);
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to fetch documents: ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
+    }
 }
