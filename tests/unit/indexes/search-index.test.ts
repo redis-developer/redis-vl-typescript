@@ -326,7 +326,7 @@ describe('SearchIndex', () => {
                     { title: 'Document 2', score: 200 },
                 ];
 
-                const preprocess = (doc: Record<string, unknown>) => ({
+                const preprocess = async (doc: Record<string, unknown>) => ({
                     ...doc,
                     processed: true,
                     timestamp: Date.now(),
@@ -426,7 +426,7 @@ describe('SearchIndex', () => {
                     { title: 'Document 2', score: 200 },
                 ];
 
-                const preprocess = (doc: Record<string, unknown>) => ({
+                const preprocess = async (doc: Record<string, unknown>) => ({
                     ...doc,
                     processed: true,
                 });
@@ -819,6 +819,315 @@ describe('SearchIndex', () => {
                 expect(results).toHaveLength(5);
                 // With batchSize=2, should execute pipeline 3 times (2+2+1)
                 expect(mockPipeline.execAsPipeline).toHaveBeenCalledTimes(3);
+            });
+        });
+    });
+
+    describe('Data Preprocessing', () => {
+        describe('load() with preprocess option', () => {
+            it('should apply preprocess function to each document', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'name', type: 'text' });
+                hashSchema.addField({ name: 'email', type: 'text' });
+
+                const mockPipeline = {
+                    hSet: vi.fn().mockResolvedValue(1),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                const rawData = [
+                    { id: '1', name: 'John', email: 'JOHN@EXAMPLE.COM' },
+                    { id: '2', name: 'Jane', email: 'JANE@EXAMPLE.COM' },
+                ];
+
+                // Preprocess: lowercase email
+                await index.load(rawData, {
+                    keys: ['user:1', 'user:2'], // Provide explicit full keys with prefix
+                    preprocess: async (doc) => ({
+                        ...doc,
+                        email: (doc.email as string).toLowerCase(),
+                    }),
+                });
+
+                // Verify hSet was called with preprocessed data
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:1',
+                    expect.objectContaining({ email: 'john@example.com' })
+                );
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:2',
+                    expect.objectContaining({ email: 'jane@example.com' })
+                );
+            });
+
+            it('should add computed fields via preprocess', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'firstName', type: 'text' });
+                hashSchema.addField({ name: 'lastName', type: 'text' });
+                hashSchema.addField({ name: 'fullName', type: 'text' });
+
+                const mockPipeline = {
+                    hSet: vi.fn().mockResolvedValue(1),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                const rawData = [{ id: '1', firstName: 'John', lastName: 'Doe' }];
+
+                // Preprocess: add fullName field
+                await index.load(rawData, {
+                    keys: ['user:1'], // Provide explicit full key with prefix
+                    preprocess: async (doc) => ({
+                        ...doc,
+                        fullName: `${doc.firstName} ${doc.lastName}`,
+                    }),
+                });
+
+                // Verify fullName was added
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:1',
+                    expect.objectContaining({ fullName: 'John Doe' })
+                );
+            });
+
+            it('should transform field names via preprocess', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'product-index',
+                    prefix: 'product',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'name', type: 'text' });
+                hashSchema.addField({ name: 'price', type: 'numeric' });
+
+                const mockPipeline = {
+                    hSet: vi.fn().mockResolvedValue(1),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                const rawData = [{ product_id: '1', title: 'Laptop', price_string: '999.99' }];
+
+                // Preprocess: rename and transform fields
+                await index.load(rawData, {
+                    keys: ['product:1'], // Provide explicit full key with prefix
+                    preprocess: async (doc) => ({
+                        id: doc.product_id,
+                        name: doc.title,
+                        price: parseFloat(doc.price_string as string),
+                    }),
+                });
+
+                // Verify transformed data
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'product:1',
+                    expect.objectContaining({
+                        id: '1',
+                        name: 'Laptop',
+                        price: 999.99,
+                    })
+                );
+            });
+
+            it('should apply preprocess before validation', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'age', type: 'numeric' });
+
+                const mockPipeline = {
+                    hSet: vi.fn().mockResolvedValue(1),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient, true);
+
+                const rawData = [{ id: '1', age: '30' }]; // age is string
+
+                // Preprocess: convert string to number (so validation passes)
+                await index.load(rawData, {
+                    keys: ['user:1'], // Provide explicit full key with prefix
+                    validateOnLoad: true,
+                    preprocess: async (doc) => ({
+                        ...doc,
+                        age: parseInt(doc.age as string),
+                    }),
+                });
+
+                // Should not throw validation error because preprocess runs first
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:1',
+                    expect.objectContaining({ age: 30 })
+                );
+            });
+
+            it('should support async preprocess function', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'doc-index',
+                    prefix: 'doc',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'text', type: 'text' });
+                hashSchema.addField({ name: 'processed', type: 'text' });
+
+                const mockPipeline = {
+                    hSet: vi.fn().mockResolvedValue(1),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                const rawData = [{ id: '1', text: 'hello world' }];
+
+                // Async preprocess: simulate async operation (e.g., API call)
+                await index.load(rawData, {
+                    keys: ['doc:1'], // Provide explicit full key with prefix
+                    preprocess: async (doc) => {
+                        // Simulate async operation
+                        await new Promise((resolve) => setTimeout(resolve, 10));
+                        return {
+                            ...doc,
+                            processed: (doc.text as string).toUpperCase(),
+                        };
+                    },
+                });
+
+                // Verify async preprocessing worked
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'doc:1',
+                    expect.objectContaining({ processed: 'HELLO WORLD' })
+                );
+            });
+
+            it('should work without preprocess (undefined)', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'name', type: 'text' });
+
+                const mockPipeline = {
+                    hSet: vi.fn().mockResolvedValue(1),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                const rawData = [{ id: '1', name: 'John' }];
+
+                // Load without preprocess
+                await index.load(rawData, { keys: ['user:1'] });
+
+                // Data should be unchanged
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:1',
+                    expect.objectContaining({ id: '1', name: 'John' })
+                );
+            });
+
+            it('should handle preprocess errors gracefully', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                const rawData = [{ id: '1' }];
+
+                // Preprocess that throws error
+                await expect(
+                    index.load(rawData, {
+                        preprocess: async () => {
+                            throw new Error('Preprocessing failed');
+                        },
+                    })
+                ).rejects.toThrow('Preprocessing failed');
+            });
+
+            it('should apply preprocess to all documents in batch', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'user-index',
+                    prefix: 'user',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'count', type: 'numeric' });
+
+                const mockPipeline = {
+                    hSet: vi.fn().mockResolvedValue(1),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                (mockClient as any).multi = vi.fn().mockReturnValue(mockPipeline);
+
+                const index = new SearchIndex(hashSchema, mockClient);
+
+                const rawData = [
+                    { id: '1', count: 0 },
+                    { id: '2', count: 0 },
+                    { id: '3', count: 0 },
+                ];
+
+                let counter = 0;
+
+                // Preprocess: increment counter for each document
+                await index.load(rawData, {
+                    keys: ['user:1', 'user:2', 'user:3'], // Provide explicit full keys with prefix
+                    preprocess: async (doc) => ({
+                        ...doc,
+                        count: ++counter,
+                    }),
+                });
+
+                // Verify all documents were preprocessed
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:1',
+                    expect.objectContaining({ count: 1 })
+                );
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:2',
+                    expect.objectContaining({ count: 2 })
+                );
+                expect(mockPipeline.hSet).toHaveBeenCalledWith(
+                    'user:3',
+                    expect.objectContaining({ count: 3 })
+                );
             });
         });
     });

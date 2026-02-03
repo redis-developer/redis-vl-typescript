@@ -31,7 +31,7 @@ export class JsonStorage extends BaseStorage {
         }
 
         // Pass 1: Preprocess and validate all documents
-        const preparedDocs = this.preprocessAndValidateDocuments(data, options);
+        const preparedDocs = await this.preprocessAndValidateDocuments(data, options);
 
         // Pass 2: Write all valid documents in batches using pipeline
         const loadedKeys: string[] = [];

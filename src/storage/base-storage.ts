@@ -46,9 +46,9 @@ export interface WriteOptions {
     batchSize?: number;
 
     /**
-     * Preprocessing function to transform documents before storage
+     * Preprocessing function to transform documents before storage.
      */
-    preprocess?: (doc: Record<string, unknown>) => Record<string, unknown>;
+    preprocess?: (doc: Record<string, unknown>) => Promise<Record<string, unknown>>;
 
     /**
      * Whether to validate documents against schema
@@ -120,13 +120,13 @@ export abstract class BaseStorage {
     }
 
     /**
-     * Preprocess a document using the provided function
+     * Preprocess a document using the provided async function.
      */
-    protected preprocess(
+    protected async preprocess(
         doc: Record<string, unknown>,
-        preprocessFn?: (doc: Record<string, unknown>) => Record<string, unknown>
-    ): Record<string, unknown> {
-        return preprocessFn ? preprocessFn(doc) : doc;
+        preprocessFn?: (doc: Record<string, unknown>) => Promise<Record<string, unknown>>
+    ): Promise<Record<string, unknown>> {
+        return preprocessFn ? await preprocessFn(doc) : doc;
     }
 
     /**
@@ -230,19 +230,21 @@ export abstract class BaseStorage {
     }
 
     /**
-     * Preprocess and validate a list of documents.
-     * This is a helper method to reduce code duplication between HashStorage and JsonStorage.
+     * Preprocess and validate documents before writing to Redis:
+     * 1. Generate Redis keys for each document (from provided keys or idField)
+     * 2. Apply preprocessing transformations (if provided)
+     * 3. Validate documents against schema (if validateOnLoad is true)
      *
      * @param data - Array of documents to preprocess and validate
-     * @param options - Write options containing idField, keys, preprocess, and validate
-     * @returns Array of tuples [key, processedDoc] for valid documents
-     * @throws {SchemaValidationError} If validation fails
-     * @throws {Error} If any other processing errors occur
+     * @param options - Write options containing idField, keys, preprocess, and validateOnLoad
+     * @returns Array of prepared documents with their Redis keys
+     * @throws {SchemaValidationError} If validation fails for any document (includes document index)
+     * @throws {Error} If key generation or preprocessing fails for any document
      */
-    protected preprocessAndValidateDocuments(
+    protected async preprocessAndValidateDocuments(
         data: Record<string, unknown>[],
         options: WriteOptions
-    ): Array<{ key: string; doc: Record<string, unknown> }> {
+    ): Promise<Array<{ key: string; doc: Record<string, unknown> }>> {
         const { idField, keys, preprocess, validateOnLoad = false } = options;
         const prefix = this.schema.index.prefix;
         const keySeparator = this.schema.index.keySeparator;
@@ -257,7 +259,7 @@ export abstract class BaseStorage {
                     : this.createKeyForDocument(data[i], idField, prefix, keySeparator);
 
                 // Preprocess
-                let processedDoc = this.preprocess(data[i], preprocess);
+                let processedDoc = await this.preprocess(data[i], preprocess);
 
                 // Validate if enabled
                 if (validateOnLoad) {

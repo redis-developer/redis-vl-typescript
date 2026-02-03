@@ -64,9 +64,25 @@ export interface LoadOptions {
 
     /**
      * Preprocessing function to transform documents before loading.
-     * The function receives a document and should return the transformed document.
+     * The function receives a document and returns a Promise of the transformed document.
+     *
+     * @example
+     * ```typescript
+     * // Simple transformation
+     * await index.load(data, {
+     *   preprocess: async (doc) => ({ ...doc, timestamp: Date.now() })
+     * });
+     *
+     * // generating embeddings
+     * await index.load(data, {
+     *   preprocess: async (doc) => ({
+     *     ...doc,
+     *     embedding: await vectorizer.embed(doc.text)
+     *   })
+     * });
+     * ```
      */
-    preprocess?: (doc: Record<string, unknown>) => Record<string, unknown>;
+    preprocess?: (doc: Record<string, unknown>) => Promise<Record<string, unknown>>;
 
     /**
      * Whether to validate documents against schema before loading.
