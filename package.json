@@ -54,10 +54,19 @@
     },
     "dependencies": {
         "js-yaml": "^4.1.1",
-        "redis": "^5.10.0",
+        "redis": "^5.11.0",
         "zod": "^4.3.5"
     },
+    "peerDependencies": {
+        "@huggingface/transformers": "^3.0.0"
+    },
+    "peerDependenciesMeta": {
+        "@huggingface/transformers": {
+            "optional": true
+        }
+    },
     "devDependencies": {
+        "@huggingface/transformers": "^3.2.1",
         "@types/js-yaml": "^4.0.9",
         "@types/node": "^25.0.9",
         "@typescript-eslint/eslint-plugin": "^8.53.0",

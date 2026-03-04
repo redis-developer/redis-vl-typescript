@@ -27,3 +27,10 @@ export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-in
 
 // Error exports
 export { RedisVLError, RedisSearchError, SchemaValidationError } from './errors.js';
+
+// Vectorizer exports
+export {
+    BaseVectorizer,
+    HuggingFaceVectorizer,
+    type HuggingFaceConfig,
+} from './vectorizers/index.js';
