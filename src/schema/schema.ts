@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import { resolve } from 'path';
 import { StorageType } from './types.js';
 import { BaseField, FieldFactory } from './fields.js';
+import { SchemaValidationError, RedisVLError } from '../errors.js';
 
 /**
  * Zod schema for IndexInfo validation.
@@ -161,10 +162,10 @@ export class IndexSchema {
         const { name, type, attrs, path } = fieldInputs;
 
         if (!name) {
-            throw new Error('Field name is required');
+            throw new SchemaValidationError('Field name is required');
         }
         if (!type) {
-            throw new Error('Field type is required');
+            throw new SchemaValidationError('Field type is required');
         }
 
         // Create field from inputs using FieldFactory
@@ -207,7 +208,7 @@ export class IndexSchema {
 
         // Check for duplicates
         if (Object.hasOwn(this.fields, field.name)) {
-            throw new Error(
+            throw new SchemaValidationError(
                 `Duplicate field name: ${field.name}. Field names must be unique across all fields for this index.`
             );
         }
@@ -322,7 +323,7 @@ export class IndexSchema {
                 for (const [key, fieldData] of Object.entries(data.fields)) {
                     // Validate field name matches key
                     if (fieldData.name !== key) {
-                        throw new Error(
+                        throw new SchemaValidationError(
                             `Field name mismatch: key is "${key}" but field.name is "${fieldData.name}"`
                         );
                     }
@@ -356,7 +357,7 @@ export class IndexSchema {
         try {
             await fs.access(resolvedPath);
         } catch {
-            throw new Error(`Schema file ${filePath} does not exist`);
+            throw new RedisVLError(`Schema file ${filePath} does not exist`);
         }
 
         // Read and parse YAML file
@@ -461,10 +462,10 @@ export class IndexSchema {
         if (!overwrite) {
             try {
                 await fs.access(resolvedPath);
-                throw new Error(`Schema file ${filePath} already exists.`);
+                throw new RedisVLError(`Schema file ${filePath} already exists.`);
             } catch (error: unknown) {
                 // File doesn't exist, which is what we want
-                if (error instanceof Error && error.message.includes('already exists')) {
+                if (error instanceof RedisVLError && error.message.includes('already exists')) {
                     throw error;
                 }
                 // Otherwise, file doesn't exist, continue

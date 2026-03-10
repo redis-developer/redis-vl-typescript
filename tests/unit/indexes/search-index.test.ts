@@ -3,6 +3,7 @@ import { SearchIndex } from '../../../src/indexes/search-index.js';
 import { IndexSchema, IndexInfo } from '../../../src/schema/schema.js';
 import { StorageType } from '../../../src/schema/types.js';
 import type { RedisClientType } from 'redis';
+import { RedisVLError, SchemaValidationError } from '../../../src/errors.js';
 
 describe('SearchIndex', () => {
     let schema: IndexSchema;
@@ -58,16 +59,22 @@ describe('SearchIndex', () => {
             expect(index.name).toBe('test-index');
         });
 
-        it('should throw error if schema is not an IndexSchema instance', () => {
+        it('should throw RedisVLError if schema is not an IndexSchema instance', () => {
             expect(() => {
                 new SearchIndex({} as IndexSchema, mockClient);
-            }).toThrow('Must provide a valid IndexSchema object');
+            }).toThrow(RedisVLError);
+            expect(() => {
+                new SearchIndex({} as IndexSchema, mockClient);
+            }).toThrow(/Must provide a valid IndexSchema object/);
         });
 
-        it('should throw error if client is not provided', () => {
+        it('should throw RedisVLError if client is not provided', () => {
             expect(() => {
                 new SearchIndex(schema, null as unknown as RedisClientType);
-            }).toThrow('Must provide a valid Redis client');
+            }).toThrow(RedisVLError);
+            expect(() => {
+                new SearchIndex(schema, null as unknown as RedisClientType);
+            }).toThrow(/Must provide a valid Redis client/);
         });
     });
 
@@ -102,7 +109,8 @@ describe('SearchIndex', () => {
 
             const index = new SearchIndex(emptySchema, mockClient);
 
-            await expect(index.create()).rejects.toThrow('No fields defined for index');
+            await expect(index.create()).rejects.toThrow(SchemaValidationError);
+            await expect(index.create()).rejects.toThrow(/No fields defined for index/);
         });
 
         it('should not overwrite existing index by default', async () => {

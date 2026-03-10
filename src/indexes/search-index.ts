@@ -151,11 +151,11 @@ export class SearchIndex {
         validateOnLoad = false
     ) {
         if (!(schema instanceof IndexSchema)) {
-            throw new Error('Must provide a valid IndexSchema object');
+            throw new RedisVLError('Must provide a valid IndexSchema object');
         }
 
         if (!client) {
-            throw new Error('Must provide a valid Redis client');
+            throw new RedisVLError('Must provide a valid Redis client');
         }
 
         this.schema = schema;
@@ -208,7 +208,7 @@ export class SearchIndex {
         // Check that fields are defined
         const fields = Object.values(this.schema.fields);
         if (fields.length === 0) {
-            throw new Error('No fields defined for index');
+            throw new SchemaValidationError('No fields defined for index');
         }
 
         // Check if index already exists
@@ -339,7 +339,8 @@ export class SearchIndex {
             }
             // Wrap other errors as general RedisVL errors
             throw new RedisVLError(
-                `Failed to load data: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to load data: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
             );
         }
     }
@@ -371,7 +372,8 @@ export class SearchIndex {
             return results[0];
         } catch (error) {
             throw new RedisVLError(
-                `Failed to fetch document: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to fetch document: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
             );
         }
     }
@@ -406,7 +408,8 @@ export class SearchIndex {
             return await this.storage.get(this.client, fullKeys, batchSize);
         } catch (error) {
             throw new RedisVLError(
-                `Failed to fetch documents: ${error instanceof Error ? error.message : String(error)}`
+                `Failed to fetch documents: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
             );
         }
     }

@@ -1,6 +1,7 @@
 import type { RedisClient, WriteOptions } from './base-storage.js';
 import { BaseStorage } from './base-storage.js';
 import type { IndexSchema } from '../schema/schema.js';
+import { SchemaValidationError } from '../errors.js';
 
 /**
  * Storage implementation for Redis HASH data type.
@@ -27,7 +28,7 @@ export class HashStorage extends BaseStorage {
         }
 
         if (keys && keys.length !== data.length) {
-            throw new Error('Length of keys does not match the length of data');
+            throw new SchemaValidationError('Length of keys does not match the length of data');
         }
 
         // Pass 1: Preprocess and validate all documents

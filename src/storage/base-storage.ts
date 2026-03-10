@@ -109,7 +109,7 @@ export abstract class BaseStorage {
 
         if (idField) {
             if (!(idField in doc)) {
-                throw new Error(`Key field "${idField}" not found in document`);
+                throw new SchemaValidationError(`Key field "${idField}" not found in document`);
             }
             keyValue = String(doc[idField]);
         } else {
@@ -272,7 +272,7 @@ export abstract class BaseStorage {
                     // Re-throw validation errors with index context
                     throw new SchemaValidationError(error.message, i);
                 }
-                throw new Error(
+                throw new SchemaValidationError(
                     `Error processing document at index ${i}: ${error instanceof Error ? error.message : String(error)}`
                 );
             }

@@ -9,6 +9,7 @@ import {
     HNSWVectorField,
 } from '../../../src/schema/fields.js';
 import { VectorDistanceMetric, VectorDataType } from '../../../src/schema/types.js';
+import { SchemaValidationError } from '../../../src/errors.js';
 
 describe('Field Creation Tests', () => {
     describe('Standard Field Creation', () => {
@@ -37,37 +38,56 @@ describe('Field Creation Tests', () => {
             expect(field.name).toBe(fieldName);
         });
 
-        it('should throw error for unknown vector field algorithm', () => {
+        it('should throw SchemaValidationError for unknown vector field algorithm', () => {
             expect(() => {
                 FieldFactory.createField('vector', 'example_vector_field', {
                     algorithm: 'unknown',
                     dims: 128,
                 });
-            }).toThrow('Unknown vector field algorithm');
+            }).toThrow(SchemaValidationError);
+            expect(() => {
+                FieldFactory.createField('vector', 'example_vector_field', {
+                    algorithm: 'unknown',
+                    dims: 128,
+                });
+            }).toThrow(/Unknown vector field algorithm: unknown/);
         });
 
-        it('should throw error for missing vector field algorithm', () => {
+        it('should throw SchemaValidationError for missing vector field algorithm', () => {
             expect(() => {
                 FieldFactory.createField('vector', 'example_vector_field', {
                     dims: 128,
                 } as any); // Intentionally incomplete for error testing
-            }).toThrow('Must provide algorithm param');
+            }).toThrow(SchemaValidationError);
+            expect(() => {
+                FieldFactory.createField('vector', 'example_vector_field', {
+                    dims: 128,
+                } as any);
+            }).toThrow(/Must provide algorithm param/);
         });
 
-        it('should throw error for missing vector field dims', () => {
+        it('should throw SchemaValidationError for missing vector field dims', () => {
             expect(() => {
                 FieldFactory.createField('vector', 'example_vector_field', {
                     algorithm: 'flat',
                 } as any); // Intentionally incomplete for error testing
-            }).toThrow('Must provide dims param');
+            }).toThrow(SchemaValidationError);
+            expect(() => {
+                FieldFactory.createField('vector', 'example_vector_field', {
+                    algorithm: 'flat',
+                } as any);
+            }).toThrow(/Must provide dims param/);
         });
     });
 
     describe('Unknown Field Type', () => {
-        it('should throw error for unknown field type', () => {
+        it('should throw SchemaValidationError for unknown field type', () => {
             expect(() => {
                 FieldFactory.createField('unknown', 'example_field');
-            }).toThrow('Unknown field type: unknown');
+            }).toThrow(SchemaValidationError);
+            expect(() => {
+                FieldFactory.createField('unknown', 'example_field');
+            }).toThrow(/Unknown field type: unknown/);
         });
     });
 });

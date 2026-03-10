@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HuggingFaceVectorizer } from '../../../src/vectorizers/huggingface-vectorizer.js';
+import { VectorizerError } from '../../../src/errors.js';
 
 // Mock the @huggingface/transformers module at the top level
 const mockPipeline = vi.fn();
@@ -47,16 +48,22 @@ describe('HuggingFaceVectorizer', () => {
             expect(vectorizer).toBeDefined();
         });
 
-        it('should throw error for empty model name', () => {
+        it('should throw VectorizerError for empty model name', () => {
             expect(() => {
                 new HuggingFaceVectorizer({ model: '' });
-            }).toThrow('Model name cannot be empty');
+            }).toThrow(VectorizerError);
+            expect(() => {
+                new HuggingFaceVectorizer({ model: '' });
+            }).toThrow(/Model name cannot be empty/);
         });
 
-        it('should throw error for whitespace-only model name', () => {
+        it('should throw VectorizerError for whitespace-only model name', () => {
             expect(() => {
                 new HuggingFaceVectorizer({ model: '   ' });
-            }).toThrow('Model name cannot be empty');
+            }).toThrow(VectorizerError);
+            expect(() => {
+                new HuggingFaceVectorizer({ model: '   ' });
+            }).toThrow(/Model name cannot be empty/);
         });
     });
 
@@ -243,7 +250,8 @@ describe('HuggingFaceVectorizer', () => {
                 model: 'Xenova/all-MiniLM-L6-v2',
             });
 
-            expect(() => vectorizer.dims).toThrow('Embedding dimensions not yet determined');
+            expect(() => vectorizer.dims).toThrow(VectorizerError);
+            expect(() => vectorizer.dims).toThrow(/Embedding dimensions not yet determined/);
         });
 
         it('should return correct embedding dimensions after initialization', async () => {

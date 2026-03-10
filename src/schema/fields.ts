@@ -11,6 +11,7 @@ import type {
     SchemaVectorFieldDistanceMetric,
     RedisSchemaFieldType,
 } from '../redis/schema-types.js';
+import { SchemaValidationError } from '../errors.js';
 
 /**
  * Base interface for all field attributes
@@ -374,21 +375,21 @@ export class FieldFactory {
             case FieldType.VECTOR:
                 return this.createVectorField(name, attrs as VectorFieldAttrs);
             default:
-                throw new Error(`Unknown field type: ${fieldType}`);
+                throw new SchemaValidationError(`Unknown field type: ${fieldType}`);
         }
     }
 
     private static createVectorField(name: string, attrs: VectorFieldAttrs): BaseField {
         if (!attrs) {
-            throw new Error('Vector field requires attrs parameter');
+            throw new SchemaValidationError('Vector field requires attrs parameter');
         }
 
         if (!attrs.algorithm) {
-            throw new Error('Must provide algorithm param');
+            throw new SchemaValidationError('Must provide algorithm param');
         }
 
         if (attrs.dims === undefined) {
-            throw new Error('Must provide dims param');
+            throw new SchemaValidationError('Must provide dims param');
         }
 
         switch (attrs.algorithm) {
@@ -397,7 +398,9 @@ export class FieldFactory {
             case 'hnsw':
                 return new HNSWVectorField(name, attrs as HNSWVectorFieldAttrs);
             default:
-                throw new Error(`Unknown vector field algorithm: ${attrs.algorithm}`);
+                throw new SchemaValidationError(
+                    `Unknown vector field algorithm: ${attrs.algorithm}`
+                );
         }
     }
 }

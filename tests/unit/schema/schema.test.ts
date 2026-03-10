@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { IndexInfo, IndexSchema } from '../../../src/schema/schema.js';
 import { StorageType } from '../../../src/schema/types.js';
 import { TextField, TagField, NumericField } from '../../../src/schema/fields.js';
+import { SchemaValidationError, RedisVLError } from '../../../src/errors.js';
 
 describe('IndexInfo Tests', () => {
     describe('IndexInfo Creation', () => {
@@ -180,14 +181,17 @@ describe('IndexSchema Tests', () => {
             expect(schema.fields['price']).toBeInstanceOf(NumericField);
         });
 
-        it('should throw error when adding duplicate field name', () => {
+        it('should throw SchemaValidationError when adding duplicate field name', () => {
             const indexInfo = new IndexInfo({ name: 'test-index' });
             const schema = new IndexSchema({ index: indexInfo });
             schema.addField({ name: 'title', type: 'text' });
 
             expect(() => {
                 schema.addField({ name: 'title', type: 'tag' });
-            }).toThrow('Duplicate field name');
+            }).toThrow(SchemaValidationError);
+            expect(() => {
+                schema.addField({ name: 'title', type: 'tag' });
+            }).toThrow(/Duplicate field name: title/);
         });
 
         it('should remove a field using removeField', () => {
@@ -320,7 +324,7 @@ describe('IndexSchema.fromObject()', () => {
         expect(schema.fieldNames).toContain('price');
     });
 
-    it('should throw error when field name in object does not match key', () => {
+    it('should throw SchemaValidationError when field name in object does not match key', () => {
         expect(() => {
             IndexSchema.fromObject({
                 index: {
@@ -331,7 +335,18 @@ describe('IndexSchema.fromObject()', () => {
                     title: { name: 'wrong_name', type: 'text' },
                 },
             });
-        }).toThrow('Field name mismatch');
+        }).toThrow(SchemaValidationError);
+        expect(() => {
+            IndexSchema.fromObject({
+                index: {
+                    name: 'test-index',
+                    prefix: 'test',
+                },
+                fields: {
+                    title: { name: 'wrong_name', type: 'text' },
+                },
+            });
+        }).toThrow(/Field name mismatch: key is "title" but field\.name is "wrong_name"/);
     });
 
     it('should create IndexSchema without fields', () => {
@@ -503,7 +518,8 @@ describe('IndexSchema.toYAML()', () => {
         const filePath = 'test-schema-exists.yaml';
         await schema.toYAML(filePath);
 
-        await expect(schema.toYAML(filePath, false)).rejects.toThrow('already exists');
+        await expect(schema.toYAML(filePath, false)).rejects.toThrow(RedisVLError);
+        await expect(schema.toYAML(filePath, false)).rejects.toThrow(/already exists/);
 
         const fs = await import('fs/promises');
         await fs.unlink(filePath);
@@ -557,6 +573,7 @@ describe('IndexSchema.fromYAML()', () => {
     });
 
     it('should throw error if file does not exist', async () => {
+        await expect(IndexSchema.fromYAML('nonexistent-file.yaml')).rejects.toThrow(RedisVLError);
         await expect(IndexSchema.fromYAML('nonexistent-file.yaml')).rejects.toThrow(
             'does not exist'
         );

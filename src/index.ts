@@ -26,7 +26,14 @@ export { SearchIndex } from './indexes/search-index.js';
 export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-index.js';
 
 // Error exports
-export { RedisVLError, RedisSearchError, SchemaValidationError } from './errors.js';
+export {
+    RedisVLError,
+    RedisSearchError,
+    SchemaValidationError,
+    QueryValidationError,
+    RedisModuleVersionError,
+    VectorizerError,
+} from './errors.js';
 
 // Vectorizer exports
 export {

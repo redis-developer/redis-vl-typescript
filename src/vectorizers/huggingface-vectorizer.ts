@@ -1,4 +1,5 @@
 import { BaseVectorizer } from './base-vectorizer.js';
+import { VectorizerError } from '../errors.js';
 
 /**
  * Configuration options for HuggingFaceVectorizer
@@ -88,7 +89,7 @@ export class HuggingFaceVectorizer extends BaseVectorizer {
         super();
 
         if (!config.model || config.model.trim() === '') {
-            throw new Error('Model name cannot be empty');
+            throw new VectorizerError('Model name cannot be empty');
         }
 
         // Set defaults
@@ -121,9 +122,10 @@ export class HuggingFaceVectorizer extends BaseVectorizer {
             return this.pipelineInstance;
         } catch (error) {
             if (error instanceof Error && error.message.includes('Cannot find module')) {
-                throw new Error(
+                throw new VectorizerError(
                     'HuggingFaceVectorizer requires @huggingface/transformers. ' +
-                        'Install it with: npm install @huggingface/transformers'
+                        'Install it with: npm install @huggingface/transformers',
+                    { cause: error }
                 );
             }
             throw error;
@@ -198,7 +200,7 @@ export class HuggingFaceVectorizer extends BaseVectorizer {
      */
     get dims(): number {
         if (this.modelDims === null) {
-            throw new Error(
+            throw new VectorizerError(
                 'Embedding dimensions not yet determined. ' +
                     'Call embed() or embedMany() first to initialize the model.'
             );
