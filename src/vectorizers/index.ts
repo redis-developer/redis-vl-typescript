@@ -1,4 +1,5 @@
 /**
+ * @module Vectorizers
  * Vectorizers for generating embeddings from text.
  *
  * Vectorizers convert text into numerical embeddings (vectors) that can be

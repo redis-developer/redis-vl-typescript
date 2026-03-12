@@ -1,7 +1,6 @@
 /**
- * RedisVL Exception Classes
- *
- * This module defines all custom exceptions used throughout the RedisVL library.
+ * @module Errors
+ * Custom exception classes for RedisVL error handling.
  */
 
 /**

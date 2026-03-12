@@ -85,188 +85,116 @@ Choose from multiple Redis deployment options:
 
 ## Overview
 
-### Index Management
+RedisVL is a TypeScript client for building AI applications on Redis. It sits on top of [node-redis](https://github.com/redis/node-redis) and handles the common patterns you need: managing indexes, loading data, generating embeddings, vector search, and techniques like semantic caching and LLM memory to improve the performance of your AI applications at scale.
 
-#### Schema Definition
+**What it does:**
 
-Design a schema for your use case that models your dataset with built-in Redis and indexable fields (_e.g. text, tags, numerics, geo, and vectors_).
+- **Schema Management** - Define indexes with YAML or objects
+- **Vector Search** - Semantic similarity search with metadata filtering
+- **Data Operations** - Batch loading with validation, TTL, and preprocessing
+- **Embeddings** - Generate vectors with HuggingFace (local, no API key)
+- **Type Safety** - Full TypeScript support
 
-**Load schema from a YAML file:**
+📚 **[Read the full documentation →](https://redis.github.io/redis-vl-typescript/)**
 
-```yaml
-index:
-    name: user-idx
-    prefix: user
-    storage_type: json
+## Features
 
-fields:
-    - name: user
-      type: tag
-    - name: credit_score
-      type: tag
-    - name: job_title
-      type: text
-      attrs:
-          sortable: true
-    - name: embedding
-      type: vector
-      attrs:
-          algorithm: flat
-          dims: 4
-          distance_metric: cosine
-          datatype: float32
-```
+### Schema Definition
+
+Define your data structure with fields for text, tags, numbers, geo locations, and vectors:
 
 ```typescript
 import { IndexSchema } from '@redis/redisvl';
 
-// Load from YAML file
-const schema = await IndexSchema.fromYAML('schemas/schema.yaml');
-```
-
-**Or create from a plain object:**
-
-```typescript
 const schema = IndexSchema.fromObject({
-    index: {
-        name: 'user-idx',
-        prefix: 'user',
-        storage_type: 'json',
-    },
+    index: { name: 'products', prefix: 'product:', storage_type: 'json' },
     fields: [
-        { name: 'user', type: 'tag' },
-        { name: 'credit_score', type: 'tag' },
-        {
-            name: 'job_title',
-            type: 'text',
-            attrs: { sortable: true },
-        },
+        { name: 'title', type: 'text' },
+        { name: 'category', type: 'tag' },
+        { name: 'price', type: 'numeric' },
         {
             name: 'embedding',
             type: 'vector',
-            attrs: {
-                algorithm: 'flat',
-                datatype: 'float32',
-                dims: 4,
-                distance_metric: 'cosine',
-            },
+            attrs: { algorithm: 'hnsw', dims: 768, distance_metric: 'cosine' },
         },
     ],
 });
 ```
 
-#### Index Creation
+**[Learn more about schemas →](https://redis.github.io/redis-vl-typescript/user-guide/schema)**
 
-Create a `SearchIndex` to manage your index in Redis:
+### Index Operations
+
+Create and manage search indexes:
 
 ```typescript
 import { createClient } from 'redis';
 import { SearchIndex } from '@redis/redisvl';
 
-// Create and connect Redis client
-const client = createClient({ url: 'redis://localhost:6379' });
+const client = createClient();
 await client.connect();
 
-// Create SearchIndex with schema and client
 const index = new SearchIndex(schema, client);
-
-// Create the index in Redis
 await index.create();
-
-// Check if index exists
-const exists = await index.exists(); // true
-
-// Get index information
-const info = await index.info();
-
-// Delete index (keeps data)
-await index.delete();
-
-// Delete index and drop all associated data
-await index.delete({ drop: true });
 ```
 
-#### Data Loading & Retrieval
+**[Learn more about indexes →](https://redis.github.io/redis-vl-typescript/user-guide/search-index)**
 
-**Coming Soon**
+### Data Loading & Retrieval
 
-Data loading and retrieval methods (`load()`, `fetch()`, etc.) are currently under development.
+Load documents and retrieve them by key:
 
-### Retrieval
+```typescript
+const documents = [
+    { id: '1', title: 'Product A', price: 99 },
+    { id: '2', title: 'Product B', price: 149 },
+];
 
-**Coming Soon** - Query classes and search functionality are currently under development.
+// Load with explicit IDs
+await index.load(documents, { idField: 'id' });
 
-Define queries and perform advanced searches over your indices, including the combination of vectors, metadata filters, and more.
+// Fetch documents
+const doc = await index.fetch('1');
+const docs = await index.fetchMany(['1', '2']);
+```
 
-- **VectorQuery** - Flexible vector queries with customizable filters enabling semantic search (coming soon)
-- **RangeQuery** - Vector search within a defined range paired with customizable filters (coming soon)
-- **FilterQuery** - Standard search using filters and the full-text search (coming soon)
-- **CountQuery** - Count the number of indexed records given attributes (coming soon)
-- **TextQuery** - Full-text search with support for field weighting and BM25 scoring (coming soon)
+**[Learn more about CRUD operations →](https://redis.github.io/redis-vl-typescript/user-guide/search-index#crud-operations)**
 
-### Dev Utilities
+### Vectorizers
 
-#### Vectorizers
+Generate embeddings for semantic search:
 
-**Coming Soon** - Vectorizer integrations are currently under development.
+```typescript
+import { HuggingFaceVectorizer } from '@redis/redisvl';
 
-Integrate with popular embedding providers to greatly simplify the process of vectorizing unstructured data for your index and queries:
+const vectorizer = new HuggingFaceVectorizer({
+    model: 'Xenova/all-MiniLM-L6-v2',
+});
 
-- AzureOpenAI (coming soon)
-- Cohere (coming soon)
-- Custom (coming soon)
-- GCP VertexAI (coming soon)
-- HuggingFace (coming soon)
-- Mistral (coming soon)
-- OpenAI (coming soon)
-- VoyageAI (coming soon)
+const embedding = await vectorizer.embed('Hello world');
 
-#### Rerankers
+// Use with data loading
+await index.load(documents, {
+    preprocess: async (doc) => ({
+        ...doc,
+        embedding: await vectorizer.embed(doc.content),
+    }),
+});
+```
 
-**Coming Soon** - Reranker integrations are currently under development.
+**[Learn more about vectorizers →](https://redis.github.io/redis-vl-typescript/user-guide/vectorizers)**
 
-Integrate with popular reranking providers to improve the relevancy of the initial search results from Redis.
+## Coming Soon
 
-### Extensions
-
-**Coming Soon** - RedisVL Extensions are currently under development.
-
-#### Semantic Caching
-
-**Coming Soon**
-
-Increase application throughput and reduce the cost of using LLM models in production by leveraging previously generated knowledge.
-
-#### Semantic Routing
-
-**Coming Soon**
-
-Build fast decision models that run directly in Redis and route user queries to the nearest "route" or "topic".
-
-#### Embedding Caching
-
-**Coming Soon**
-
-Reduce computational costs and improve performance by caching embedding vectors with their associated text and metadata.
-
-#### LLM Memory
-
-**Coming Soon**
-
-Improve personalization and accuracy of LLM responses by providing user conversation context.
-
-## Why RedisVL?
-
-If you're building AI applications, you need a database that can keep up. Redis has been handling real-time workloads at scale for years, and now with vector search capabilities, it's a natural fit for AI use cases.
-
-RedisVL makes it easy to work with Redis for AI applications. Instead of wrestling with low-level commands, you get a clean TypeScript API for the things you actually need: vector search, semantic caching, and conversation memory. It's built on top of the official [node-redis](https://github.com/redis/node-redis) client, so you get all the reliability and performance you'd expect, with an interface designed specifically for AI workloads.
+- **Vector Search API** - High-level query builders for vector and hybrid search
+- **Semantic Caching** - Cache LLM responses by similarity
+- **LLM Memory** - Context management for AI agents
+- **Semantic Routing** - Intent-based query classification
+- **More Vectorizers** - OpenAI, Cohere, Azure, VertexAI
+- **Rerankers** - Improve search result relevancy
 
 ## Helpful Links
 
 For additional help, check out the following resources:
 
 - [Redis AI Recipes](https://github.com/redis-developer/redis-ai-resources)
-
-## Contributing
-
-Please help us by contributing PRs, opening GitHub issues for bugs or new feature ideas, improving documentation, or increasing test coverage. Read more about how to contribute!

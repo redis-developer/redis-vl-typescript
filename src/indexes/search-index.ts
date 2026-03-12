@@ -1,3 +1,8 @@
+/**
+ * @module Search Index
+ * Main search index class for managing Redis search indexes.
+ */
+
 import type { RedisClientType, RedisClusterType } from 'redis';
 import type { RediSearchSchema } from '@redis/search';
 import { IndexSchema } from '../schema/schema.js';
