@@ -1,0 +1,110 @@
+/**
+ * RedisVL Custom Styles
+ */
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+/* RedisVL Color Scheme */
+:root {
+  /* Brand Colors */
+  --primary: #FF4438;
+  --secondary: #C796E4;
+  --accent: #DCFF1C;
+  --info: #7FDBFE;
+  --success: #4CAF50;
+
+  /* Infima overrides - Light mode */
+  --ifm-color-primary: #FF4438;
+  --ifm-color-primary-dark: #ff2e20;
+  --ifm-color-primary-darker: #ff2313;
+  --ifm-color-primary-darkest: #e60d00;
+  --ifm-color-primary-light: #ff5a50;
+  --ifm-color-primary-lighter: #ff655d;
+  --ifm-color-primary-lightest: #ff8b84;
+
+  --ifm-color-secondary: #C796E4;
+  --ifm-color-info: #7FDBFE;
+  --ifm-color-success: #4CAF50;
+
+  /* Typography */
+  --ifm-font-family-base: 'Inter', 'Space Grotesk', sans-serif;
+  --ifm-font-family-monospace: 'Space Mono', 'Courier New', monospace;
+  --ifm-heading-font-family: 'Space Grotesk', 'Inter', sans-serif;
+
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 68, 56, 0.1);
+}
+
+/* Dark mode */
+[data-theme='dark'] {
+  --ifm-color-primary: #ff5a50;
+  --ifm-color-primary-dark: #ff4438;
+  --ifm-color-primary-darker: #ff3929;
+  --ifm-color-primary-darkest: #ff1300;
+  --ifm-color-primary-light: #ff7068;
+  --ifm-color-primary-lighter: #ff7b73;
+  --ifm-color-primary-lightest: #ffa199;
+
+  --ifm-color-secondary: #C796E4;
+  --ifm-color-info: #7FDBFE;
+  --ifm-color-success: #4CAF50;
+
+  --docusaurus-highlighted-code-line-bg: rgba(255, 68, 56, 0.2);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--ifm-heading-font-family);
+  font-weight: 600;
+}
+
+/* Hero section customization */
+.hero--primary {
+  background-color: #ffffff;
+}
+
+[data-theme='dark'] .hero--primary {
+  background-color: #1b1b1d;
+}
+
+.hero__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  color: #000;
+}
+
+[data-theme='dark'] .hero__title {
+  color: #fff;
+}
+
+.hero__subtitle {
+  color: #333;
+}
+
+[data-theme='dark'] .hero__subtitle {
+  color: #ccc;
+}
+
+/* Button customization */
+.button--secondary {
+  background-color: var(--primary);
+  color: #fff;
+  border: none;
+}
+
+.button--secondary:hover {
+  background-color: #e63d31;
+  color: #fff;
+}
+
+.button--outline {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.button--outline:hover {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
