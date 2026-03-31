@@ -42,8 +42,11 @@ export class HashStorage extends BaseStorage {
         for (let i = 0; i < preparedDocs.length; i++) {
             const { key, doc } = preparedDocs[i];
 
+            // Convert vector arrays to buffers for HASH storage
+            const processedDoc = this.convertVectorsToBuffers(doc);
+
             // Add HSET command to pipeline
-            pipeline.hSet(key, doc as Record<string, string | number | Buffer>);
+            pipeline.hSet(key, processedDoc as Record<string, string | number | Buffer>);
             commandCount++;
 
             // Add EXPIRE command if TTL is provided
@@ -63,6 +66,26 @@ export class HashStorage extends BaseStorage {
         }
 
         return loadedKeys;
+    }
+
+    /**
+     * Convert vector arrays to Buffer objects for HASH storage.
+     * Redis HSET requires all values to be strings, numbers, or Buffers.
+     * Vector arrays (number[]) must be converted to Buffer format.
+     */
+    private convertVectorsToBuffers(doc: Record<string, unknown>): Record<string, unknown> {
+        const result: Record<string, unknown> = {};
+
+        for (const [key, value] of Object.entries(doc)) {
+            // Convert number arrays to Float32Array buffer (vectors)
+            if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'number') {
+                result[key] = Buffer.from(new Float32Array(value).buffer);
+            } else {
+                result[key] = value;
+            }
+        }
+
+        return result;
     }
 
     /**

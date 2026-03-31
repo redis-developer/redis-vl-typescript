@@ -157,11 +157,121 @@ const keys = await index.load(largeDataset, {
 });
 ```
 
-## Searching
+## Vector Search
 
-:::info Coming Soon
-Search query API with filters, vector search, and hybrid queries.
-:::
+Perform semantic similarity search using vector embeddings.
+
+### Basic Vector Search
+
+```typescript
+import { VectorQuery, HuggingFaceVectorizer } from '@redis/redisvl';
+
+// Create vectorizer
+const vectorizer = new HuggingFaceVectorizer({
+    model: 'Xenova/all-MiniLM-L6-v2',
+});
+
+// Generate query embedding
+const queryEmbedding = await vectorizer.embed('laptop computer');
+
+// Create vector query
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    numResults: 10,
+});
+
+// Execute search
+const results = await index.search(query);
+
+// Process results
+console.log(`Found ${results.total} results`);
+results.documents.forEach((doc, i) => {
+    console.log(`${i + 1}. ${doc.value.title} (score: ${doc.score})`);
+});
+```
+
+### Vector Search with Filtering
+
+Combine vector similarity with metadata filters:
+
+```typescript
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    filter: '@category:{electronics} @price:[0 1000]',
+    numResults: 5,
+    returnFields: ['title', 'price', 'category'],
+});
+
+const results = await index.search(query);
+// Returns only electronics under $1000, ranked by similarity
+```
+
+### Pagination
+
+Handle large result sets with pagination:
+
+```typescript
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    numResults: 100,
+    offset: 20, // Skip first 20
+    limit: 10, // Return next 10
+});
+
+const results = await index.search(query);
+```
+
+### Selecting Return Fields
+
+Optimize performance by returning only needed fields:
+
+```typescript
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    returnFields: ['title', 'price'], // Only return these fields
+    numResults: 10,
+});
+
+const results = await index.search(query);
+// Each document only contains 'title' and 'price'
+```
+
+### Distance Metrics
+
+Specify the distance metric (must match schema):
+
+```typescript
+import { VectorDistanceMetric } from '@redis/redisvl';
+
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    distanceMetric: VectorDistanceMetric.COSINE, // COSINE, L2, or IP
+    numResults: 10,
+});
+```
+
+### Custom Score Alias
+
+Customize the name of the distance score field:
+
+```typescript
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    scoreAlias: 'similarity', // Default is 'vector_distance'
+    numResults: 10,
+});
+
+const results = await index.search(query);
+results.documents.forEach((doc) => {
+    console.log(`Score: ${doc.similarity}`); // ← Custom field name
+});
+```
 
 ## Error Handling
 

@@ -17,6 +17,7 @@ import { SchemaValidationError } from '../errors.js';
  * Base interface for all field attributes
  */
 export interface BaseFieldAttrs {
+    as?: string; // Field alias (used for JSON storage)
     sortable?: boolean;
     indexMissing?: boolean;
     indexEmpty?: boolean;
@@ -73,8 +74,8 @@ export class TextField extends BaseField {
         };
 
         // Add AS field for JSON storage
-        if (isJson) {
-            field.AS = this.name;
+        if (isJson && this.attrs.as) {
+            field.AS = this.attrs.as;
         }
 
         // Add text-specific attributes
@@ -135,8 +136,8 @@ export class TagField extends BaseField {
         };
 
         // Add AS field for JSON storage
-        if (isJson) {
-            field.AS = this.name;
+        if (isJson && this.attrs.as) {
+            field.AS = this.attrs.as;
         }
 
         // Add tag-specific attributes
@@ -184,8 +185,8 @@ export class NumericField extends BaseField {
         };
 
         // Add AS field for JSON storage
-        if (isJson) {
-            field.AS = this.name;
+        if (isJson && this.attrs.as) {
+            field.AS = this.attrs.as;
         }
 
         // Add common attributes
@@ -222,8 +223,8 @@ export class GeoField extends BaseField {
         };
 
         // Add AS field for JSON storage
-        if (isJson) {
-            field.AS = this.name;
+        if (isJson && this.attrs.as) {
+            field.AS = this.attrs.as;
         }
 
         // Add common attributes
@@ -280,8 +281,8 @@ export class FlatVectorField extends BaseField {
         };
 
         // Add AS field for JSON storage
-        if (isJson) {
-            field.AS = this.name;
+        if (isJson && this.attrs.as) {
+            field.AS = this.attrs.as;
         }
 
         // Add FLAT-specific attributes
@@ -335,8 +336,8 @@ export class HNSWVectorField extends BaseField {
         };
 
         // Add AS field for JSON storage
-        if (isJson) {
-            field.AS = this.name;
+        if (isJson && this.attrs.as) {
+            field.AS = this.attrs.as;
         }
 
         // Add HNSW-specific attributes

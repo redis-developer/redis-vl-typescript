@@ -21,7 +21,7 @@ RedisVL is **not** a replacement for the Redis client. It's a **higher-level lib
 ## Installation
 
 ```bash
-npm install @redis/redisvl redis
+npm install redisvl redis
 ```
 
 ## Prerequisites
@@ -39,33 +39,52 @@ Or use [Redis Cloud](https://redis.com/try-free/) for a managed solution.
 ## Quick Start
 
 ```typescript
-import { SearchIndex, IndexSchema } from '@redis/redisvl';
+import { SearchIndex, IndexSchema } from 'redisvl';
 import { createClient } from 'redis';
 
 const client = createClient();
 await client.connect();
 
-// Define schema once
+// Define schema with vector field
 const schema = IndexSchema.fromObject({
     index: { name: 'products', prefix: 'product:', storage_type: 'hash' },
     fields: [
         { name: 'title', type: 'text' },
         { name: 'category', type: 'tag' },
         { name: 'price', type: 'numeric' },
+        {
+            name: 'embedding',
+            type: 'vector',
+            attrs: {
+                dims: 384,
+                algorithm: 'hnsw',
+                distanceMetric: 'cosine'
+            }
+        },
     ],
 });
 
 const index = new SearchIndex(schema, client);
 await index.create();
 
-// Load data with validation and batching
+// Load data with embeddings
 await index.load([
-    { title: 'Laptop', category: 'electronics', price: 999 },
-    { title: 'Phone', category: 'electronics', price: 599 },
+    { title: 'Laptop', category: 'electronics', price: 999, embedding: [...] },
+    { title: 'Phone', category: 'electronics', price: 599, embedding: [...] },
 ]);
 
-// Search with type-safe API
-const results = await client.ft.search('products', '@category:{electronics}');
+// Vector search with filters
+import { VectorQuery } from 'redisvl';
+
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    filter: '@category:{electronics} @price:[0 1000]',
+    numResults: 10,
+});
+
+const results = await index.search(query);
+console.log(`Found ${results.total} products`);
 ```
 
 ---

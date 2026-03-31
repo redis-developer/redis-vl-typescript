@@ -1,6 +1,6 @@
 # Interface: HNSWVectorFieldAttrs
 
-Defined in: [schema/fields.ts:302](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L302)
+Defined in: [schema/fields.ts:303](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L303)
 
 HNSWVectorField attributes
 
@@ -14,7 +14,7 @@ HNSWVectorField attributes
 
 > **algorithm**: `"hnsw"`
 
-Defined in: [schema/fields.ts:303](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L303)
+Defined in: [schema/fields.ts:304](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L304)
 
 #### Overrides
 
@@ -22,11 +22,23 @@ Defined in: [schema/fields.ts:303](https://github.com/redis-developer/redis-vl-t
 
 ---
 
+### as?
+
+> `optional` **as?**: `string`
+
+Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L20)
+
+#### Inherited from
+
+[`VectorFieldAttrs`](VectorFieldAttrs.md).[`as`](VectorFieldAttrs.md#as)
+
+---
+
 ### datatype?
 
 > `optional` **datatype?**: [`VectorDataType`](../enumerations/VectorDataType.md)
 
-Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L248)
+Defined in: [schema/fields.ts:249](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L249)
 
 #### Inherited from
 
@@ -38,7 +50,7 @@ Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-t
 
 > **dims**: `number`
 
-Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L246)
+Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L247)
 
 #### Inherited from
 
@@ -50,7 +62,7 @@ Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **distanceMetric?**: [`VectorDistanceMetric`](../enumerations/VectorDistanceMetric.md)
 
-Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L247)
+Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L248)
 
 #### Inherited from
 
@@ -62,7 +74,7 @@ Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **efConstruction?**: `number`
 
-Defined in: [schema/fields.ts:305](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L305)
+Defined in: [schema/fields.ts:306](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L306)
 
 ---
 
@@ -70,7 +82,7 @@ Defined in: [schema/fields.ts:305](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **efRuntime?**: `number`
 
-Defined in: [schema/fields.ts:306](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L306)
+Defined in: [schema/fields.ts:307](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L307)
 
 ---
 
@@ -78,7 +90,7 @@ Defined in: [schema/fields.ts:306](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **epsilon?**: `number`
 
-Defined in: [schema/fields.ts:307](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L307)
+Defined in: [schema/fields.ts:308](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L308)
 
 ---
 
@@ -86,7 +98,7 @@ Defined in: [schema/fields.ts:307](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **indexEmpty?**: `boolean`
 
-Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L22)
+Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L23)
 
 #### Inherited from
 
@@ -98,7 +110,7 @@ Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **indexMissing?**: `boolean`
 
-Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L21)
+Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L22)
 
 #### Inherited from
 
@@ -110,7 +122,7 @@ Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **m?**: `number`
 
-Defined in: [schema/fields.ts:304](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L304)
+Defined in: [schema/fields.ts:305](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L305)
 
 ---
 
@@ -118,7 +130,7 @@ Defined in: [schema/fields.ts:304](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **sortable?**: `boolean`
 
-Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L20)
+Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L21)
 
 #### Inherited from
 

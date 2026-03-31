@@ -1,6 +1,6 @@
 # Interface: VectorFieldAttrs
 
-Defined in: [schema/fields.ts:244](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L244)
+Defined in: [schema/fields.ts:245](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L245)
 
 Base vector field attributes
 
@@ -19,7 +19,19 @@ Base vector field attributes
 
 > **algorithm**: `string`
 
-Defined in: [schema/fields.ts:245](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L245)
+Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L246)
+
+---
+
+### as?
+
+> `optional` **as?**: `string`
+
+Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L20)
+
+#### Inherited from
+
+[`BaseFieldAttrs`](BaseFieldAttrs.md).[`as`](BaseFieldAttrs.md#as)
 
 ---
 
@@ -27,7 +39,7 @@ Defined in: [schema/fields.ts:245](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **datatype?**: [`VectorDataType`](../enumerations/VectorDataType.md)
 
-Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L248)
+Defined in: [schema/fields.ts:249](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L249)
 
 ---
 
@@ -35,7 +47,7 @@ Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-t
 
 > **dims**: `number`
 
-Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L246)
+Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L247)
 
 ---
 
@@ -43,7 +55,7 @@ Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **distanceMetric?**: [`VectorDistanceMetric`](../enumerations/VectorDistanceMetric.md)
 
-Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L247)
+Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L248)
 
 ---
 
@@ -51,7 +63,7 @@ Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **indexEmpty?**: `boolean`
 
-Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L22)
+Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L23)
 
 #### Inherited from
 
@@ -63,7 +75,7 @@ Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **indexMissing?**: `boolean`
 
-Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L21)
+Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L22)
 
 #### Inherited from
 
@@ -75,7 +87,7 @@ Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **sortable?**: `boolean`
 
-Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L20)
+Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L21)
 
 #### Inherited from
 

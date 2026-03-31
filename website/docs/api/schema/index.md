@@ -25,7 +25,6 @@
 ## Interfaces
 
 - [BaseFieldAttrs](interfaces/BaseFieldAttrs.md)
-- [FieldInput](interfaces/FieldInput.md)
 - [FlatVectorFieldAttrs](interfaces/FlatVectorFieldAttrs.md)
 - [GeoFieldAttrs](interfaces/GeoFieldAttrs.md)
 - [HNSWVectorFieldAttrs](interfaces/HNSWVectorFieldAttrs.md)
@@ -36,6 +35,7 @@
 
 ## Type Aliases
 
+- [FieldInput](type-aliases/FieldInput.md)
 - [IndexInfoOptions](type-aliases/IndexInfoOptions.md)
 - [IndexSchemaOptions](type-aliases/IndexSchemaOptions.md)
 

@@ -8,6 +8,7 @@ import type { RediSearchSchema } from '@redis/search';
 import { IndexSchema } from '../schema/schema.js';
 import { BaseStorage, HashStorage, JsonStorage } from '../storage/index.js';
 import { RedisVLError, SchemaValidationError } from '../errors.js';
+import type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from '../query/base.js';
 
 /**
  * Options for creating an index.
@@ -189,9 +190,19 @@ export class SearchIndex {
         const isJson = this.schema.index.storageType.toLowerCase() === 'json';
 
         for (const field of Object.values(this.schema.fields)) {
-            // Determine the field path
-            const fieldPath = field.path || field.name;
-            const key = isJson ? `$.${fieldPath}` : fieldPath;
+            // Determine the field key for Redis schema
+            let key: string;
+            if (isJson) {
+                // For JSON storage, use the path (which should already have $. prefix)
+                key = field.path || field.name;
+                // Safety check: ensure path starts with $.
+                if (!key.startsWith('$.')) {
+                    key = `$.${key}`;
+                }
+            } else {
+                // For HASH storage, use the field name directly
+                key = field.name;
+            }
 
             // Converts each field to Redis format
             redisSchema[key] = field.toRedisField(isJson);
@@ -414,6 +425,138 @@ export class SearchIndex {
         } catch (error) {
             throw new RedisVLError(
                 `Failed to fetch documents: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Execute a search query against the index
+     *
+     * @param query - Query object (VectorQuery, FilterQuery, etc.)
+     * @param options - Optional query execution options
+     * @returns Search results with documents and scores
+     *
+     * @example
+     * ```typescript
+     * import { VectorQuery } from '@redis/redisvl';
+     *
+     * // Vector similarity search
+     * const query = new VectorQuery({
+     *   vector: embedding,
+     *   vectorField: 'embedding',
+     *   topK: 10,
+     *   returnFields: ['title', 'content']
+     * });
+     *
+     * const results = await index.search(query);
+     * console.log(`Found ${results.total} results`);
+     *
+     * results.documents.forEach((doc) => {
+     *   console.log(`${doc.value.title} (score: ${doc.score})`);
+     * });
+     * ```
+     *
+     * @example
+     * ```typescript
+     * // Vector search with metadata filtering
+     * const query = new VectorQuery({
+     *   vector: embedding,
+     *   vectorField: 'embedding',
+     *   filter: '@category:{electronics}',
+     *   topK: 5
+     * });
+     *
+     * const results = await index.search(query);
+     * ```
+     */
+    async search<T = Record<string, unknown>>(
+        query: BaseQuery,
+        options?: QueryOptions
+    ): Promise<SearchResult<T>> {
+        try {
+            const queryString = query.buildQuery();
+            const params = query.buildParams();
+
+            // Build FT.SEARCH options
+            const searchOptions: Record<string, unknown> = {
+                PARAMS: params,
+                DIALECT: options?.dialect ?? 2, // DIALECT 2 required for KNN
+            };
+
+            // Add RETURN fields if specified
+            // For VectorQuery, always include the score field (vector_distance by default)
+            if (query.returnFields && query.returnFields.length > 0) {
+                const returnFields = [...query.returnFields];
+                // Check if this is a vector query by looking at the query string
+                if (queryString.includes('=>[KNN')) {
+                    // Extract the score alias from the query string (after "AS ")
+                    const scoreAliasMatch = queryString.match(/AS\s+(\w+)\]/);
+                    const scoreAlias = scoreAliasMatch ? scoreAliasMatch[1] : 'vector_distance';
+
+                    // Only add if not already in returnFields
+                    if (!returnFields.includes(scoreAlias)) {
+                        returnFields.push(scoreAlias);
+                    }
+                }
+                searchOptions.RETURN = returnFields;
+            }
+
+            // Add pagination
+            if (query.limit !== undefined || query.offset !== undefined) {
+                const offset = query.offset ?? 0;
+                const limit = query.limit ?? 10;
+                searchOptions.LIMIT = { from: offset, size: limit };
+            }
+
+            // Add sorting if specified
+            if (options?.sortBy) {
+                searchOptions.SORTBY = options.sortBy;
+                if (options.sortOrder) {
+                    searchOptions.SORTBY = {
+                        BY: options.sortBy,
+                        DIRECTION: options.sortOrder,
+                    };
+                }
+            }
+
+            // Execute search
+            const response = await this.client.ft.search(
+                this.schema.index.name,
+                queryString,
+                searchOptions
+            );
+
+            // Transform response to SearchResult format
+            const documents: SearchDocument<T>[] = response.documents.map((doc) => {
+                const value = doc.value as Record<string, unknown>;
+
+                // Extract score from the document value
+                // The score is returned with the alias specified in the query (e.g., 'vector_distance', 'similarity')
+                // Try to detect the score field from the query string
+                const scoreAliasMatch = queryString.match(/AS\s+(\w+)\]/);
+                const scoreAlias = scoreAliasMatch ? scoreAliasMatch[1] : 'vector_distance';
+
+                const scoreValue = value[scoreAlias];
+                const score =
+                    typeof scoreValue === 'string'
+                        ? parseFloat(scoreValue)
+                        : (scoreValue as number | undefined);
+
+                return {
+                    id: doc.id,
+                    value: value as T,
+                    score,
+                };
+            });
+
+            return {
+                total: response.total,
+                documents,
+            };
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to execute search query: ${error instanceof Error ? error.message : String(error)}`,
                 { cause: error instanceof Error ? error : undefined }
             );
         }

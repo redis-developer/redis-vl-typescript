@@ -1,6 +1,6 @@
 # Interface: CreateIndexOptions
 
-Defined in: [indexes/search-index.ts:15](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L15)
+Defined in: [indexes/search-index.ts:16](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L16)
 
 Options for creating an index.
 
@@ -10,7 +10,7 @@ Options for creating an index.
 
 > `optional` **drop?**: `boolean`
 
-Defined in: [indexes/search-index.ts:27](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L27)
+Defined in: [indexes/search-index.ts:28](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L28)
 
 Whether to drop all keys associated with the index when overwriting.
 Only applies when overwrite is true.
@@ -27,7 +27,7 @@ false;
 
 > `optional` **overwrite?**: `boolean`
 
-Defined in: [indexes/search-index.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L20)
+Defined in: [indexes/search-index.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L21)
 
 Whether to overwrite the index if it already exists.
 

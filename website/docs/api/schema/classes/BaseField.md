@@ -1,6 +1,6 @@
 # Abstract Class: BaseField
 
-Defined in: [schema/fields.ts:28](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L28)
+Defined in: [schema/fields.ts:29](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L29)
 
 Base class for all field types
 
@@ -19,7 +19,7 @@ Base class for all field types
 
 > **new BaseField**(`name`, `type`, `attrs?`): `BaseField`
 
-Defined in: [schema/fields.ts:34](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L34)
+Defined in: [schema/fields.ts:35](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L35)
 
 #### Parameters
 
@@ -45,7 +45,7 @@ Defined in: [schema/fields.ts:34](https://github.com/redis-developer/redis-vl-ty
 
 > `abstract` **toRedisField**(`isJson`): `RedisSchemaFieldType`
 
-Defined in: [schema/fields.ts:46](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L46)
+Defined in: [schema/fields.ts:47](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L47)
 
 Convert this field to Redis schema field format.
 Each subclass must implement this method to return the appropriate Redis field type.
@@ -68,7 +68,7 @@ Whether the index uses JSON storage (affects field naming with $.prefix)
 
 > `readonly` **attrs**: [`BaseFieldAttrs`](../interfaces/BaseFieldAttrs.md)
 
-Defined in: [schema/fields.ts:31](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L31)
+Defined in: [schema/fields.ts:32](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L32)
 
 ---
 
@@ -76,7 +76,7 @@ Defined in: [schema/fields.ts:31](https://github.com/redis-developer/redis-vl-ty
 
 > `readonly` **name**: `string`
 
-Defined in: [schema/fields.ts:29](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L29)
+Defined in: [schema/fields.ts:30](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L30)
 
 ---
 
@@ -84,7 +84,7 @@ Defined in: [schema/fields.ts:29](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **path?**: `string` \| `null`
 
-Defined in: [schema/fields.ts:32](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L32)
+Defined in: [schema/fields.ts:33](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L33)
 
 ---
 
@@ -92,4 +92,4 @@ Defined in: [schema/fields.ts:32](https://github.com/redis-developer/redis-vl-ty
 
 > `readonly` **type**: `string`
 
-Defined in: [schema/fields.ts:30](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L30)
+Defined in: [schema/fields.ts:31](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L31)

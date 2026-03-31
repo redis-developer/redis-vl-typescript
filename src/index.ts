@@ -25,6 +25,10 @@ export * from './schema/types.js';
 export { SearchIndex } from './indexes/search-index.js';
 export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-index.js';
 
+// Query exports
+export { VectorQuery } from './query/vector.js';
+export type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from './query/base.js';
+
 // Error exports
 export {
     RedisVLError,

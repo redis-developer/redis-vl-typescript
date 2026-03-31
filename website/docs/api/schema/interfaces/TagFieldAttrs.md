@@ -1,6 +1,6 @@
 # Interface: TagFieldAttrs
 
-Defined in: [schema/fields.ts:112](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L112)
+Defined in: [schema/fields.ts:113](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L113)
 
 TagField attributes
 
@@ -10,11 +10,23 @@ TagField attributes
 
 ## Properties
 
+### as?
+
+> `optional` **as?**: `string`
+
+Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L20)
+
+#### Inherited from
+
+[`BaseFieldAttrs`](BaseFieldAttrs.md).[`as`](BaseFieldAttrs.md#as)
+
+---
+
 ### caseSensitive?
 
 > `optional` **caseSensitive?**: `boolean`
 
-Defined in: [schema/fields.ts:114](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L114)
+Defined in: [schema/fields.ts:115](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L115)
 
 ---
 
@@ -22,7 +34,7 @@ Defined in: [schema/fields.ts:114](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **indexEmpty?**: `boolean`
 
-Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L22)
+Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L23)
 
 #### Inherited from
 
@@ -34,7 +46,7 @@ Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **indexMissing?**: `boolean`
 
-Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L21)
+Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L22)
 
 #### Inherited from
 
@@ -46,7 +58,7 @@ Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **separator?**: `string`
 
-Defined in: [schema/fields.ts:113](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L113)
+Defined in: [schema/fields.ts:114](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L114)
 
 ---
 
@@ -54,7 +66,7 @@ Defined in: [schema/fields.ts:113](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **sortable?**: `boolean`
 
-Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L20)
+Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L21)
 
 #### Inherited from
 

@@ -1,6 +1,6 @@
 # Class: IndexInfo
 
-Defined in: [schema/schema.ts:74](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/schema.ts#L74)
+Defined in: [schema/schema.ts:82](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L82)
 
 IndexInfo includes the essential details regarding index settings,
 such as its name, prefix, key separator, storage type, and stopwords in Redis.
@@ -11,7 +11,7 @@ such as its name, prefix, key separator, storage type, and stopwords in Redis.
 
 > **new IndexInfo**(`options`): `IndexInfo`
 
-Defined in: [schema/schema.ts:86](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/schema.ts#L86)
+Defined in: [schema/schema.ts:94](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L94)
 
 #### Parameters
 
@@ -47,7 +47,7 @@ Defined in: [schema/schema.ts:86](https://github.com/redis-developer/redis-vl-ty
 
 > `readonly` **keySeparator**: `string`
 
-Defined in: [schema/schema.ts:80](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/schema.ts#L80)
+Defined in: [schema/schema.ts:88](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L88)
 
 The separator character used in designing Redis keys
 
@@ -57,7 +57,7 @@ The separator character used in designing Redis keys
 
 > `readonly` **name**: `string`
 
-Defined in: [schema/schema.ts:76](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/schema.ts#L76)
+Defined in: [schema/schema.ts:84](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L84)
 
 The unique name of the index
 
@@ -67,7 +67,7 @@ The unique name of the index
 
 > `readonly` **prefix**: `string` \| `string`[]
 
-Defined in: [schema/schema.ts:78](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/schema.ts#L78)
+Defined in: [schema/schema.ts:86](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L86)
 
 The prefix(es) used for Redis keys associated with this index
 
@@ -77,7 +77,7 @@ The prefix(es) used for Redis keys associated with this index
 
 > `readonly` `optional` **stopwords?**: `string`[]
 
-Defined in: [schema/schema.ts:84](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/schema.ts#L84)
+Defined in: [schema/schema.ts:92](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L92)
 
 Index-level stopwords configuration
 
@@ -87,6 +87,6 @@ Index-level stopwords configuration
 
 > `readonly` **storageType**: [`StorageType`](../enumerations/StorageType.md)
 
-Defined in: [schema/schema.ts:82](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/schema.ts#L82)
+Defined in: [schema/schema.ts:90](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L90)
 
 The storage type used in Redis (e.g., StorageType.HASH or StorageType.JSON)

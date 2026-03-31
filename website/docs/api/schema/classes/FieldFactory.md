@@ -1,6 +1,6 @@
 # Class: FieldFactory
 
-Defined in: [schema/fields.ts:360](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L360)
+Defined in: [schema/fields.ts:361](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L361)
 
 Factory for creating field instances
 
@@ -20,7 +20,7 @@ Factory for creating field instances
 
 > `static` **createField**(`fieldType`, `name`, `attrs?`): [`BaseField`](BaseField.md)
 
-Defined in: [schema/fields.ts:361](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/fields.ts#L361)
+Defined in: [schema/fields.ts:362](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L362)
 
 #### Parameters
 

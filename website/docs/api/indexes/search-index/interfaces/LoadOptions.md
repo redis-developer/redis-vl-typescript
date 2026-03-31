@@ -1,6 +1,6 @@
 # Interface: LoadOptions
 
-Defined in: [indexes/search-index.ts:44](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L44)
+Defined in: [indexes/search-index.ts:45](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L45)
 
 Options for loading data into an index.
 
@@ -10,7 +10,7 @@ Options for loading data into an index.
 
 > `optional` **batchSize?**: `number`
 
-Defined in: [indexes/search-index.ts:68](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L68)
+Defined in: [indexes/search-index.ts:69](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L69)
 
 Number of objects to write in a single Redis pipeline execution.
 
@@ -26,7 +26,7 @@ Number of objects to write in a single Redis pipeline execution.
 
 > `optional` **idField?**: `string`
 
-Defined in: [indexes/search-index.ts:50](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L50)
+Defined in: [indexes/search-index.ts:51](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L51)
 
 Field name to use as the document ID.
 If provided, the value of this field will be used as the key.
@@ -38,7 +38,7 @@ If not provided, keys will be auto-generated.
 
 > `optional` **keys?**: `string`[]
 
-Defined in: [indexes/search-index.ts:56](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L56)
+Defined in: [indexes/search-index.ts:57](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L57)
 
 Explicit keys to use for the documents.
 Must match the length of the data array.
@@ -49,7 +49,7 @@ Must match the length of the data array.
 
 > `optional` **preprocess?**: (`doc`) => `Promise`\<`Record`\<`string`, `unknown`\>\>
 
-Defined in: [indexes/search-index.ts:90](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L90)
+Defined in: [indexes/search-index.ts:91](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L91)
 
 Preprocessing function to transform documents before loading.
 The function receives a document and returns a Promise of the transformed document.
@@ -87,7 +87,7 @@ await index.load(data, {
 
 > `optional` **ttl?**: `number`
 
-Defined in: [indexes/search-index.ts:62](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L62)
+Defined in: [indexes/search-index.ts:63](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L63)
 
 Time-to-live in seconds for the documents.
 If provided, documents will expire after this duration.
@@ -98,7 +98,7 @@ If provided, documents will expire after this duration.
 
 > `optional` **validateOnLoad?**: `boolean`
 
-Defined in: [indexes/search-index.ts:96](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L96)
+Defined in: [indexes/search-index.ts:97](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L97)
 
 Whether to validate documents against schema before loading.
 

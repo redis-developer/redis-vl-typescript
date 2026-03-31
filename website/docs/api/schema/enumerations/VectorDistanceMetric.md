@@ -1,6 +1,6 @@
 # Enumeration: VectorDistanceMetric
 
-Defined in: [schema/types.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/types.ts#L23)
+Defined in: [schema/types.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L23)
 
 Vector distance metrics
 
@@ -10,7 +10,7 @@ Vector distance metrics
 
 > **COSINE**: `"COSINE"`
 
-Defined in: [schema/types.ts:24](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/types.ts#L24)
+Defined in: [schema/types.ts:24](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L24)
 
 ---
 
@@ -18,7 +18,7 @@ Defined in: [schema/types.ts:24](https://github.com/redis-developer/redis-vl-typ
 
 > **IP**: `"IP"`
 
-Defined in: [schema/types.ts:26](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/types.ts#L26)
+Defined in: [schema/types.ts:26](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L26)
 
 ---
 
@@ -26,4 +26,4 @@ Defined in: [schema/types.ts:26](https://github.com/redis-developer/redis-vl-typ
 
 > **L2**: `"L2"`
 
-Defined in: [schema/types.ts:25](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/schema/types.ts#L25)
+Defined in: [schema/types.ts:25](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L25)

@@ -169,9 +169,84 @@ Choose based on your embedding model:
 
 ## Vector Search
 
-:::info Coming Soon
-Vector similarity search with KNN queries and hybrid search combining vectors with filters.
-:::
+Perform semantic similarity search using KNN (K-Nearest Neighbors):
+
+```typescript
+import { VectorQuery } from '@redis/redisvl';
+
+// Generate query embedding
+const queryEmbedding = await vectorizer.embed('Tell me about Redis');
+
+// Create vector search query
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    numResults: 5,
+    returnFields: ['title', 'content'],
+});
+
+// Execute search
+const results = await index.search(query);
+
+results.documents.forEach((doc, i) => {
+    console.log(`${i + 1}. ${doc.title}`);
+    console.log(`   Similarity: ${doc.vector_distance}`);
+});
+```
+
+### With Filters
+
+Combine vector search with metadata filters:
+
+```typescript
+const query = new VectorQuery({
+    vector: await vectorizer.embed('machine learning'),
+    vectorField: 'embedding',
+    filter: '@category:{AI} @rating:[4.0 5.0]',
+    numResults: 10,
+});
+
+const results = await index.search(query);
+// Returns only AI category docs with rating >= 4.0, ranked by similarity
+```
+
+### JSON Storage
+
+Vector search works with both HASH and JSON storage types:
+
+```typescript
+// Define schema with JSON storage
+const schema = IndexSchema.fromObject({
+    index: {
+        name: 'documents',
+        storage_type: 'json', // JSON storage for nested data
+    },
+    fields: [
+        { name: '$.title', type: 'text', attrs: { as: 'title' } },
+        { name: '$.metadata.category', type: 'tag', attrs: { as: 'category' } },
+        {
+            name: '$.embedding',
+            type: 'vector',
+            attrs: {
+                as: 'embedding',
+                dims: 384,
+                algorithm: 'hnsw',
+                distanceMetric: 'cosine',
+            },
+        },
+    ],
+});
+
+// Search with nested field filters
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    filter: '@category:{AI}', // Uses alias from attrs.as
+    numResults: 5,
+});
+```
+
+See [Search Index](./search-index) documentation for more vector search options.
 
 ## Error Handling
 

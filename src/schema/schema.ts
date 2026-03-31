@@ -3,7 +3,15 @@ import * as yaml from 'js-yaml';
 import { promises as fs } from 'fs';
 import { resolve } from 'path';
 import { StorageType } from './types.js';
-import { BaseField, FieldFactory } from './fields.js';
+import {
+    BaseField,
+    FieldFactory,
+    TextFieldAttrs,
+    TagFieldAttrs,
+    NumericFieldAttrs,
+    GeoFieldAttrs,
+    VectorFieldAttrs,
+} from './fields.js';
 import { SchemaValidationError, RedisVLError } from '../errors.js';
 
 /**
@@ -113,14 +121,22 @@ export const IndexSchemaOptionsSchema = z.object({
 export type IndexSchemaOptions = z.input<typeof IndexSchemaOptionsSchema>;
 
 /**
- * Field input type for addField and addFields methods
+ * Field input type for addField and addFields methods.
+ *
+ * The attrs property is type-safe based on the field type:
+ * - text: TextFieldAttrs
+ * - tag: TagFieldAttrs
+ * - numeric: NumericFieldAttrs
+ * - geo: GeoFieldAttrs
+ * - vector: VectorFieldAttrs (FLAT or HNSW)
  */
-export interface FieldInput {
-    name: string;
-    type: string;
-    attrs?: Record<string, unknown>;
-    path?: string;
-}
+export type FieldInput =
+    | { name: string; type: 'text'; attrs?: TextFieldAttrs; path?: string }
+    | { name: string; type: 'tag'; attrs?: TagFieldAttrs; path?: string }
+    | { name: string; type: 'numeric'; attrs?: NumericFieldAttrs; path?: string }
+    | { name: string; type: 'geo'; attrs?: GeoFieldAttrs; path?: string }
+    | { name: string; type: 'vector'; attrs?: VectorFieldAttrs; path?: string }
+    | { name: string; type: string; attrs?: Record<string, unknown>; path?: string }; // Fallback for unknown types
 
 /**
  * A schema definition for a search index in Redis, used in RedisVL for
@@ -173,8 +189,17 @@ export class IndexSchema {
 
         // Handle field path based on storage type
         if (storageType === StorageType.JSON) {
-            // For JSON storage, auto-set path to $.fieldname if not provided
-            field.path = path ?? `$.${field.name}`;
+            // For JSON storage, set path appropriately
+            if (path) {
+                // Explicit path provided, use it
+                field.path = path;
+            } else if (field.name.startsWith('$.')) {
+                // Name already is a JSON path, use it as-is
+                field.path = field.name;
+            } else {
+                // Name is a simple field name, add $.prefix
+                field.path = `$.${field.name}`;
+            }
         } else {
             // For HASH storage, path should always be null
             if (path !== null && path !== undefined) {

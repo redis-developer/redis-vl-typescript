@@ -128,7 +128,7 @@ const sidebars: SidebarsConfig = {
                             items: [
                                 {
                                     type: 'doc',
-                                    id: 'api/schema/interfaces/FieldInput',
+                                    id: 'api/schema/type-aliases/FieldInput',
                                     label: 'FieldInput',
                                 },
                                 {

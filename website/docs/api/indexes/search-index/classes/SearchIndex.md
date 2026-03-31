@@ -1,6 +1,6 @@
 # Class: SearchIndex
 
-Defined in: [indexes/search-index.ts:122](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L122)
+Defined in: [indexes/search-index.ts:123](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L123)
 
 SearchIndex class for managing Redis vector search indices.
 
@@ -33,7 +33,7 @@ await searchIndex.create();
 
 > **get** **name**(): `string`
 
-Defined in: [indexes/search-index.ts:178](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L178)
+Defined in: [indexes/search-index.ts:179](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L179)
 
 Get the index name from the schema.
 
@@ -47,7 +47,7 @@ Get the index name from the schema.
 
 > **new SearchIndex**(`schema`, `client`, `validateOnLoad?`): `SearchIndex`
 
-Defined in: [indexes/search-index.ts:153](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L153)
+Defined in: [indexes/search-index.ts:154](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L154)
 
 Create a new SearchIndex instance.
 
@@ -89,7 +89,7 @@ If client is not provided
 
 > **create**(`options?`): `Promise`\<`"OK"` \| `undefined`\>
 
-Defined in: [indexes/search-index.ts:210](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L210)
+Defined in: [indexes/search-index.ts:221](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L221)
 
 Create the index in Redis.
 
@@ -117,7 +117,7 @@ If no fields are defined for the index
 
 > **delete**(`options?`): `Promise`\<`"OK"`\>
 
-Defined in: [indexes/search-index.ts:260](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L260)
+Defined in: [indexes/search-index.ts:271](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L271)
 
 Delete the index from Redis.
 
@@ -141,7 +141,7 @@ The result from Redis FT.DROPINDEX command
 
 > **exists**(): `Promise`\<`boolean`\>
 
-Defined in: [indexes/search-index.ts:243](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L243)
+Defined in: [indexes/search-index.ts:254](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L254)
 
 Check if the index exists in Redis.
 
@@ -157,7 +157,7 @@ True if the index exists, false otherwise
 
 > **fetch**(`key`): `Promise`\<`Record`\<`string`, `unknown`\> \| `null`\>
 
-Defined in: [indexes/search-index.ts:363](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L363)
+Defined in: [indexes/search-index.ts:374](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L374)
 
 Fetch a single document by key.
 
@@ -186,7 +186,7 @@ const doc = await index.fetch('123');
 
 > **fetchMany**(`keys`, `batchSize?`): `Promise`\<(`Record`\<`string`, `unknown`\> \| `null`)[]\>
 
-Defined in: [indexes/search-index.ts:398](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L398)
+Defined in: [indexes/search-index.ts:409](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L409)
 
 Fetch multiple documents by keys.
 Uses pipelining for efficient batch retrieval.
@@ -222,7 +222,7 @@ const docs = await index.fetchMany(['123', '456', '789']);
 
 > **info**(): `Promise`\<\{ \}\>
 
-Defined in: [indexes/search-index.ts:277](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L277)
+Defined in: [indexes/search-index.ts:288](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L288)
 
 Get information about the index.
 
@@ -238,7 +238,7 @@ Index information from Redis
 
 > **load**(`data`, `options?`): `Promise`\<`string`[]\>
 
-Defined in: [indexes/search-index.ts:334](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L334)
+Defined in: [indexes/search-index.ts:345](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L345)
 
 Load documents into the index.
 
@@ -321,12 +321,81 @@ const keys = await index.load(
 );
 ````
 
+---
+
+### search()
+
+> **search**\<`T`\>(`query`, `options?`): `Promise`\<`SearchResult`\<`T`\>\>
+
+Defined in: [indexes/search-index.ts:473](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L473)
+
+Execute a search query against the index
+
+#### Type Parameters
+
+##### T
+
+`T` = `Record`\<`string`, `unknown`\>
+
+#### Parameters
+
+##### query
+
+`BaseQuery`
+
+Query object (VectorQuery, FilterQuery, etc.)
+
+##### options?
+
+`QueryOptions`
+
+Optional query execution options
+
+#### Returns
+
+`Promise`\<`SearchResult`\<`T`\>\>
+
+Search results with documents and scores
+
+#### Examples
+
+```typescript
+import { VectorQuery } from '@redis/redisvl';
+
+// Vector similarity search
+const query = new VectorQuery({
+    vector: embedding,
+    vectorField: 'embedding',
+    topK: 10,
+    returnFields: ['title', 'content'],
+});
+
+const results = await index.search(query);
+console.log(`Found ${results.total} results`);
+
+results.documents.forEach((doc) => {
+    console.log(`${doc.value.title} (score: ${doc.score})`);
+});
+```
+
+```typescript
+// Vector search with metadata filtering
+const query = new VectorQuery({
+    vector: embedding,
+    vectorField: 'embedding',
+    filter: '@category:{electronics}',
+    topK: 5,
+});
+
+const results = await index.search(query);
+```
+
 ## Properties
 
 ### schema
 
 > `readonly` **schema**: [`IndexSchema`](../../../schema/classes/IndexSchema.md)
 
-Defined in: [indexes/search-index.ts:126](https://github.com/redis-developer/redis-vl-typescript/blob/380f36fe5c0d8aea148efe8e33cb42df20ac0740/src/indexes/search-index.ts#L126)
+Defined in: [indexes/search-index.ts:127](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/indexes/search-index.ts#L127)
 
 The index schema defining the structure and fields.

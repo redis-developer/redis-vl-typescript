@@ -192,23 +192,64 @@ Best for complex, nested data:
 ```typescript
 {
   index: {
-    name: 'users',
+    name: 'products',
     storage_type: 'json'
   },
   fields: [
-    { name: 'name', type: 'text' },
-    { name: 'address.city', type: 'text' },  // Nested field
-    { name: 'tags', type: 'tag' }            // Array support
+    // JSONPath syntax for nested fields
+    { name: '$.title', type: 'text', attrs: { as: 'title' } },
+    { name: '$.category', type: 'tag', attrs: { as: 'category' } },
+    { name: '$.metadata.rating', type: 'numeric', attrs: { as: 'rating' } },
+    { name: '$.embedding', type: 'vector', attrs: {
+        as: 'embedding',
+        dims: 384,
+        algorithm: 'hnsw',
+        distanceMetric: 'cosine'
+    }},
   ]
 }
+```
+
+**JSON Path Syntax:**
+
+- Use `$.fieldName` for top-level fields
+- Use `$.parent.child` for nested fields
+- Use `attrs.as` to define the field alias for queries
+- The `as` attribute is the name you'll use in search queries
+
+**Example Document:**
+
+```json
+{
+  "title": "Laptop",
+  "category": "electronics",
+  "metadata": {
+    "rating": 4.5,
+    "reviews": 120
+  },
+  "embedding": [0.1, 0.2, ...]
+}
+```
+
+**Querying:**
+
+```typescript
+// Use the alias, not the JSON path
+const query = new VectorQuery({
+    vector: embedding,
+    vectorField: 'embedding', // ← Uses alias from attrs.as
+    filter: '@category:{electronics} @rating:[4.0 5.0]',
+    numResults: 10,
+});
 ```
 
 **Characteristics:**
 
 - ✅ Supports nested objects and arrays
-- ✅ Type preservation (numbers, booleans)
-- ✅ JSONPath queries
-- ❌ Slightly higher memory usage
+- ✅ Type preservation (numbers, booleans, arrays)
+- ✅ JSONPath queries with full path support
+- ✅ Field aliases for cleaner query syntax
+- ❌ Slightly higher memory usage than HASH
 
 ## Error Handling
 
