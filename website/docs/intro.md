@@ -4,11 +4,9 @@ sidebar_position: 1
 
 # Introduction
 
-**RedisVL** is the production-ready TypeScript client for AI applications built on Redis. **Lightning-fast vector search meets enterprise-grade reliability.**
+**RedisVL** is your TypeScript toolkit for AI on Redis. **High-performance vector search engineered for scale.**
 
-## What is RedisVL?
-
-RedisVL is **not** a replacement for the Redis client. It's a **higher-level library** that sits on top of the native Redis client, providing:
+**Use RedisVL for:**
 
 - **Schema-driven index management** - Define your data model once, use it everywhere
 - **Vector search abstractions** - Simplified APIs for similarity search and hybrid queries

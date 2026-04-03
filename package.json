@@ -1,5 +1,5 @@
 {
-    "name": "@booleanhunter/redisvl",
+    "name": "redisvl",
     "version": "0.0.2",
     "description": "The AI-native Redis TypeScript/Node.js client for vector operations",
     "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 # Interface: TextFieldAttrs
 
-Defined in: [schema/fields.ts:53](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L53)
+Defined in: [schema/fields.ts:53](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L53)
 
 TextField attributes
 
@@ -14,7 +14,7 @@ TextField attributes
 
 > `optional` **as?**: `string`
 
-Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L20)
+Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L20)
 
 #### Inherited from
 
@@ -26,7 +26,7 @@ Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **indexEmpty?**: `boolean`
 
-Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L23)
+Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L23)
 
 #### Inherited from
 
@@ -38,7 +38,7 @@ Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **indexMissing?**: `boolean`
 
-Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L22)
+Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L22)
 
 #### Inherited from
 
@@ -50,7 +50,7 @@ Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **noStem?**: `boolean`
 
-Defined in: [schema/fields.ts:55](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L55)
+Defined in: [schema/fields.ts:55](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L55)
 
 ---
 
@@ -58,7 +58,7 @@ Defined in: [schema/fields.ts:55](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **phonetic?**: `SchemaTextFieldPhonetic`
 
-Defined in: [schema/fields.ts:56](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L56)
+Defined in: [schema/fields.ts:56](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L56)
 
 ---
 
@@ -66,7 +66,7 @@ Defined in: [schema/fields.ts:56](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **sortable?**: `boolean`
 
-Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L21)
+Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L21)
 
 #### Inherited from
 
@@ -78,7 +78,7 @@ Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **weight?**: `number`
 
-Defined in: [schema/fields.ts:54](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L54)
+Defined in: [schema/fields.ts:54](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L54)
 
 ---
 
@@ -86,4 +86,4 @@ Defined in: [schema/fields.ts:54](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **withSuffixTrie?**: `boolean`
 
-Defined in: [schema/fields.ts:57](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L57)
+Defined in: [schema/fields.ts:57](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L57)

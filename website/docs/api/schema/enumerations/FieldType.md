@@ -1,6 +1,6 @@
 # Enumeration: FieldType
 
-Defined in: [schema/types.ts:4](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L4)
+Defined in: [schema/types.ts:4](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L4)
 
 Field types supported by RedisVL
 
@@ -10,7 +10,7 @@ Field types supported by RedisVL
 
 > **GEO**: `"geo"`
 
-Defined in: [schema/types.ts:8](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L8)
+Defined in: [schema/types.ts:8](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L8)
 
 ---
 
@@ -18,7 +18,7 @@ Defined in: [schema/types.ts:8](https://github.com/redis-developer/redis-vl-type
 
 > **NUMERIC**: `"numeric"`
 
-Defined in: [schema/types.ts:7](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L7)
+Defined in: [schema/types.ts:7](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L7)
 
 ---
 
@@ -26,7 +26,7 @@ Defined in: [schema/types.ts:7](https://github.com/redis-developer/redis-vl-type
 
 > **TAG**: `"tag"`
 
-Defined in: [schema/types.ts:5](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L5)
+Defined in: [schema/types.ts:5](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L5)
 
 ---
 
@@ -34,7 +34,7 @@ Defined in: [schema/types.ts:5](https://github.com/redis-developer/redis-vl-type
 
 > **TEXT**: `"text"`
 
-Defined in: [schema/types.ts:6](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L6)
+Defined in: [schema/types.ts:6](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L6)
 
 ---
 
@@ -42,4 +42,4 @@ Defined in: [schema/types.ts:6](https://github.com/redis-developer/redis-vl-type
 
 > **VECTOR**: `"vector"`
 
-Defined in: [schema/types.ts:9](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L9)
+Defined in: [schema/types.ts:9](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L9)

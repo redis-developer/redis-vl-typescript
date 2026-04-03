@@ -1,4 +1,4 @@
-# @booleanhunter/redisvl
+# redisvl
 
 ## Modules
 

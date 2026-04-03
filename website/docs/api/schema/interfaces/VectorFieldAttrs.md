@@ -1,6 +1,6 @@
 # Interface: VectorFieldAttrs
 
-Defined in: [schema/fields.ts:245](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L245)
+Defined in: [schema/fields.ts:245](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L245)
 
 Base vector field attributes
 
@@ -19,7 +19,7 @@ Base vector field attributes
 
 > **algorithm**: `string`
 
-Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L246)
+Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L246)
 
 ---
 
@@ -27,7 +27,7 @@ Defined in: [schema/fields.ts:246](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **as?**: `string`
 
-Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L20)
+Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L20)
 
 #### Inherited from
 
@@ -39,7 +39,7 @@ Defined in: [schema/fields.ts:20](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **datatype?**: [`VectorDataType`](../enumerations/VectorDataType.md)
 
-Defined in: [schema/fields.ts:249](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L249)
+Defined in: [schema/fields.ts:249](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L249)
 
 ---
 
@@ -47,7 +47,7 @@ Defined in: [schema/fields.ts:249](https://github.com/redis-developer/redis-vl-t
 
 > **dims**: `number`
 
-Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L247)
+Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L247)
 
 ---
 
@@ -55,7 +55,7 @@ Defined in: [schema/fields.ts:247](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **distanceMetric?**: [`VectorDistanceMetric`](../enumerations/VectorDistanceMetric.md)
 
-Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L248)
+Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L248)
 
 ---
 
@@ -63,7 +63,7 @@ Defined in: [schema/fields.ts:248](https://github.com/redis-developer/redis-vl-t
 
 > `optional` **indexEmpty?**: `boolean`
 
-Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L23)
+Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L23)
 
 #### Inherited from
 
@@ -75,7 +75,7 @@ Defined in: [schema/fields.ts:23](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **indexMissing?**: `boolean`
 
-Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L22)
+Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L22)
 
 #### Inherited from
 
@@ -87,7 +87,7 @@ Defined in: [schema/fields.ts:22](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **sortable?**: `boolean`
 
-Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L21)
+Defined in: [schema/fields.ts:21](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L21)
 
 #### Inherited from
 

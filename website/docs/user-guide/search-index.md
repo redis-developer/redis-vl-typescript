@@ -9,7 +9,7 @@ The `SearchIndex` class is the main interface for managing Redis search indexes.
 ## Creating an Index
 
 ```typescript
-import { SearchIndex, IndexSchema } from '@redis/redisvl';
+import { SearchIndex, IndexSchema } from 'redisvl';
 import { createClient } from 'redis';
 
 const client = createClient();
@@ -164,7 +164,7 @@ Perform semantic similarity search using vector embeddings.
 ### Basic Vector Search
 
 ```typescript
-import { VectorQuery, HuggingFaceVectorizer } from '@redis/redisvl';
+import { VectorQuery, HuggingFaceVectorizer } from 'redisvl';
 
 // Create vectorizer
 const vectorizer = new HuggingFaceVectorizer({
@@ -245,7 +245,7 @@ const results = await index.search(query);
 Specify the distance metric (must match schema):
 
 ```typescript
-import { VectorDistanceMetric } from '@redis/redisvl';
+import { VectorDistanceMetric } from 'redisvl';
 
 const query = new VectorQuery({
     vector: queryEmbedding,
@@ -276,7 +276,7 @@ results.documents.forEach((doc) => {
 ## Error Handling
 
 ```typescript
-import { RedisSearchError, SchemaValidationError } from '@redis/redisvl';
+import { RedisSearchError, SchemaValidationError } from 'redisvl';
 
 try {
     await index.create();

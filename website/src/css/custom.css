@@ -3,7 +3,7 @@
  */
 
 /* Import fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 /* RedisVL Color Scheme */
 :root {
@@ -107,4 +107,53 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--primary);
   border-color: var(--primary);
   color: #fff;
+}
+
+/* Code block styling - Make code more readable */
+code {
+  font-family: var(--ifm-font-family-monospace);
+  font-weight: 500;
+  color: #1e1e1e;
+}
+
+[data-theme='dark'] code {
+  color: #e8e8e8;
+  font-weight: 500;
+}
+
+/* Inline code */
+:not(pre) > code {
+  background-color: rgba(255, 68, 56, 0.1);
+  border: 1px solid rgba(255, 68, 56, 0.2);
+  padding: 0.15rem 0.3rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+}
+
+[data-theme='dark'] :not(pre) > code {
+  background-color: rgba(255, 90, 80, 0.15);
+  border: 1px solid rgba(255, 90, 80, 0.3);
+}
+
+/* Code blocks */
+pre code {
+  font-weight: 500;
+}
+
+/* Make syntax highlighting more visible */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.token.keyword,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  font-weight: 600;
 }

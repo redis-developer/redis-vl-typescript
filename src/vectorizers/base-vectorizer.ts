@@ -4,8 +4,7 @@
  * Vectorizers are responsible for converting text into numerical embeddings (vectors)
  * that can be stored in Redis and used for semantic search.
  *
- * This class defines the interface that all concrete vectorizer implementations must follow,
- * matching the pattern from Python and Java RedisVL implementations.
+ * This class defines the interface that all concrete vectorizer implementations must follow.
  *
  * @example
  * ```typescript

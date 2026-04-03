@@ -1,5 +1,5 @@
 <div align="center">
-    <img width="300" src="https://raw.githubusercontent.com/redis/redis-vl-python/main/docs/_static/Redis_Logo_Red_RGB.svg" alt="Redis">
+    <img width="300" src="https://redis.io/wp-content/uploads/2024/04/Logotype.svg" alt="Redis">
     <h1>Redis Vector Library</h1>
     <p><strong>The AI-native Redis TypeScript/Node.js client</strong></p>
 </div>
@@ -18,7 +18,7 @@
 
 ## Introduction
 
-Redis Vector Library (RedisVL) is the production-ready TypeScript/Node.js client for AI applications built on Redis. **Lightning-fast vector search meets enterprise-grade reliability.**
+Redis Vector Library (RedisVL) is the production-ready TypeScript/Node.js client for AI applications built on Redis. **Combine blazing-fast vector search with production-grade reliability.**
 
 <div align="center">
 
@@ -42,22 +42,22 @@ RedisVL helps you build production-ready AI applications:
 
 ## Getting Started
 
-Install `@redis/redisvl` into your Node.js (>=22.0.0) environment using `npm`:
+Install `redisvl` into your Node.js (>=22.0.0) environment using `npm`:
 
 ```bash
-npm install @redis/redisvl
+npm install redisvl
 ```
 
 Or using `yarn`:
 
 ```bash
-yarn add @redis/redisvl
+yarn add redisvl
 ```
 
 Or using `pnpm`:
 
 ```bash
-pnpm add @redis/redisvl
+pnpm add redisvl
 ```
 
 ### Redis
@@ -104,7 +104,7 @@ RedisVL is a TypeScript client for building AI applications on Redis. It sits on
 Define your data structure with fields for text, tags, numbers, geo locations, and vectors:
 
 ```typescript
-import { IndexSchema } from '@redis/redisvl';
+import { IndexSchema } from 'redisvl';
 
 const schema = IndexSchema.fromObject({
     index: { name: 'products', prefix: 'product:', storage_type: 'json' },
@@ -129,7 +129,7 @@ Create and manage search indexes:
 
 ```typescript
 import { createClient } from 'redis';
-import { SearchIndex } from '@redis/redisvl';
+import { SearchIndex } from 'redisvl';
 
 const client = createClient();
 await client.connect();
@@ -160,12 +160,36 @@ const docs = await index.fetchMany(['1', '2']);
 
 **[Learn more about CRUD operations →](https://redis.github.io/redis-vl-typescript/user-guide/search-index#crud-operations)**
 
+### Vector Search
+
+Perform semantic similarity search:
+
+```typescript
+import { VectorQuery } from 'redisvl';
+
+// Create query
+const query = new VectorQuery({
+    vector: embedding,
+    vectorField: 'embedding',
+    filter: '@category:{electronics}',
+    numResults: 10,
+});
+
+// Execute search
+const results = await index.search(query);
+results.documents.forEach((doc) => {
+    console.log(`${doc.value.title} (score: ${doc.score})`);
+});
+```
+
+**[Learn more about vector search →](https://redis.github.io/redis-vl-typescript/user-guide/search-index#vector-search)**
+
 ### Vectorizers
 
 Generate embeddings for semantic search:
 
 ```typescript
-import { HuggingFaceVectorizer } from '@redis/redisvl';
+import { HuggingFaceVectorizer } from 'redisvl';
 
 const vectorizer = new HuggingFaceVectorizer({
     model: 'Xenova/all-MiniLM-L6-v2',
@@ -186,7 +210,8 @@ await index.load(documents, {
 
 ## Coming Soon
 
-- **Vector Search API** - High-level query builders for vector and hybrid search
+- **Hybrid Search** - Combine vector, text, and numeric filters
+- **Range Queries** - Vector search within distance range
 - **Semantic Caching** - Cache LLM responses by similarity
 - **LLM Memory** - Context management for AI agents
 - **Semantic Routing** - Intent-based query classification

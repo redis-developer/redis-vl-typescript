@@ -11,7 +11,7 @@ Vectorizers convert text into numerical embeddings (vectors) for semantic simila
 Generate embeddings locally using HuggingFace Transformers.js (no API key required):
 
 ```typescript
-import { HuggingFaceVectorizer } from '@redis/redisvl';
+import { HuggingFaceVectorizer } from 'redisvl';
 
 const vectorizer = new HuggingFaceVectorizer({
     model: 'Xenova/all-MiniLM-L6-v2', // 384 dimensions
@@ -172,7 +172,7 @@ Choose based on your embedding model:
 Perform semantic similarity search using KNN (K-Nearest Neighbors):
 
 ```typescript
-import { VectorQuery } from '@redis/redisvl';
+import { VectorQuery } from 'redisvl';
 
 // Generate query embedding
 const queryEmbedding = await vectorizer.embed('Tell me about Redis');
@@ -253,7 +253,7 @@ See [Search Index](./search-index) documentation for more vector search options.
 Handle vectorizer errors when generating embeddings:
 
 ```typescript
-import { VectorizerError } from '@redis/redisvl';
+import { VectorizerError } from 'redisvl';
 
 try {
     const vectorizer = new HuggingFaceVectorizer({
