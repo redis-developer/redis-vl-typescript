@@ -33,7 +33,7 @@ const FeatureList: FeatureItem[] = [
         ),
     },
     {
-        title: 'Production-Ready',
+        title: 'Enterprise Features',
         image: require('@site/static/img/json-type.webp').default,
         description: (
             <>

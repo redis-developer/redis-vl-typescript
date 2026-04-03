@@ -32,7 +32,7 @@ export interface VectorQueryConfig {
 
     /**
      * Alias for the score field in results
-     * @default 'vector_distance' (matches Python/Java RedisVL)
+     * @default 'vector_distance'
      */
     scoreAlias?: string;
 }
@@ -44,7 +44,7 @@ export interface VectorQueryConfig {
  *
  * @example
  * ```typescript
- * import { VectorQuery } from '@redis/redisvl';
+ * import { VectorQuery } from 'redisvl';
  *
  * // Basic vector search
  * const query = new VectorQuery({

@@ -250,6 +250,7 @@ const sidebars: SidebarsConfig = {
                 },
             ],
         },
+        'faq',
     ],
 };
 

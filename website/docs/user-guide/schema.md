@@ -19,7 +19,7 @@ Schema in RedisVL provides a structured format to define index settings and fiel
 The most common way to create a schema is using `IndexSchema.fromObject()`:
 
 ```typescript
-import { IndexSchema } from '@redis/redisvl';
+import { IndexSchema } from 'redisvl';
 
 const schema = IndexSchema.fromObject({
     index: {
@@ -256,7 +256,7 @@ const query = new VectorQuery({
 Schema validation errors are thrown when invalid field configurations are provided:
 
 ```typescript
-import { SchemaValidationError } from '@redis/redisvl';
+import { SchemaValidationError } from 'redisvl';
 
 try {
     const schema = IndexSchema.fromObject({

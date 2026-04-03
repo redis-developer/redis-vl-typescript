@@ -1,14 +1,13 @@
 # Abstract Class: BaseVectorizer
 
-Defined in: [vectorizers/base-vectorizer.ts:31](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/base-vectorizer.ts#L31)
+Defined in: [vectorizers/base-vectorizer.ts:30](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/base-vectorizer.ts#L30)
 
 Base abstract class for all vectorizers.
 
 Vectorizers are responsible for converting text into numerical embeddings (vectors)
 that can be stored in Redis and used for semantic search.
 
-This class defines the interface that all concrete vectorizer implementations must follow,
-matching the pattern from Python and Java RedisVL implementations.
+This class defines the interface that all concrete vectorizer implementations must follow.
 
 ## Example
 
@@ -44,7 +43,7 @@ class MyVectorizer extends BaseVectorizer {
 
 > **get** `abstract` **dims**(): `number`
 
-Defined in: [vectorizers/base-vectorizer.ts:78](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/base-vectorizer.ts#L78)
+Defined in: [vectorizers/base-vectorizer.ts:77](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/base-vectorizer.ts#L77)
 
 Get the dimensionality of the embeddings produced by this vectorizer.
 
@@ -72,7 +71,7 @@ The number of dimensions in the embedding vectors
 
 > **get** `abstract` **model**(): `string`
 
-Defined in: [vectorizers/base-vectorizer.ts:90](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/base-vectorizer.ts#L90)
+Defined in: [vectorizers/base-vectorizer.ts:89](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/base-vectorizer.ts#L89)
 
 Get the name/identifier of the model used by this vectorizer.
 
@@ -104,7 +103,7 @@ The model name or identifier
 
 > `abstract` **embed**(`text`): `Promise`\<`number`[]\>
 
-Defined in: [vectorizers/base-vectorizer.ts:44](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/base-vectorizer.ts#L44)
+Defined in: [vectorizers/base-vectorizer.ts:43](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/base-vectorizer.ts#L43)
 
 Generate an embedding for a single text.
 
@@ -135,7 +134,7 @@ console.log(embedding); // [0.1, 0.2, 0.3, ...]
 
 > `abstract` **embedMany**(`texts`, `batchSize?`): `Promise`\<`number`[][]\>
 
-Defined in: [vectorizers/base-vectorizer.ts:62](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/base-vectorizer.ts#L62)
+Defined in: [vectorizers/base-vectorizer.ts:61](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/base-vectorizer.ts#L61)
 
 Generate embeddings for multiple texts.
 

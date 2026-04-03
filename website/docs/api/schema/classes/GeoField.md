@@ -1,6 +1,6 @@
 # Class: GeoField
 
-Defined in: [schema/fields.ts:212](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L212)
+Defined in: [schema/fields.ts:212](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L212)
 
 GeoField for geographic queries
 
@@ -14,7 +14,7 @@ GeoField for geographic queries
 
 > **new GeoField**(`name`, `attrs?`): `GeoField`
 
-Defined in: [schema/fields.ts:213](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L213)
+Defined in: [schema/fields.ts:213](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L213)
 
 #### Parameters
 
@@ -40,7 +40,7 @@ Defined in: [schema/fields.ts:213](https://github.com/redis-developer/redis-vl-t
 
 > **toRedisField**(`isJson`): `SchemaGeoField`
 
-Defined in: [schema/fields.ts:220](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L220)
+Defined in: [schema/fields.ts:220](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L220)
 
 Convert this field to Redis schema field format.
 Each subclass must implement this method to return the appropriate Redis field type.
@@ -67,7 +67,7 @@ Whether the index uses JSON storage (affects field naming with $.prefix)
 
 > `readonly` **attrs**: [`GeoFieldAttrs`](../interfaces/GeoFieldAttrs.md) = `{}`
 
-Defined in: [schema/fields.ts:215](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L215)
+Defined in: [schema/fields.ts:215](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L215)
 
 #### Inherited from
 
@@ -79,7 +79,7 @@ Defined in: [schema/fields.ts:215](https://github.com/redis-developer/redis-vl-t
 
 > `readonly` **name**: `string`
 
-Defined in: [schema/fields.ts:30](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L30)
+Defined in: [schema/fields.ts:30](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L30)
 
 #### Inherited from
 
@@ -91,7 +91,7 @@ Defined in: [schema/fields.ts:30](https://github.com/redis-developer/redis-vl-ty
 
 > `optional` **path?**: `string` \| `null`
 
-Defined in: [schema/fields.ts:33](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L33)
+Defined in: [schema/fields.ts:33](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L33)
 
 #### Inherited from
 
@@ -103,7 +103,7 @@ Defined in: [schema/fields.ts:33](https://github.com/redis-developer/redis-vl-ty
 
 > `readonly` **type**: `string`
 
-Defined in: [schema/fields.ts:31](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/fields.ts#L31)
+Defined in: [schema/fields.ts:31](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/fields.ts#L31)
 
 #### Inherited from
 

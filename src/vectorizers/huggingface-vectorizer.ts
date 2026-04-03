@@ -54,7 +54,7 @@ export interface HuggingFaceConfig {
  *
  * @example
  * ```typescript
- * import { HuggingFaceVectorizer } from '@booleanhunter/redisvl';
+ * import { HuggingFaceVectorizer } from 'redisvl';
  *
  * const vectorizer = new HuggingFaceVectorizer({
  *   model: 'Xenova/all-MiniLM-L6-v2'

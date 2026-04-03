@@ -1,6 +1,6 @@
 # Enumeration: CompressionType
 
-Defined in: [schema/types.ts:53](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L53)
+Defined in: [schema/types.ts:53](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L53)
 
 Vector compression types for SVS-VAMANA algorithm
 
@@ -10,7 +10,7 @@ Vector compression types for SVS-VAMANA algorithm
 
 > **LeanVec4x8**: `"LeanVec4x8"`
 
-Defined in: [schema/types.ts:58](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L58)
+Defined in: [schema/types.ts:58](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L58)
 
 ---
 
@@ -18,7 +18,7 @@ Defined in: [schema/types.ts:58](https://github.com/redis-developer/redis-vl-typ
 
 > **LeanVec8x8**: `"LeanVec8x8"`
 
-Defined in: [schema/types.ts:59](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L59)
+Defined in: [schema/types.ts:59](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L59)
 
 ---
 
@@ -26,7 +26,7 @@ Defined in: [schema/types.ts:59](https://github.com/redis-developer/redis-vl-typ
 
 > **LVQ4**: `"LVQ4"`
 
-Defined in: [schema/types.ts:54](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L54)
+Defined in: [schema/types.ts:54](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L54)
 
 ---
 
@@ -34,7 +34,7 @@ Defined in: [schema/types.ts:54](https://github.com/redis-developer/redis-vl-typ
 
 > **LVQ4x4**: `"LVQ4x4"`
 
-Defined in: [schema/types.ts:55](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L55)
+Defined in: [schema/types.ts:55](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L55)
 
 ---
 
@@ -42,7 +42,7 @@ Defined in: [schema/types.ts:55](https://github.com/redis-developer/redis-vl-typ
 
 > **LVQ4x8**: `"LVQ4x8"`
 
-Defined in: [schema/types.ts:56](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L56)
+Defined in: [schema/types.ts:56](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L56)
 
 ---
 
@@ -50,4 +50,4 @@ Defined in: [schema/types.ts:56](https://github.com/redis-developer/redis-vl-typ
 
 > **LVQ8**: `"LVQ8"`
 
-Defined in: [schema/types.ts:57](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/types.ts#L57)
+Defined in: [schema/types.ts:57](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/types.ts#L57)

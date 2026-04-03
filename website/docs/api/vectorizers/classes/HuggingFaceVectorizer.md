@@ -1,6 +1,6 @@
 # Class: HuggingFaceVectorizer
 
-Defined in: [vectorizers/huggingface-vectorizer.ts:83](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/huggingface-vectorizer.ts#L83)
+Defined in: [vectorizers/huggingface-vectorizer.ts:83](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/huggingface-vectorizer.ts#L83)
 
 HuggingFace vectorizer using Transformers.js for local inference.
 
@@ -12,7 +12,7 @@ Models are automatically downloaded and cached on first use.
 ## Examples
 
 ```typescript
-import { HuggingFaceVectorizer } from '@booleanhunter/redisvl';
+import { HuggingFaceVectorizer } from 'redisvl';
 
 const vectorizer = new HuggingFaceVectorizer({
     model: 'Xenova/all-MiniLM-L6-v2',
@@ -49,7 +49,7 @@ await index.load(documents, {
 
 > **get** **dims**(): `number`
 
-Defined in: [vectorizers/huggingface-vectorizer.ts:201](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/huggingface-vectorizer.ts#L201)
+Defined in: [vectorizers/huggingface-vectorizer.ts:201](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/huggingface-vectorizer.ts#L201)
 
 Get the dimensionality of the embeddings.
 
@@ -69,7 +69,7 @@ Get the dimensionality of the embeddings.
 
 > **get** **model**(): `string`
 
-Defined in: [vectorizers/huggingface-vectorizer.ts:214](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/huggingface-vectorizer.ts#L214)
+Defined in: [vectorizers/huggingface-vectorizer.ts:214](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/huggingface-vectorizer.ts#L214)
 
 Get the model name.
 
@@ -87,7 +87,7 @@ Get the model name.
 
 > **new HuggingFaceVectorizer**(`config`): `HuggingFaceVectorizer`
 
-Defined in: [vectorizers/huggingface-vectorizer.ts:88](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/huggingface-vectorizer.ts#L88)
+Defined in: [vectorizers/huggingface-vectorizer.ts:88](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/huggingface-vectorizer.ts#L88)
 
 #### Parameters
 
@@ -109,7 +109,7 @@ Defined in: [vectorizers/huggingface-vectorizer.ts:88](https://github.com/redis-
 
 > **embed**(`text`): `Promise`\<`number`[]\>
 
-Defined in: [vectorizers/huggingface-vectorizer.ts:138](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/huggingface-vectorizer.ts#L138)
+Defined in: [vectorizers/huggingface-vectorizer.ts:138](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/huggingface-vectorizer.ts#L138)
 
 Generate an embedding for a single text.
 
@@ -133,7 +133,7 @@ Generate an embedding for a single text.
 
 > **embedMany**(`texts`, `batchSize?`): `Promise`\<`number`[][]\>
 
-Defined in: [vectorizers/huggingface-vectorizer.ts:160](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/vectorizers/huggingface-vectorizer.ts#L160)
+Defined in: [vectorizers/huggingface-vectorizer.ts:160](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/vectorizers/huggingface-vectorizer.ts#L160)
 
 Generate embeddings for multiple texts.
 

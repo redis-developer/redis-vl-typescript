@@ -1,6 +1,6 @@
 # Class: IndexSchema
 
-Defined in: [schema/schema.ts:145](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L145)
+Defined in: [schema/schema.ts:145](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L145)
 
 A schema definition for a search index in Redis, used in RedisVL for
 configuring index settings and organizing vector and metadata fields.
@@ -13,7 +13,7 @@ configuring index settings and organizing vector and metadata fields.
 
 > **get** **fieldNames**(): `string`[]
 
-Defined in: [schema/schema.ts:167](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L167)
+Defined in: [schema/schema.ts:167](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L167)
 
 A list of field names associated with the index schema.
 
@@ -29,7 +29,7 @@ A list of field names from the schema
 
 > **new IndexSchema**(`options`): `IndexSchema`
 
-Defined in: [schema/schema.ts:153](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L153)
+Defined in: [schema/schema.ts:153](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L153)
 
 #### Parameters
 
@@ -63,7 +63,7 @@ Version of the underlying index schema
 
 > **addField**(`fieldInputs`): `void`
 
-Defined in: [schema/schema.ts:230](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L230)
+Defined in: [schema/schema.ts:230](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L230)
 
 Adds a single field to the index schema.
 
@@ -100,7 +100,7 @@ schema.addField({
 
 > **addFields**(`fields`): `void`
 
-Defined in: [schema/schema.ts:260](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L260)
+Defined in: [schema/schema.ts:260](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L260)
 
 Adds multiple fields to the index schema.
 
@@ -136,7 +136,7 @@ schema.addFields([
 
 > **removeField**(`fieldName`): `void`
 
-Defined in: [schema/schema.ts:276](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L276)
+Defined in: [schema/schema.ts:276](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L276)
 
 Removes a field from the schema by name.
 
@@ -164,7 +164,7 @@ schema.removeField('old_field');
 
 > **toObject**(): `object`
 
-Defined in: [schema/schema.ts:414](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L414)
+Defined in: [schema/schema.ts:414](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L414)
 
 Serialize the index schema to a plain object.
 Converts camelCase properties to snake_case for YAML/JSON compatibility.
@@ -222,7 +222,7 @@ console.log(obj.index.storage_type);
 
 > **toYAML**(`filePath`, `overwrite?`): `Promise`\<`void`\>
 
-Defined in: [schema/schema.ts:483](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L483)
+Defined in: [schema/schema.ts:483](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L483)
 
 Write the index schema to a YAML file.
 
@@ -261,7 +261,7 @@ await schema.toYAML('schema.yaml');
 
 > `static` **fromObject**(`data`): `IndexSchema`
 
-Defined in: [schema/schema.ts:307](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L307)
+Defined in: [schema/schema.ts:307](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L307)
 
 Create an IndexSchema from a plain object.
 Accepts both snake_case (from YAML/JSON files) and camelCase (from TypeScript) property names.
@@ -313,7 +313,7 @@ const schema = IndexSchema.fromObject({
 
 > `static` **fromYAML**(`filePath`): `Promise`\<`IndexSchema`\>
 
-Defined in: [schema/schema.ts:378](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L378)
+Defined in: [schema/schema.ts:378](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L378)
 
 Create an IndexSchema from a YAML file.
 
@@ -352,7 +352,7 @@ console.log(schema.index.name);
 
 > **fields**: `Record`\<`string`, [`BaseField`](BaseField.md)\>
 
-Defined in: [schema/schema.ts:149](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L149)
+Defined in: [schema/schema.ts:149](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L149)
 
 Fields associated with the search index and their properties
 
@@ -362,7 +362,7 @@ Fields associated with the search index and their properties
 
 > `readonly` **index**: [`IndexInfo`](IndexInfo.md)
 
-Defined in: [schema/schema.ts:147](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L147)
+Defined in: [schema/schema.ts:147](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L147)
 
 Details of the basic index configurations
 
@@ -372,6 +372,6 @@ Details of the basic index configurations
 
 > `readonly` **version**: `"0.1.0"`
 
-Defined in: [schema/schema.ts:151](https://github.com/redis-developer/redis-vl-typescript/blob/c0e6233fa7b13f75c93d9ce1efddeca30f27f660/src/schema/schema.ts#L151)
+Defined in: [schema/schema.ts:151](https://github.com/redis-developer/redis-vl-typescript/blob/e377bfbeaf3496b97d8b5dae468fdc62742428d8/src/schema/schema.ts#L151)
 
 Version of the underlying index schema
