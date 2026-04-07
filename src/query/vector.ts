@@ -35,6 +35,20 @@ export interface VectorQueryConfig {
      * @default 'vector_distance'
      */
     scoreAlias?: string;
+
+    /**
+     * HNSW ef_runtime parameter - controls recall vs speed tradeoff
+     * Higher values provide better recall but slower search
+     * @default undefined (uses index default)
+     */
+    efRuntime?: number;
+
+    /**
+     * HNSW epsilon parameter - range search approximation factor
+     * Used for range-based vector queries
+     * @default undefined
+     */
+    epsilon?: number;
 }
 
 /**
@@ -80,6 +94,8 @@ export class VectorQuery implements BaseQuery {
     public readonly offset?: number;
     public readonly limit?: number;
     public readonly scoreAlias: string;
+    public readonly efRuntime?: number;
+    public readonly epsilon?: number;
 
     constructor(config: VectorQueryConfig) {
         // Validate vector
@@ -92,6 +108,15 @@ export class VectorQuery implements BaseQuery {
             throw new QueryValidationError('vectorField is required');
         }
 
+        // Validate HNSW parameters
+        if (config.efRuntime !== undefined && config.efRuntime <= 0) {
+            throw new QueryValidationError('efRuntime must be positive');
+        }
+
+        if (config.epsilon !== undefined && config.epsilon < 0) {
+            throw new QueryValidationError('epsilon must be non-negative');
+        }
+
         this.vector = config.vector;
         this.vectorField = config.vectorField;
         this.numResults = config.numResults ?? 10;
@@ -101,18 +126,30 @@ export class VectorQuery implements BaseQuery {
         this.offset = config.offset;
         this.limit = config.limit;
         this.scoreAlias = config.scoreAlias ?? 'vector_distance';
+        this.efRuntime = config.efRuntime;
+        this.epsilon = config.epsilon;
     }
 
     /**
      * Build the Redis KNN query string
      *
-     * Format: (filter)=>[KNN K @vector_field $vector AS score]
+     * Format: (filter)=>[KNN K @vector_field $vector AS score EF_RUNTIME $ef_runtime EPSILON $epsilon]
      *
      * @returns Redis FT.SEARCH query string
      */
     buildQuery(): string {
         const filterPart = this.filter ? `(${this.filter})` : '*';
-        const knnPart = `=>[KNN ${this.numResults} @${this.vectorField} $vector AS ${this.scoreAlias}]`;
+        let knnPart = `=>[KNN ${this.numResults} @${this.vectorField} $vector AS ${this.scoreAlias}`;
+
+        // Add HNSW parameters if provided
+        if (this.efRuntime !== undefined) {
+            knnPart += ' EF_RUNTIME $ef_runtime';
+        }
+        if (this.epsilon !== undefined) {
+            knnPart += ' EPSILON $epsilon';
+        }
+
+        knnPart += ']';
         return `${filterPart}${knnPart}`;
     }
 
@@ -120,15 +157,26 @@ export class VectorQuery implements BaseQuery {
      * Build query parameters for Redis FT.SEARCH
      *
      * Converts the vector to a binary buffer as expected by Redis.
+     * Includes HNSW parameters if provided.
      *
-     * @returns Query parameters object with vector buffer
+     * @returns Query parameters object with vector buffer and HNSW params
      */
     buildParams(): Record<string, unknown> {
         // Convert vector to Float32Array buffer (Redis expects binary data)
         const vectorBuffer = Buffer.from(new Float32Array(this.vector).buffer);
 
-        return {
+        const params: Record<string, unknown> = {
             vector: vectorBuffer,
         };
+
+        // Add HNSW parameters if provided
+        if (this.efRuntime !== undefined) {
+            params.ef_runtime = this.efRuntime;
+        }
+        if (this.epsilon !== undefined) {
+            params.epsilon = this.epsilon;
+        }
+
+        return params;
     }
 }
