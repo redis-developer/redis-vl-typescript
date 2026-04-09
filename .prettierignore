@@ -17,3 +17,5 @@ package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
+# Website (has its own formatting)
+website/
