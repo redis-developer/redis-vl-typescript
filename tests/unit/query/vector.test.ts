@@ -172,4 +172,327 @@ describe('VectorQuery', () => {
             expect(query.returnFields).toBeUndefined();
         });
     });
+
+    describe('HNSW Parameters', () => {
+        const mockVector = [0.1, 0.2, 0.3];
+
+        describe('efRuntime parameter', () => {
+            it('should include EF_RUNTIME in query when efRuntime is provided', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    efRuntime: 100,
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).toContain('EF_RUNTIME');
+            });
+
+            it('should not include EF_RUNTIME when efRuntime is not provided', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).not.toContain('EF_RUNTIME');
+            });
+
+            it('should include efRuntime value in params', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    efRuntime: 150,
+                });
+
+                const params = query.buildParams();
+                expect(params).toHaveProperty('ef_runtime', 150);
+            });
+
+            it('should accept different efRuntime values', () => {
+                const query1 = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    efRuntime: 50,
+                });
+
+                const query2 = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    efRuntime: 500,
+                });
+
+                expect(query1.buildParams().ef_runtime).toBe(50);
+                expect(query2.buildParams().ef_runtime).toBe(500);
+            });
+
+            it('should throw error if efRuntime is not positive', () => {
+                expect(() => {
+                    new VectorQuery({
+                        vector: mockVector,
+                        vectorField: 'embedding',
+                        efRuntime: 0,
+                    });
+                }).toThrow('efRuntime must be positive');
+
+                expect(() => {
+                    new VectorQuery({
+                        vector: mockVector,
+                        vectorField: 'embedding',
+                        efRuntime: -10,
+                    });
+                }).toThrow('efRuntime must be positive');
+            });
+        });
+
+        describe('epsilon parameter', () => {
+            it('should include EPSILON in query when epsilon is provided', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    epsilon: 0.01,
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).toContain('EPSILON');
+            });
+
+            it('should not include EPSILON when epsilon is not provided', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).not.toContain('EPSILON');
+            });
+
+            it('should include epsilon value in params', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    epsilon: 0.05,
+                });
+
+                const params = query.buildParams();
+                expect(params).toHaveProperty('epsilon', 0.05);
+            });
+
+            it('should accept different epsilon values', () => {
+                const query1 = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    epsilon: 0.001,
+                });
+
+                const query2 = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    epsilon: 0.1,
+                });
+
+                expect(query1.buildParams().epsilon).toBe(0.001);
+                expect(query2.buildParams().epsilon).toBe(0.1);
+            });
+
+            it('should throw error if epsilon is negative', () => {
+                expect(() => {
+                    new VectorQuery({
+                        vector: mockVector,
+                        vectorField: 'embedding',
+                        epsilon: -0.01,
+                    });
+                }).toThrow('epsilon must be non-negative');
+            });
+
+            it('should allow epsilon to be zero', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    epsilon: 0,
+                });
+
+                expect(query.buildParams().epsilon).toBe(0);
+            });
+        });
+
+        describe('combined HNSW parameters', () => {
+            it('should support both efRuntime and epsilon together', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    efRuntime: 100,
+                    epsilon: 0.01,
+                });
+
+                const queryString = query.buildQuery();
+                const params = query.buildParams();
+
+                expect(queryString).toContain('EF_RUNTIME');
+                expect(queryString).toContain('EPSILON');
+                expect(params.ef_runtime).toBe(100);
+                expect(params.epsilon).toBe(0.01);
+            });
+        });
+    });
+
+    describe('Hybrid Policy Parameters', () => {
+        const mockVector = [0.1, 0.2, 0.3];
+
+        describe('hybridPolicy parameter', () => {
+            it('should include HYBRID_POLICY in query when hybridPolicy is provided', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'BATCHES',
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).toContain('HYBRID_POLICY BATCHES');
+            });
+
+            it('should not include HYBRID_POLICY when hybridPolicy is not provided', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).not.toContain('HYBRID_POLICY');
+            });
+
+            it('should accept BATCHES policy', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'BATCHES',
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).toContain('HYBRID_POLICY BATCHES');
+            });
+
+            it('should accept ADHOC_BF policy', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'ADHOC_BF',
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).toContain('HYBRID_POLICY ADHOC_BF');
+            });
+
+            it('should throw error for invalid hybridPolicy', () => {
+                expect(() => {
+                    new VectorQuery({
+                        vector: mockVector,
+                        vectorField: 'embedding',
+                        hybridPolicy: 'INVALID' as any,
+                    });
+                }).toThrow('hybridPolicy must be either BATCHES or ADHOC_BF');
+            });
+        });
+
+        describe('batchSize parameter', () => {
+            it('should include BATCH_SIZE when batchSize is provided with BATCHES policy', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'BATCHES',
+                    batchSize: 100,
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).toContain('BATCH_SIZE 100');
+            });
+
+            it('should not include BATCH_SIZE when batchSize is not provided', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'BATCHES',
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).not.toContain('BATCH_SIZE');
+            });
+
+            it('should not include BATCH_SIZE when hybridPolicy is ADHOC_BF', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'ADHOC_BF',
+                    batchSize: 100,
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).not.toContain('BATCH_SIZE');
+            });
+
+            it('should throw error if batchSize is provided without hybridPolicy', () => {
+                expect(() => {
+                    new VectorQuery({
+                        vector: mockVector,
+                        vectorField: 'embedding',
+                        batchSize: 100,
+                    });
+                }).toThrow('batchSize can only be used with hybridPolicy');
+            });
+
+            it('should throw error if batchSize is not positive', () => {
+                expect(() => {
+                    new VectorQuery({
+                        vector: mockVector,
+                        vectorField: 'embedding',
+                        hybridPolicy: 'BATCHES',
+                        batchSize: 0,
+                    });
+                }).toThrow('batchSize must be positive');
+
+                expect(() => {
+                    new VectorQuery({
+                        vector: mockVector,
+                        vectorField: 'embedding',
+                        hybridPolicy: 'BATCHES',
+                        batchSize: -10,
+                    });
+                }).toThrow('batchSize must be positive');
+            });
+
+            it('should accept different batchSize values', () => {
+                const query1 = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'BATCHES',
+                    batchSize: 50,
+                });
+
+                const query2 = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'BATCHES',
+                    batchSize: 500,
+                });
+
+                expect(query1.buildQuery()).toContain('BATCH_SIZE 50');
+                expect(query2.buildQuery()).toContain('BATCH_SIZE 500');
+            });
+        });
+
+        describe('combined hybrid policy parameters', () => {
+            it('should support both hybridPolicy and batchSize together', () => {
+                const query = new VectorQuery({
+                    vector: mockVector,
+                    vectorField: 'embedding',
+                    hybridPolicy: 'BATCHES',
+                    batchSize: 200,
+                });
+
+                const queryString = query.buildQuery();
+                expect(queryString).toContain('HYBRID_POLICY BATCHES');
+                expect(queryString).toContain('BATCH_SIZE 200');
+            });
+        });
+    });
 });

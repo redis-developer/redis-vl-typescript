@@ -3,6 +3,11 @@ import { VectorDistanceMetric } from '../schema/types.js';
 import { QueryValidationError } from '../errors.js';
 
 /**
+ * Hybrid policy options for vector search with filters
+ */
+export type HybridPolicy = 'BATCHES' | 'ADHOC_BF';
+
+/**
  * Configuration for VectorQuery
  */
 export interface VectorQueryConfig {
@@ -49,6 +54,22 @@ export interface VectorQueryConfig {
      * @default undefined
      */
     epsilon?: number;
+
+    /**
+     * Hybrid policy for combining vector search with filters
+     * - BATCHES: Process filters in batches (better for large result sets)
+     * - ADHOC_BF: Ad-hoc brute force (better for small result sets)
+     * @default undefined
+     */
+    hybridPolicy?: HybridPolicy;
+
+    /**
+     * Batch size when using BATCHES hybrid policy
+     * Controls memory usage vs performance tradeoff
+     * Only applies when hybridPolicy is "BATCHES"
+     * @default undefined
+     */
+    batchSize?: number;
 }
 
 /**
@@ -96,6 +117,8 @@ export class VectorQuery implements BaseQuery {
     public readonly scoreAlias: string;
     public readonly efRuntime?: number;
     public readonly epsilon?: number;
+    public readonly hybridPolicy?: HybridPolicy;
+    public readonly batchSize?: number;
 
     constructor(config: VectorQueryConfig) {
         // Validate vector
@@ -117,6 +140,22 @@ export class VectorQuery implements BaseQuery {
             throw new QueryValidationError('epsilon must be non-negative');
         }
 
+        // Validate hybrid policy parameters
+        if (config.hybridPolicy !== undefined) {
+            if (config.hybridPolicy !== 'BATCHES' && config.hybridPolicy !== 'ADHOC_BF') {
+                throw new QueryValidationError('hybridPolicy must be either BATCHES or ADHOC_BF');
+            }
+        }
+
+        if (config.batchSize !== undefined) {
+            if (config.hybridPolicy === undefined) {
+                throw new QueryValidationError('batchSize can only be used with hybridPolicy');
+            }
+            if (config.batchSize <= 0) {
+                throw new QueryValidationError('batchSize must be positive');
+            }
+        }
+
         this.vector = config.vector;
         this.vectorField = config.vectorField;
         this.numResults = config.numResults ?? 10;
@@ -128,6 +167,8 @@ export class VectorQuery implements BaseQuery {
         this.scoreAlias = config.scoreAlias ?? 'vector_distance';
         this.efRuntime = config.efRuntime;
         this.epsilon = config.epsilon;
+        this.hybridPolicy = config.hybridPolicy;
+        this.batchSize = config.batchSize;
     }
 
     /**
@@ -147,6 +188,14 @@ export class VectorQuery implements BaseQuery {
         }
         if (this.epsilon !== undefined) {
             knnPart += ' EPSILON $epsilon';
+        }
+
+        // Add hybrid policy parameters if provided
+        if (this.hybridPolicy !== undefined) {
+            knnPart += ` HYBRID_POLICY ${this.hybridPolicy}`;
+        }
+        if (this.batchSize !== undefined && this.hybridPolicy === 'BATCHES') {
+            knnPart += ` BATCH_SIZE ${this.batchSize}`;
         }
 
         knnPart += ']';
