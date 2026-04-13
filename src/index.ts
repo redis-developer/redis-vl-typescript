@@ -15,8 +15,9 @@ export {
     TagField,
     NumericField,
     GeoField,
-    FlatVectorField,
-    HNSWVectorField,
+    VectorField, // Generic VectorField (supports FLAT and HNSW)
+    FlatVectorField, // Algorithm-specific (FLAT only)
+    HNSWVectorField, // Algorithm-specific (HNSW only)
     FieldFactory,
 } from './schema/fields.js';
 export * from './schema/types.js';
@@ -27,6 +28,7 @@ export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-in
 
 // Query exports
 export { VectorQuery } from './query/vector.js';
+export type { VectorQueryConfig, HybridPolicy, UseSearchHistory } from './query/vector.js';
 export type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from './query/base.js';
 
 // Error exports
@@ -45,3 +47,12 @@ export {
     HuggingFaceVectorizer,
     type HuggingFaceConfig,
 } from './vectorizers/index.js';
+
+// Utility exports
+export {
+    normalizeCosineDistance,
+    denormalizeCosineDistance,
+    normalizeL2Distance,
+    DISTANCE_NORMALIZERS,
+    type DistanceNormalizer,
+} from './utils/distance.js';

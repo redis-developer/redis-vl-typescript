@@ -9,6 +9,8 @@ import { IndexSchema } from '../schema/schema.js';
 import { BaseStorage, HashStorage, JsonStorage } from '../storage/index.js';
 import { RedisVLError, SchemaValidationError } from '../errors.js';
 import type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from '../query/base.js';
+import { VectorQuery } from '../query/vector.js';
+import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 
 /**
  * Options for creating an index.
@@ -527,6 +529,28 @@ export class SearchIndex {
                 searchOptions
             );
 
+            // Determine if we need to normalize distances
+            const isVectorQuery = query instanceof VectorQuery;
+            const shouldNormalize = isVectorQuery && query.normalizeDistance;
+            let normalizer: ((distance: number) => number) | null = null;
+
+            if (shouldNormalize) {
+                // Find the vector field being queried to get its distance metric
+                const vectorFieldName = query.vectorField;
+                if (vectorFieldName && this.schema) {
+                    const vectorField = this.schema.fields[vectorFieldName];
+
+                    if (
+                        vectorField &&
+                        vectorField.type === 'vector' &&
+                        'distanceMetric' in vectorField
+                    ) {
+                        const distanceMetric = (vectorField as any).distanceMetric || 'COSINE';
+                        normalizer = DISTANCE_NORMALIZERS[distanceMetric] || null;
+                    }
+                }
+            }
+
             // Transform response to SearchResult format
             const documents: SearchDocument<T>[] = response.documents.map((doc) => {
                 const value = doc.value as Record<string, unknown>;
@@ -538,10 +562,15 @@ export class SearchIndex {
                 const scoreAlias = scoreAliasMatch ? scoreAliasMatch[1] : 'vector_distance';
 
                 const scoreValue = value[scoreAlias];
-                const score =
+                let score =
                     typeof scoreValue === 'string'
                         ? parseFloat(scoreValue)
                         : (scoreValue as number | undefined);
+
+                // Apply normalization if needed
+                if (score !== undefined && normalizer) {
+                    score = normalizer(score);
+                }
 
                 return {
                     id: doc.id,

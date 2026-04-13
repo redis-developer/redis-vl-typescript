@@ -8,6 +8,11 @@ import { QueryValidationError } from '../errors.js';
 export type HybridPolicy = 'BATCHES' | 'ADHOC_BF';
 
 /**
+ * USE_SEARCH_HISTORY options for SVS-VAMANA indexes
+ */
+export type UseSearchHistory = 'OFF' | 'ON' | 'AUTO';
+
+/**
  * Configuration for VectorQuery
  */
 export interface VectorQueryConfig {
@@ -70,6 +75,69 @@ export interface VectorQueryConfig {
      * @default undefined
      */
     batchSize?: number;
+
+    /**
+     * Normalize vector distance to similarity score between 0 and 1
+     *
+     * Redis distance metrics have different ranges:
+     * - COSINE: 0 to 2
+     * - L2: 0 to infinity
+     * - IP: Depends on vector magnitude
+     *
+     * When true, converts distances to similarity scores where:
+     * - 1.0 = perfect match (most similar)
+     * - 0.0 = completely different (least similar)
+     *
+     * Note: IP (Inner Product) cannot be normalized. Use COSINE instead,
+     * which is normalized IP by definition.
+     *
+     * @default false
+     */
+    normalizeDistance?: boolean;
+
+    /**
+     * SVS-VAMANA search window size parameter
+     *
+     * Controls the size of the search window for SVS-VAMANA KNN searches.
+     * Increasing this value generally yields more accurate but slower search results.
+     *
+     * Only applies when using SVS-VAMANA algorithm indexes.
+     *
+     * @default undefined (uses index default)
+     */
+    searchWindowSize?: number;
+
+    /**
+     * SVS-VAMANA USE_SEARCH_HISTORY parameter
+     *
+     * For SVS-VAMANA indexes, controls whether to use the search buffer
+     * or entire search history.
+     *
+     * Options:
+     * - OFF: Don't use search history
+     * - ON: Use search history
+     * - AUTO: Automatically decide based on query characteristics
+     *
+     * Only applies when using SVS-VAMANA algorithm indexes.
+     *
+     * @default undefined
+     */
+    useSearchHistory?: UseSearchHistory;
+
+    /**
+     * SVS-VAMANA SEARCH_BUFFER_CAPACITY parameter
+     *
+     * Tuning parameter for SVS-VAMANA indexes using two-level compression.
+     * Determines the number of vector candidates to collect in the first level
+     * of search before the re-ranking level.
+     *
+     * Higher values may improve recall at the cost of performance.
+     *
+     * Only applies when using SVS-VAMANA algorithm indexes with two-level compression.
+     *
+     * @default undefined
+     */
+    searchBufferCapacity?: number;
 }
 
 /**
@@ -119,6 +187,10 @@ export class VectorQuery implements BaseQuery {
     public readonly epsilon?: number;
     public readonly hybridPolicy?: HybridPolicy;
     public readonly batchSize?: number;
+    public readonly normalizeDistance: boolean;
+    public readonly searchWindowSize?: number;
+    public readonly useSearchHistory?: UseSearchHistory;
+    public readonly searchBufferCapacity?: number;
 
     constructor(config: VectorQueryConfig) {
         // Validate vector
@@ -156,6 +228,30 @@ export class VectorQuery implements BaseQuery {
             }
         }
 
+        // Validate normalizeDistance with IP metric
+        if (config.normalizeDistance && config.distanceMetric === VectorDistanceMetric.IP) {
+            console.warn(
+                'Attempting to normalize inner product distance metric. ' +
+                    'Use cosine distance instead which is normalized inner product by definition.'
+            );
+        }
+
+        // Validate SVS-VAMANA parameters
+        if (config.searchWindowSize !== undefined && config.searchWindowSize <= 0) {
+            throw new QueryValidationError('searchWindowSize must be positive');
+        }
+
+        if (config.useSearchHistory !== undefined) {
+            const validValues: UseSearchHistory[] = ['OFF', 'ON', 'AUTO'];
+            if (!validValues.includes(config.useSearchHistory)) {
+                throw new QueryValidationError('useSearchHistory must be one of: OFF, ON, AUTO');
+            }
+        }
+
+        if (config.searchBufferCapacity !== undefined && config.searchBufferCapacity <= 0) {
+            throw new QueryValidationError('searchBufferCapacity must be positive');
+        }
+
         this.vector = config.vector;
         this.vectorField = config.vectorField;
         this.numResults = config.numResults ?? 10;
@@ -169,6 +265,10 @@ export class VectorQuery implements BaseQuery {
         this.epsilon = config.epsilon;
         this.hybridPolicy = config.hybridPolicy;
         this.batchSize = config.batchSize;
+        this.normalizeDistance = config.normalizeDistance ?? false;
+        this.searchWindowSize = config.searchWindowSize;
+        this.useSearchHistory = config.useSearchHistory;
+        this.searchBufferCapacity = config.searchBufferCapacity;
     }
 
     /**
@@ -198,6 +298,17 @@ export class VectorQuery implements BaseQuery {
             knnPart += ` BATCH_SIZE ${this.batchSize}`;
         }
 
+        // Add SVS-VAMANA parameters if provided
+        if (this.searchWindowSize !== undefined) {
+            knnPart += ' SEARCH_WINDOW_SIZE $search_window_size';
+        }
+        if (this.useSearchHistory !== undefined) {
+            knnPart += ` USE_SEARCH_HISTORY ${this.useSearchHistory}`;
+        }
+        if (this.searchBufferCapacity !== undefined) {
+            knnPart += ' SEARCH_BUFFER_CAPACITY $search_buffer_capacity';
+        }
+
         knnPart += ']';
         return `${filterPart}${knnPart}`;
     }
@@ -206,9 +317,9 @@ export class VectorQuery implements BaseQuery {
      * Build query parameters for Redis FT.SEARCH
      *
      * Converts the vector to a binary buffer as expected by Redis.
-     * Includes HNSW parameters if provided.
+     * Includes HNSW and SVS-VAMANA parameters if provided.
      *
-     * @returns Query parameters object with vector buffer and HNSW params
+     * @returns Query parameters object with vector buffer and algorithm params
      */
     buildParams(): Record<string, unknown> {
         // Convert vector to Float32Array buffer (Redis expects binary data)
@@ -224,6 +335,14 @@ export class VectorQuery implements BaseQuery {
         }
         if (this.epsilon !== undefined) {
             params.epsilon = this.epsilon;
+        }
+
+        // Add SVS-VAMANA parameters if provided
+        if (this.searchWindowSize !== undefined) {
+            params.search_window_size = this.searchWindowSize;
+        }
+        if (this.searchBufferCapacity !== undefined) {
+            params.search_buffer_capacity = this.searchBufferCapacity;
         }
 
         return params;

@@ -5,6 +5,7 @@ import {
     TagField,
     NumericField,
     GeoField,
+    VectorField,
     FlatVectorField,
     HNSWVectorField,
 } from '../../../src/schema/fields.js';
@@ -31,7 +32,7 @@ describe('Field Creation Tests', () => {
             ['hnsw', HNSWVectorField, 'example_vector_field'],
         ])('should create %s vector field', (algorithm, expectedClass, fieldName) => {
             const field = FieldFactory.createField('vector', fieldName, {
-                algorithm,
+                algorithm: algorithm as 'flat' | 'hnsw',
                 dims: 128,
             });
             expect(field).toBeInstanceOf(expectedClass);
@@ -41,13 +42,13 @@ describe('Field Creation Tests', () => {
         it('should throw SchemaValidationError for unknown vector field algorithm', () => {
             expect(() => {
                 FieldFactory.createField('vector', 'example_vector_field', {
-                    algorithm: 'unknown',
+                    algorithm: 'unknown' as any,
                     dims: 128,
                 });
             }).toThrow(SchemaValidationError);
             expect(() => {
                 FieldFactory.createField('vector', 'example_vector_field', {
-                    algorithm: 'unknown',
+                    algorithm: 'unknown' as any,
                     dims: 128,
                 });
             }).toThrow(/Unknown vector field algorithm: unknown/);
@@ -235,5 +236,181 @@ describe('HNSWVectorField Tests', () => {
         expect(field.attrs.efConstruction).toBe(300);
         expect(field.attrs.efRuntime).toBe(20);
         expect(field.attrs.epsilon).toBe(0.02);
+    });
+});
+
+describe('Generic VectorField Tests', () => {
+    describe('VectorField with FLAT algorithm', () => {
+        it('should create VectorField with FLAT algorithm', () => {
+            const field = new VectorField('embedding', {
+                algorithm: 'flat',
+                dims: 512,
+                distanceMetric: VectorDistanceMetric.COSINE,
+            });
+
+            expect(field.name).toBe('embedding');
+            expect(field.type).toBe('vector');
+            expect(field.attrs.algorithm).toBe('flat');
+            expect(field.attrs.dims).toBe(512);
+            expect(field.attrs.distanceMetric).toBe(VectorDistanceMetric.COSINE);
+        });
+
+        it('should delegate to FlatVectorField for toRedisField()', () => {
+            const field = new VectorField('embedding', {
+                algorithm: 'flat',
+                dims: 256,
+                distanceMetric: VectorDistanceMetric.L2,
+                blockSize: 1024,
+                initialCap: 5000,
+            });
+
+            const redisField = field.toRedisField(false);
+
+            expect(redisField.type).toBe('VECTOR');
+            expect(redisField.ALGORITHM).toBe('FLAT');
+            expect(redisField.DIM).toBe(256);
+            expect(redisField.DISTANCE_METRIC).toBe('L2');
+            if (redisField.ALGORITHM === 'FLAT') {
+                expect(redisField.BLOCK_SIZE).toBe(1024);
+                expect(redisField.INITIAL_CAP).toBe(5000);
+            }
+        });
+
+        it('should support all FLAT-specific attributes', () => {
+            const field = new VectorField('vec', {
+                algorithm: 'flat',
+                dims: 128,
+                datatype: VectorDataType.FLOAT32,
+                blockSize: 512,
+                initialCap: 1000,
+            });
+
+            const redisField = field.toRedisField(false);
+
+            expect(redisField.TYPE).toBe('FLOAT32');
+            if (redisField.ALGORITHM === 'FLAT') {
+                expect(redisField.BLOCK_SIZE).toBe(512);
+                expect(redisField.INITIAL_CAP).toBe(1000);
+            }
+        });
+    });
+
+    describe('VectorField with HNSW algorithm', () => {
+        it('should create VectorField with HNSW algorithm', () => {
+            const field = new VectorField('embedding', {
+                algorithm: 'hnsw',
+                dims: 768,
+                distanceMetric: VectorDistanceMetric.COSINE,
+            });
+
+            expect(field.name).toBe('embedding');
+            expect(field.type).toBe('vector');
+            expect(field.attrs.algorithm).toBe('hnsw');
+            expect(field.attrs.dims).toBe(768);
+            expect(field.attrs.distanceMetric).toBe(VectorDistanceMetric.COSINE);
+        });
+
+        it('should delegate to HNSWVectorField for toRedisField()', () => {
+            const field = new VectorField('embedding', {
+                algorithm: 'hnsw',
+                dims: 384,
+                distanceMetric: VectorDistanceMetric.IP,
+                m: 32,
+                efConstruction: 400,
+            });
+
+            const redisField = field.toRedisField(false);
+
+            expect(redisField.type).toBe('VECTOR');
+            expect(redisField.ALGORITHM).toBe('HNSW');
+            expect(redisField.DIM).toBe(384);
+            expect(redisField.DISTANCE_METRIC).toBe('IP');
+            if (redisField.ALGORITHM === 'HNSW') {
+                expect(redisField.M).toBe(32);
+                expect(redisField.EF_CONSTRUCTION).toBe(400);
+            }
+        });
+
+        it('should support all HNSW-specific attributes', () => {
+            const field = new VectorField('vec', {
+                algorithm: 'hnsw',
+                dims: 512,
+                m: 24,
+                efConstruction: 300,
+                efRuntime: 20,
+                epsilon: 0.05,
+            });
+
+            const redisField = field.toRedisField(false);
+
+            if (redisField.ALGORITHM === 'HNSW') {
+                expect(redisField.M).toBe(24);
+                expect(redisField.EF_CONSTRUCTION).toBe(300);
+                expect(redisField.EF_RUNTIME).toBe(20);
+            }
+            // Note: epsilon is not in Redis field, it's a query parameter
+        });
+
+        it('should apply HNSW defaults when not specified', () => {
+            const field = new VectorField('embedding', {
+                algorithm: 'hnsw',
+                dims: 768,
+            });
+
+            // Defaults should be set by HNSWVectorField constructor
+            const redisField = field.toRedisField(false);
+
+            if (redisField.ALGORITHM === 'HNSW') {
+                expect(redisField.M).toBe(16); // default
+                expect(redisField.EF_CONSTRUCTION).toBe(200); // default
+                expect(redisField.EF_RUNTIME).toBe(10); // default
+            }
+        });
+    });
+
+    describe('VectorField JSON storage support', () => {
+        it('should support JSON storage with AS alias for FLAT', () => {
+            const field = new VectorField('embedding', {
+                algorithm: 'flat',
+                dims: 256,
+                as: '$.vector',
+            });
+
+            const redisField = field.toRedisField(true);
+
+            expect(redisField.AS).toBe('$.vector');
+        });
+
+        it('should support JSON storage with AS alias for HNSW', () => {
+            const field = new VectorField('embedding', {
+                algorithm: 'hnsw',
+                dims: 512,
+                as: '$.embedding',
+            });
+
+            const redisField = field.toRedisField(true);
+
+            expect(redisField.AS).toBe('$.embedding');
+        });
+    });
+
+    describe('VectorField algorithm switching', () => {
+        it('should produce different Redis fields for different algorithms', () => {
+            const flatField = new VectorField('vec', {
+                algorithm: 'flat',
+                dims: 128,
+            });
+
+            const hnswField = new VectorField('vec', {
+                algorithm: 'hnsw',
+                dims: 128,
+            });
+
+            const flatRedis = flatField.toRedisField(false);
+            const hnswRedis = hnswField.toRedisField(false);
+
+            expect(flatRedis.ALGORITHM).toBe('FLAT');
+            expect(hnswRedis.ALGORITHM).toBe('HNSW');
+        });
     });
 });

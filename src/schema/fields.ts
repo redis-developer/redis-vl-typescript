@@ -240,13 +240,21 @@ export class GeoField extends BaseField {
 }
 
 /**
- * Base vector field attributes
+ * Base vector field attributes (for generic VectorField)
  */
 export interface VectorFieldAttrs extends BaseFieldAttrs {
-    algorithm: string;
+    algorithm: 'flat' | 'hnsw';
     dims: number;
     distanceMetric?: VectorDistanceMetric;
     datatype?: VectorDataType;
+    // FLAT-specific
+    blockSize?: number;
+    initialCap?: number;
+    // HNSW-specific
+    m?: number;
+    efConstruction?: number;
+    efRuntime?: number;
+    epsilon?: number;
 }
 
 /**
@@ -352,6 +360,44 @@ export class HNSWVectorField extends BaseField {
         }
 
         return field;
+    }
+}
+
+/**
+ * Generic VectorField that supports both FLAT and HNSW algorithms
+ *
+ * This is a convenience wrapper that delegates to FlatVectorField or HNSWVectorField
+ * based on the algorithm specified. This allows users to write algorithm-agnostic code:
+ *
+ * @example
+ * ```typescript
+ * // Generic approach - algorithm specified in attrs
+ * new VectorField('embedding', { algorithm: 'hnsw', dims: 768 })
+ *
+ * // Algorithm-specific approach - algorithm implied by class
+ * new HNSWVectorField('embedding', { dims: 768 })
+ * ```
+ */
+export class VectorField extends BaseField {
+    private delegateField: FlatVectorField | HNSWVectorField;
+
+    constructor(
+        name: string,
+        public readonly attrs: VectorFieldAttrs
+    ) {
+        super(name, 'vector', attrs);
+
+        // Create the appropriate delegate field based on algorithm
+        if (attrs.algorithm === 'flat') {
+            this.delegateField = new FlatVectorField(name, attrs as FlatVectorFieldAttrs);
+        } else {
+            this.delegateField = new HNSWVectorField(name, attrs as HNSWVectorFieldAttrs);
+        }
+    }
+
+    toRedisField(isJson: boolean): SchemaFlatVectorField | SchemaHNSWVectorField {
+        // Delegate to the appropriate field class
+        return this.delegateField.toRedisField(isJson);
     }
 }
 
