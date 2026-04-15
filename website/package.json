@@ -43,6 +43,13 @@
             "last 5 safari version"
         ]
     },
+    "//": "workaround for an incompatibility between docusaurus 3.10, webpack 5.106 and webpackbar 6.x, see https://github.com/facebook/docusaurus/issues/11923#issuecomment-4222864793",
+    "overrides": {
+        "webpackbar": "^7.0.0"
+    },
+    "resolutions": {
+        "webpackbar": "^7.0.0"
+    },
     "engines": {
         "node": ">=20.0"
     }

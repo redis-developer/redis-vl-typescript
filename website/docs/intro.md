@@ -10,6 +10,7 @@ sidebar_position: 1
 
 - **Schema-driven index management** - Define your data model once, use it everywhere
 - **Vector search abstractions** - Simplified APIs for similarity search and hybrid queries
+- **Advanced tuning** - Algorithm-specific parameters, distance normalization, hybrid policies
 - **AI-native utilities** - Semantic caching, LLM memory, vectorizer integrations
 - **Type safety** - Full TypeScript support with auto-complete and type checking
 - **Production features** - Batch operations, validation, error handling, TTL management
@@ -101,6 +102,9 @@ console.log(`Found ${results.total} products`);
 - Similarity search with metadata filters
 - Hybrid queries (vector + text + numeric)
 - Multiple distance metrics (cosine, L2, IP)
+- Distance normalization for user-friendly 0-1 similarity scores
+- Algorithm-specific tuning (HNSW, FLAT, SVS-VAMANA)
+- Hybrid search policies for optimal performance
 - Range queries and filtering
 
 ### 🤖 AI Extensions

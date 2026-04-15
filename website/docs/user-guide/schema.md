@@ -148,7 +148,17 @@ Location-based search:
 
 ### Vector Fields
 
-Semantic similarity search:
+Semantic similarity search using vector embeddings. RedisVL provides **three approaches** to define vector fields.
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+<TabItem value="object" label="Object-Based" default>
+
+**Best for:** Prototypes, config files, quick development
+
+Simple and concise for basic vector fields:
 
 ```typescript
 {
@@ -162,6 +172,106 @@ Semantic similarity search:
   }
 }
 ```
+
+**Pros:**
+- ✅ Simple and readable
+- ✅ Works with `IndexSchema.fromObject()`
+- ✅ Good for configuration files (YAML/JSON)
+
+**Cons:**
+- ❌ No type checking on attributes
+- ❌ Easy to make mistakes with attribute names
+
+</TabItem>
+
+<TabItem value="class" label="Algorithm-Specific Classes">
+
+**Best for:** Production code, maximum type safety
+
+Use `HNSWVectorField` or `FlatVectorField` for full type safety:
+
+```typescript
+import { HNSWVectorField, FlatVectorField } from 'redisvl';
+
+// HNSW index (most common)
+const hnswField = new HNSWVectorField({
+    name: 'embedding',
+    dims: 768,
+    distanceMetric: 'COSINE',
+    // HNSW-specific parameters
+    m: 16, // Number of bi-directional links (default: 16)
+    efConstruction: 200, // Build-time accuracy (default: 200)
+});
+
+// Flat (brute-force) index
+const flatField = new FlatVectorField({
+    name: 'embedding',
+    dims: 384,
+    distanceMetric: 'L2',
+});
+
+// Use in schema
+schema.addFields([hnswField]);
+```
+
+**Pros:**
+- ✅ Full TypeScript type safety
+- ✅ Auto-completion for algorithm-specific parameters
+- ✅ Compile-time validation
+
+</TabItem>
+
+<TabItem value="generic" label="Generic VectorField">
+
+**Best for:** Configurable systems, reusable components
+
+Use the generic `VectorField` class when you want flexibility:
+
+```typescript
+import { VectorField } from 'redisvl';
+
+// Works with both HNSW and FLAT algorithms
+const field = new VectorField({
+    name: 'embedding',
+    dims: 768,
+    distanceMetric: 'COSINE',
+    algorithm: 'HNSW', // or 'FLAT'
+    // Optional: algorithm-specific parameters
+    m: 16,
+    efConstruction: 200,
+});
+
+schema.addFields([field]);
+```
+
+**Pros:**
+- ✅ Algorithm-agnostic API
+- ✅ Easy to switch between HNSW and FLAT
+- ✅ Still type-safe
+
+**Use when:**
+- Algorithm choice is configurable
+- Building reusable components
+- Need flexibility without sacrificing type safety
+
+</TabItem>
+</Tabs>
+
+#### Vector Field Parameters
+
+**Common Parameters (all approaches):**
+- `name`: Field name in Redis
+- `dims`: Vector dimensions (must match embedding model)
+- `distanceMetric`: `COSINE`, `L2`, or `IP`
+- `datatype`: `float32` (default) or `float64`
+
+**HNSW-Specific Parameters:**
+- `m`: Number of bi-directional links per node (default: 16)
+  - Higher = better recall, more memory
+  - Typical range: 8-64
+- `efConstruction`: Build-time accuracy parameter (default: 200)
+  - Higher = better index quality, slower build
+  - Typical range: 100-500
 
 ## Storage Types
 

@@ -96,157 +96,46 @@ const keys = await index.load(documents, {
 });
 ```
 
-## Vector Search Algorithms
+## Batch Embedding
 
-### FLAT Algorithm
-
-Brute-force search, best for small datasets:
+Generate embeddings for multiple documents efficiently:
 
 ```typescript
-{
-  name: 'embedding',
-  type: 'vector',
-  attrs: {
-    algorithm: 'flat',
-    dims: 384,
-    distance_metric: 'cosine',
-    datatype: 'float32',
-  }
-}
-```
-
-**Characteristics:**
-
-- ✅ 100% recall (finds exact nearest neighbors)
-- ✅ Simple and reliable
-- ❌ Slower for large datasets (>10K vectors)
-
-### HNSW Algorithm
-
-Approximate nearest neighbor search, best for large datasets:
-
-```typescript
-{
-  name: 'embedding',
-  type: 'vector',
-  attrs: {
-    algorithm: 'hnsw',
-    dims: 384,
-    distance_metric: 'cosine',
-    datatype: 'float32',
-    m: 16,              // Number of connections per layer
-    ef_construction: 200, // Build-time accuracy
-    ef_runtime: 10,      // Query-time accuracy
-  }
-}
-```
-
-**Characteristics:**
-
-- ✅ Fast for large datasets (millions of vectors)
-- ✅ Configurable accuracy/speed tradeoff
-- ❌ Approximate results (may miss some neighbors)
-
-## Distance Metrics
-
-Choose based on your embedding model:
-
-| Metric     | Formula              | Use Case                            |
-| ---------- | -------------------- | ----------------------------------- |
-| **COSINE** | `1 - (A·B)/(‖A‖‖B‖)` | Normalized embeddings (most common) |
-| **L2**     | `√Σ(Aᵢ-Bᵢ)²`         | Euclidean distance                  |
-| **IP**     | `-A·B`               | Inner product (for specific models) |
-
-```typescript
-{
-  name: 'embedding',
-  type: 'vector',
-  attrs: {
-    distance_metric: 'cosine'  // or 'l2' or 'ip'
-  }
-}
-```
-
-## Vector Search
-
-Perform semantic similarity search using KNN (K-Nearest Neighbors):
-
-```typescript
-import { VectorQuery } from 'redisvl';
-
-// Generate query embedding
-const queryEmbedding = await vectorizer.embed('Tell me about Redis');
-
-// Create vector search query
-const query = new VectorQuery({
-    vector: queryEmbedding,
-    vectorField: 'embedding',
-    numResults: 5,
-    returnFields: ['title', 'content'],
+const vectorizer = new HuggingFaceVectorizer({
+    model: 'Xenova/all-MiniLM-L6-v2',
 });
 
-// Execute search
-const results = await index.search(query);
+const documents = [
+    'Redis is an in-memory database',
+    'Vector search enables semantic similarity',
+    'Machine learning models generate embeddings',
+];
 
-results.documents.forEach((doc, i) => {
-    console.log(`${i + 1}. ${doc.title}`);
-    console.log(`   Similarity: ${doc.vector_distance}`);
-});
+// Generate all embeddings at once
+const embeddings = await vectorizer.embedMany(documents);
+console.log(embeddings.length); // 3
+console.log(embeddings[0].length); // 384
 ```
 
-### With Filters
+## Normalization
 
-Combine vector search with metadata filters:
+Enable normalization for cosine similarity:
 
 ```typescript
-const query = new VectorQuery({
-    vector: await vectorizer.embed('machine learning'),
-    vectorField: 'embedding',
-    filter: '@category:{AI} @rating:[4.0 5.0]',
-    numResults: 10,
+const vectorizer = new HuggingFaceVectorizer({
+    model: 'Xenova/all-MiniLM-L6-v2',
+    normalize: true, // Normalizes vectors to unit length
 });
 
-const results = await index.search(query);
-// Returns only AI category docs with rating >= 4.0, ranked by similarity
+const embedding = await vectorizer.embed('Hello world');
+// Vector is normalized: √(Σxᵢ²) = 1.0
 ```
 
-### JSON Storage
-
-Vector search works with both HASH and JSON storage types:
-
-```typescript
-// Define schema with JSON storage
-const schema = IndexSchema.fromObject({
-    index: {
-        name: 'documents',
-        storage_type: 'json', // JSON storage for nested data
-    },
-    fields: [
-        { name: '$.title', type: 'text', attrs: { as: 'title' } },
-        { name: '$.metadata.category', type: 'tag', attrs: { as: 'category' } },
-        {
-            name: '$.embedding',
-            type: 'vector',
-            attrs: {
-                as: 'embedding',
-                dims: 384,
-                algorithm: 'hnsw',
-                distanceMetric: 'cosine',
-            },
-        },
-    ],
-});
-
-// Search with nested field filters
-const query = new VectorQuery({
-    vector: queryEmbedding,
-    vectorField: 'embedding',
-    filter: '@category:{AI}', // Uses alias from attrs.as
-    numResults: 5,
-});
-```
-
-See [Search Index](./search-index) documentation for more vector search options.
+**When to normalize:**
+- ✅ Using COSINE distance metric (recommended)
+- ✅ Comparing vectors from different sources
+- ❌ Using L2 distance (normalization changes distances)
+- ❌ Using Inner Product with specific requirements
 
 ## Error Handling
 
@@ -269,6 +158,7 @@ try {
 
 ## Next Steps
 
-- [Schema](./schema) - Define vector fields
-- [Search Index](./search-index) - Load and search data
+- [Schema](./schema) - Define vector fields and choose algorithms
+- [Search Index](./search-index) - Perform vector search with your embeddings
+- [Advanced Vector Search](./advanced-vector-search) - Tune search performance
 - [API Reference](../api/) - Complete API documentation

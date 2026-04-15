@@ -9,10 +9,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Language](https://img.shields.io/badge/language-TypeScript-blue)
 ![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)
+![Status](https://img.shields.io/badge/status-beta-orange)
 
 **[Browse Recipes](https://github.com/redis-developer/redis-ai-resources)**
 
 </div>
+
+---
+
+> **⚠️** RedisVL TypeScript is in active development. APIs may change before v1.0 release.
 
 ---
 
@@ -95,7 +100,7 @@ RedisVL is a TypeScript client for building AI applications on Redis. It sits on
 - **Embeddings** - Generate vectors with HuggingFace (local, no API key)
 - **Type Safety** - Full TypeScript support
 
-📚 **[Read the full documentation →](https://redis.github.io/redis-vl-typescript/)**
+📚 **[Read the full documentation →](https://redis-developer.github.io/docs/redis-vl-typescript/)**
 
 ## Features
 
@@ -121,7 +126,7 @@ const schema = IndexSchema.fromObject({
 });
 ```
 
-**[Learn more about schemas →](https://redis.github.io/redis-vl-typescript/user-guide/schema)**
+**[Learn more about schemas →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/schema)**
 
 ### Index Operations
 
@@ -138,7 +143,7 @@ const index = new SearchIndex(schema, client);
 await index.create();
 ```
 
-**[Learn more about indexes →](https://redis.github.io/redis-vl-typescript/user-guide/search-index)**
+**[Learn more about indexes →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/search-index)**
 
 ### Data Loading & Retrieval
 
@@ -158,7 +163,7 @@ const doc = await index.fetch('1');
 const docs = await index.fetchMany(['1', '2']);
 ```
 
-**[Learn more about CRUD operations →](https://redis.github.io/redis-vl-typescript/user-guide/search-index#crud-operations)**
+**[Learn more about CRUD operations →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/search-index#crud-operations)**
 
 ### Vector Search
 
@@ -182,7 +187,7 @@ results.documents.forEach((doc) => {
 });
 ```
 
-**[Learn more about vector search →](https://redis.github.io/redis-vl-typescript/user-guide/search-index#vector-search)**
+**[Learn more about vector search →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/search-index#vector-search)**
 
 ### Vectorizers
 
@@ -206,7 +211,7 @@ await index.load(documents, {
 });
 ```
 
-**[Learn more about vectorizers →](https://redis.github.io/redis-vl-typescript/user-guide/vectorizers)**
+**[Learn more about vectorizers →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/vectorizers)**
 
 ## Coming Soon
 

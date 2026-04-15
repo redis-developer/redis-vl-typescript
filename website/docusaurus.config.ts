@@ -74,6 +74,14 @@ const config: Config = {
     ],
 
     themeConfig: {
+        announcementBar: {
+            id: 'active_development',
+            content:
+                '⚠️ RedisVL TypeScript is in active development. APIs may change before v1.0 release.',
+            backgroundColor: '#DCFF1C',
+            textColor: '#000000',
+            isCloseable: true,
+        },
         image: 'img/logo.svg',
         colorMode: {
             respectPrefersColorScheme: true,

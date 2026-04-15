@@ -18,7 +18,12 @@ const sidebars: SidebarsConfig = {
         {
             type: 'category',
             label: 'User Guide',
-            items: ['user-guide/schema', 'user-guide/search-index', 'user-guide/vectorizers'],
+            items: [
+                'user-guide/schema',
+                'user-guide/search-index',
+                'user-guide/advanced-vector-search',
+                'user-guide/vectorizers',
+            ],
         },
         {
             type: 'category',

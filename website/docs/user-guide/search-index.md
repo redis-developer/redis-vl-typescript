@@ -240,6 +240,86 @@ const results = await index.search(query);
 // Each document only contains 'title' and 'price'
 ```
 
+## Vector Search Algorithms
+
+Redis supports two vector indexing algorithms. Choose based on your dataset size and accuracy requirements.
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+<TabItem value="hnsw" label="HNSW (Recommended)" default>
+
+**Best for:** Large datasets (10,000+ vectors), production use
+
+HNSW (Hierarchical Navigable Small World) provides fast approximate nearest neighbor search.
+
+```typescript
+import { HNSWVectorField } from 'redisvl';
+
+const schema = new IndexSchema('products');
+schema.addFields([
+    new HNSWVectorField({
+        name: 'embedding',
+        dims: 384,
+        distanceMetric: 'COSINE',
+        m: 16,              // Connections per layer (default: 16)
+        efConstruction: 200, // Build accuracy (default: 200)
+    }),
+]);
+```
+
+**Characteristics:**
+- ✅ Fast queries on millions of vectors
+- ✅ Configurable accuracy/speed tradeoff
+- ✅ Supports tuning with `efRuntime` and `epsilon` parameters
+- ⚠️ Approximate results (>95% recall typically)
+- ⚠️ Higher memory usage
+
+**When to use:**
+- Dataset: 10,000+ vectors
+- Speed matters more than perfect accuracy
+- Production applications
+
+</TabItem>
+
+<TabItem value="flat" label="FLAT (Exact Search)">
+
+**Best for:** Small datasets (under 10,000 vectors), 100% accuracy required
+
+FLAT performs brute-force search computing distance to every vector.
+
+```typescript
+import { FlatVectorField } from 'redisvl';
+
+const schema = new IndexSchema('products');
+schema.addFields([
+    new FlatVectorField({
+        name: 'embedding',
+        dims: 384,
+        distanceMetric: 'COSINE',
+        // No algorithm-specific parameters
+    }),
+]);
+```
+
+**Characteristics:**
+- ✅ 100% recall (exact nearest neighbors)
+- ✅ Simple and reliable
+- ✅ Lower memory usage
+- ❌ Slower for large datasets
+- ❌ No performance tuning options
+
+**When to use:**
+- Dataset: Under 10,000 vectors
+- Need exact results (no approximation)
+- Development and testing
+
+</TabItem>
+</Tabs>
+
+**Note:** The algorithm is defined in your schema during index creation. You cannot change it later without recreating the index. See [Schema Documentation](./schema#vector-fields) for more details.
+
 ### Distance Metrics
 
 Specify the distance metric (must match schema):
@@ -254,6 +334,35 @@ const query = new VectorQuery({
     numResults: 10,
 });
 ```
+
+### Distance Normalization
+
+Convert distance scores to user-friendly 0-1 similarity scores:
+
+```typescript
+const query = new VectorQuery({
+    vector: queryEmbedding,
+    vectorField: 'embedding',
+    distanceMetric: VectorDistanceMetric.COSINE,
+    normalizeDistance: true, // Convert to 0-1 range
+    numResults: 10,
+});
+
+const results = await index.search(query);
+results.documents.forEach((doc) => {
+    // Score is now between 0 and 1 (1 = most similar)
+    console.log(`Similarity: ${(doc.score * 100).toFixed(1)}%`);
+});
+```
+
+**Why use normalization?**
+- Different metrics return different ranges (COSINE: 0-2, L2: 0-∞, IP: -∞-∞)
+- Normalized scores are easier to interpret in user-facing applications
+- Enables consistent scoring across different metrics
+
+**Note:** Works with all distance metrics (COSINE, L2, IP)
+
+For more details on distance normalization and advanced parameters, see [Advanced Vector Search](./advanced-vector-search).
 
 ### Custom Score Alias
 
