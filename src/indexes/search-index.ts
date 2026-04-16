@@ -381,7 +381,13 @@ export class SearchIndex {
                 : this.schema.index.prefix;
 
             // Build full key with prefix and separator
-            const fullKey = `${prefix}${this.schema.index.keySeparator}${key}`;
+            // Normalize prefix by removing trailing separator to avoid double separators (e.g. ::)
+            const normalizedPrefix = prefix.endsWith(this.schema.index.keySeparator)
+                ? prefix.slice(0, -this.schema.index.keySeparator.length)
+                : prefix;
+            const fullKey = normalizedPrefix
+                ? `${normalizedPrefix}${this.schema.index.keySeparator}${key}`
+                : key;
 
             // Fetch using storage layer
             const results = await this.storage.get(this.client, [fullKey]);
@@ -420,7 +426,13 @@ export class SearchIndex {
                 : this.schema.index.prefix;
 
             // Build full keys with prefix and separator
-            const fullKeys = keys.map((key) => `${prefix}${this.schema.index.keySeparator}${key}`);
+            // Normalize prefix by removing trailing separator to avoid double separators (e.g. ::)
+            const normalizedPrefix = prefix.endsWith(this.schema.index.keySeparator)
+                ? prefix.slice(0, -this.schema.index.keySeparator.length)
+                : prefix;
+            const fullKeys = normalizedPrefix
+                ? keys.map((key) => `${normalizedPrefix}${this.schema.index.keySeparator}${key}`)
+                : keys;
 
             // Fetch using storage layer with pipelining
             return await this.storage.get(this.client, fullKeys, batchSize);
