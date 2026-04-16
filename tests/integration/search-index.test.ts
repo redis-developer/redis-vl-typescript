@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 import { IndexSchema, SearchIndex } from '../../src/index.js';
 
-describe('SearchIndex CRUD Operations (Integration)', () => {
+// Use naming convention (redisvl-test-*, rvl-test-*) to identify test data.
+describe('SearchIndex Integration Tests', () => {
     let client: RedisClientType;
-    let index: SearchIndex;
 
     beforeAll(async () => {
         client = createClient({
@@ -14,14 +14,478 @@ describe('SearchIndex CRUD Operations (Integration)', () => {
     });
 
     afterAll(async () => {
-        if (index) {
-            try {
-                await index.delete();
-            } catch (error) {
-                // Ignore if already deleted
-            }
-        }
         await client.quit();
+    });
+
+    describe('create() and exists()', () => {
+        it('should create SearchIndex from IndexSchema.fromObject()', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-fromobject',
+                    prefix: 'rvl-test-fromobject',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'price', type: 'numeric' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+            const createResult = await index.create();
+
+            // Verify create succeeded
+            expect(['OK', undefined]).toContain(createResult);
+            expect(await index.exists()).toBe(true);
+            expect(index.schema.index.name).toBe('redisvl-test-searchindex-fromobject');
+        });
+
+        it('should create SearchIndex from IndexSchema.fromYAML()', async () => {
+            // First, create a test YAML file
+            const yaml = require('yaml');
+            const fs = require('fs');
+            const path = require('path');
+
+            const testYamlPath = path.join(__dirname, 'test-schema.yaml');
+            const schemaData = {
+                index: {
+                    name: 'redisvl-test-searchindex-fromyaml',
+                    prefix: 'rvl-test-fromyaml',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'description', type: 'text' },
+                    { name: 'category', type: 'tag' },
+                ],
+            };
+
+            // Write YAML file
+            fs.writeFileSync(testYamlPath, yaml.stringify(schemaData));
+
+            const index = new SearchIndex(await IndexSchema.fromYAML(testYamlPath), client);
+
+            const createResult = await index.create();
+
+            // Verify create succeeded
+            expect(['OK', undefined]).toContain(createResult);
+            expect(await index.exists()).toBe(true);
+            expect(index.schema.index.name).toBe('redisvl-test-searchindex-fromyaml');
+
+            // Test that we can use it - verify full integration
+            const loadedKeys = await index.load([
+                { title: 'Test', description: 'YAML test', category: 'test' },
+            ]);
+            expect(loadedKeys.length).toBe(1);
+
+            const keys = await client.keys('rvl-test-fromyaml:*');
+            expect(keys.length).toBeGreaterThan(0);
+
+            // Cleanup YAML file
+            if (fs.existsSync(testYamlPath)) {
+                fs.unlinkSync(testYamlPath);
+            }
+        });
+
+        it('should check that non-existent index does not exist', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-nonexistent',
+                    prefix: 'rvl-test-nonexistent',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema, client);
+            const exists = await index.exists();
+            expect(exists).toBe(false);
+            // No cleanup needed - index was never created
+        });
+
+        it('should overwrite existing index when overwrite=true', async () => {
+            const schema1 = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-overwrite',
+                    prefix: 'rvl-test-overwrite',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema1, client);
+            await index.create();
+
+            // Add some data to the first index
+            const loadedKeys = await index.load([{ title: 'Original document' }]);
+            expect(loadedKeys.length).toBe(1);
+
+            // Verify data exists before overwrite
+            const keysBefore = await client.keys('rvl-test-overwrite:*');
+            expect(keysBefore.length).toBeGreaterThan(0);
+
+            // Create a new schema with DIFFERENT fields
+            const schema2 = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-overwrite',
+                    prefix: 'rvl-test-overwrite',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'description', type: 'text' }, // NEW FIELD
+                    { name: 'category', type: 'tag' }, // ANOTHER NEW FIELD
+                ],
+            });
+
+            const newIndex = new SearchIndex(schema2, client);
+
+            // Overwrite with new schema (drop old data)
+            await newIndex.create({ overwrite: true, drop: true });
+
+            // Verify index still exists
+            expect(await newIndex.exists()).toBe(true);
+
+            // Verify old data was dropped
+            const keysAfter = await client.keys('rvl-test-overwrite:*');
+            expect(keysAfter.length).toBe(0);
+
+            // Verify we can load data with the NEW schema (has description and category fields)
+            const newKeys = await newIndex.load([
+                { title: 'New doc', description: 'Test', category: 'test' },
+            ]);
+            expect(newKeys.length).toBe(1);
+        });
+
+        it('should NOT overwrite when overwrite=false and index exists', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-no-overwrite',
+                    prefix: 'rvl-test-no-overwrite',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema, client);
+
+            await index.create({ overwrite: true, drop: true }); // Clean start
+
+            // Add data
+            const keysAdded = await index.load([{ title: 'Original' }]);
+            const keyCountBefore = keysAdded.length;
+
+            // Try to create again without overwrite (should be a no-op)
+            await index.create({ overwrite: false });
+
+            // Data should still be there - same count as before
+            const keys = await client.keys('rvl-test-no-overwrite:*');
+            expect(keys.length).toBe(keyCountBefore);
+        });
+    });
+
+    describe('delete()', () => {
+        it('should delete index without dropping documents', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-delete',
+                    prefix: 'rvl-test-delete',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            // Load some data
+            const loadedKeys = await index.load([{ title: 'Test Document' }]);
+            expect(loadedKeys.length).toBe(1);
+
+            // Delete index without dropping docs
+            const deleteResult = await index.delete({ drop: false });
+
+            // Verify delete returned OK
+            expect(deleteResult).toBe('OK');
+
+            // Index should not exist
+            expect(await index.exists()).toBe(false);
+
+            // But keys should still exist in Redis
+            const keys = await client.keys('rvl-test-delete:*');
+            expect(keys.length).toBeGreaterThan(0);
+        });
+
+        it('should delete index and drop documents when drop=true', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-delete-drop',
+                    prefix: 'rvl-test-delete-drop',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            // Load some data
+            const loadedKeys = await index.load([{ title: 'Test Document' }]);
+            expect(loadedKeys.length).toBe(1);
+
+            // Delete index and drop docs
+            const deleteResult = await index.delete({ drop: true });
+
+            // Verify delete returned OK
+            expect(deleteResult).toBe('OK');
+
+            // Index should not exist
+            expect(await index.exists()).toBe(false);
+
+            // Keys should be deleted
+            const keys = await client.keys('rvl-test-delete-drop:*');
+            expect(keys.length).toBe(0);
+
+            // No cleanup needed - everything was deleted
+        });
+    });
+
+    describe('info()', () => {
+        it('should return index information', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-info',
+                    prefix: 'rvl-test-info',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'category', type: 'tag' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            const info = await index.info();
+
+            // Verify basic index info
+            expect(info.index_name).toBe('redisvl-test-searchindex-info');
+            expect(info.attributes).toBeDefined();
+            expect(Array.isArray(info.attributes)).toBe(true);
+        });
+
+        it('should throw error when getting info for non-existent index', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-info-nonexistent',
+                    prefix: 'rvl-test-info-nonexistent',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const nonExistentIndex = new SearchIndex(schema, client);
+
+            await expect(nonExistentIndex.info()).rejects.toThrow();
+        });
+    });
+
+    describe('load()', () => {
+        it('should load documents and return generated keys', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-load',
+                    prefix: 'rvl-test-load',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'content', type: 'text' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+
+            await index.create();
+
+            const data = [
+                { title: 'Doc 1', content: 'Content 1' },
+                { title: 'Doc 2', content: 'Content 2' },
+            ];
+
+            const keys = await index.load(data);
+
+            // Should return array of keys
+            expect(keys).toHaveLength(2);
+            expect(keys[0]).toMatch(/^rvl-test-load:[A-Z0-9_-]+$/);
+
+            // Verify data was loaded
+            const fetchedDoc = await index.fetch(keys[0].split(':')[1]);
+            expect(fetchedDoc).toMatchObject({ title: 'Doc 1', content: 'Content 1' });
+        });
+
+        it('should load documents with custom ID field', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-load-customid',
+                    prefix: 'rvl-test-load-customid',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'product_id', type: 'tag' },
+                    { name: 'title', type: 'text' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            const data = [
+                { product_id: 'PROD-001', title: 'Product 1' },
+                { product_id: 'PROD-002', title: 'Product 2' },
+            ];
+
+            const keys = await index.load(data, { idField: 'product_id' });
+
+            // Should use custom IDs
+            expect(keys).toContain('rvl-test-load-customid:PROD-001');
+            expect(keys).toContain('rvl-test-load-customid:PROD-002');
+
+            // Verify we can fetch by custom ID
+            const doc = await index.fetch('PROD-001');
+            expect(doc).toMatchObject({ product_id: 'PROD-001', title: 'Product 1' });
+        });
+
+        it('should load documents with preprocessing function', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-load-preprocess',
+                    prefix: 'rvl-test-load-preprocess',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'uppercase_title', type: 'text' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            const data = [{ title: 'hello world' }];
+
+            const preprocess = async (doc: Record<string, unknown>) => {
+                return {
+                    ...doc,
+                    uppercase_title: (doc.title as string).toUpperCase(),
+                };
+            };
+
+            const keys = await index.load(data, { preprocess });
+
+            // Verify preprocessing was applied
+            const fetchedDoc = await index.fetch(keys[0].split(':')[1]);
+            expect(fetchedDoc).toMatchObject({
+                title: 'hello world',
+                uppercase_title: 'HELLO WORLD',
+            });
+        });
+
+        it('should validate data when validateOnLoad=true', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-validate',
+                    prefix: 'rvl-test-validate',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'price', type: 'numeric' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client, true);
+            await index.create();
+
+            const validData = [{ title: 'Product 1', price: 100 }];
+            const invalidData = [{ title: 'Product 2', price: 'not-a-number' }];
+
+            // Valid data should load and return keys
+            const keys = await index.load(validData);
+            expect(keys).toBeDefined();
+            expect(keys.length).toBe(1);
+
+            // Invalid data should throw
+            await expect(index.load(invalidData)).rejects.toThrow();
+        });
+
+        it('should skip validation when validateOnLoad=false', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-novalidate',
+                    prefix: 'rvl-test-novalidate',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'price', type: 'numeric' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client, false);
+            await index.create();
+
+            const invalidData = [{ title: 'Product', price: 'not-a-number' }];
+
+            // Should NOT throw even with invalid data, and should return keys
+            const keys = await index.load(invalidData);
+            expect(keys).toBeDefined();
+            expect(keys.length).toBe(1);
+        });
+
+        it('should set TTL on loaded documents when ttl option is provided', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-ttl',
+                    prefix: 'rvl-test-ttl',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            const data = [{ title: 'Expiring Document' }];
+            const keys = await index.load(data, { ttl: 30 });
+
+            // Check TTL was set (should be around 30 seconds)
+            const ttl = await client.ttl(keys[0]);
+            expect(ttl).toBeGreaterThan(0);
+            expect(ttl).toBeLessThanOrEqual(30);
+        });
+
+        it('should not set TTL when ttl option is not provided', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-nottl',
+                    prefix: 'rvl-test-nottl',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            const data = [{ title: 'Persistent Document' }];
+            const keys = await index.load(data);
+
+            // TTL should be -1 (no expiration)
+            const ttl = await client.ttl(keys[0]);
+            expect(ttl).toBe(-1);
+        });
     });
 
     describe('fetch()', () => {
@@ -40,7 +504,7 @@ describe('SearchIndex CRUD Operations (Integration)', () => {
                 ],
             });
 
-            index = new SearchIndex(schema, client);
+            const index = new SearchIndex(schema, client);
             await index.create();
 
             // Load data (auto-generates ULID keys)
@@ -110,7 +574,7 @@ describe('SearchIndex CRUD Operations (Integration)', () => {
                 ],
             });
 
-            index = new SearchIndex(schema, client);
+            const index = new SearchIndex(schema, client);
             await index.create();
 
             const data = [
@@ -148,7 +612,7 @@ describe('SearchIndex CRUD Operations (Integration)', () => {
                 ],
             });
 
-            index = new SearchIndex(schema, client);
+            const index = new SearchIndex(schema, client);
             await index.create();
 
             // Load data with custom IDs
@@ -158,7 +622,8 @@ describe('SearchIndex CRUD Operations (Integration)', () => {
                 { id: 'P003', name: 'Product 3', price: 30.99 },
             ];
 
-            await index.load(products, { idField: 'id' });
+            const loadedKeys = await index.load(products, { idField: 'id' });
+            expect(loadedKeys.length).toBe(3);
 
             // Test fetch() with custom IDs
             const product1 = await index.fetch('P001');
@@ -187,7 +652,7 @@ describe('SearchIndex CRUD Operations (Integration)', () => {
                 ],
             });
 
-            index = new SearchIndex(schema, client);
+            const index = new SearchIndex(schema, client);
             await index.create();
 
             const items = [
