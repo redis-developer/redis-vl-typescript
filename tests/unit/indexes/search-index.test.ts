@@ -12,8 +12,8 @@ describe('SearchIndex', () => {
     beforeEach(() => {
         // Create a basic schema for testing
         const indexInfo = new IndexInfo({
-            name: 'test-index',
-            prefix: 'test',
+            name: 'redisvl-test-index',
+            prefix: 'rvl-test',
             storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
 
@@ -56,7 +56,7 @@ describe('SearchIndex', () => {
 
             expect(index).toBeDefined();
             expect(index.schema).toBe(schema);
-            expect(index.name).toBe('test-index');
+            expect(index.name).toBe('redisvl-test-index');
         });
 
         it('should throw RedisVLError if schema is not an IndexSchema instance', () => {
@@ -87,13 +87,14 @@ describe('SearchIndex', () => {
             await index.create();
 
             expect(mockClient.ft.create).toHaveBeenCalledWith(
-                'test-index',
+                'redisvl-test-index',
                 expect.objectContaining({
+                    id: expect.objectContaining({ type: 'TAG' }),
                     title: expect.objectContaining({ type: 'TEXT' }),
                 }),
                 expect.objectContaining({
                     ON: 'HASH',
-                    PREFIX: 'test',
+                    PREFIX: 'rvl-test',
                 })
             );
         });
@@ -101,8 +102,8 @@ describe('SearchIndex', () => {
         it('should throw error if no fields are defined', async () => {
             const emptySchema = new IndexSchema({
                 index: new IndexInfo({
-                    name: 'empty',
-                    prefix: 'empty',
+                    name: 'redisvl-test-nofield',
+                    prefix: 'rvl-test-nofield',
                     storageType: StorageType.HASH,
                 }),
             });
@@ -115,7 +116,7 @@ describe('SearchIndex', () => {
 
         it('should not overwrite existing index by default', async () => {
             (mockClient.ft.create as any).mockResolvedValue('OK');
-            (mockClient.ft.info as any).mockResolvedValue({ index_name: 'test-index' }); // Index exists
+            (mockClient.ft.info as any).mockResolvedValue({ index_name: 'redisvl-test-index' }); // Index exists
 
             const index = new SearchIndex(schema, mockClient);
             await index.create();
@@ -128,37 +129,39 @@ describe('SearchIndex', () => {
         it('should overwrite existing index when overwrite=true', async () => {
             (mockClient.ft.create as any).mockResolvedValue('OK');
             (mockClient.ft.dropIndex as any).mockResolvedValue('OK');
-            (mockClient.ft._list as any).mockResolvedValue(['test-index']); // Index exists
+            (mockClient.ft._list as any).mockResolvedValue(['redisvl-test-index']); // Index exists
 
             const index = new SearchIndex(schema, mockClient);
             await index.create({ overwrite: true });
 
-            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('test-index');
+            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('redisvl-test-index');
             expect(mockClient.ft.create).toHaveBeenCalled();
         });
 
         it('should drop data when overwrite=true and drop=true', async () => {
             (mockClient.ft.create as any).mockResolvedValue('OK');
             (mockClient.ft.dropIndex as any).mockResolvedValue('OK');
-            (mockClient.ft._list as any).mockResolvedValue(['test-index']); // Index exists
+            (mockClient.ft._list as any).mockResolvedValue(['redisvl-test-index']); // Index exists
 
             const index = new SearchIndex(schema, mockClient);
             await index.create({ overwrite: true, drop: true });
 
-            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('test-index', { DD: true });
+            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('redisvl-test-index', {
+                DD: true,
+            });
             expect(mockClient.ft.create).toHaveBeenCalled();
         });
     });
 
     describe('exists()', () => {
         it('should return true if index exists', async () => {
-            (mockClient.ft.info as any).mockResolvedValue({ index_name: 'test-index' });
+            (mockClient.ft.info as any).mockResolvedValue({ index_name: 'redisvl-test-index' });
 
             const index = new SearchIndex(schema, mockClient);
             const exists = await index.exists();
 
             expect(exists).toBe(true);
-            expect(mockClient.ft.info).toHaveBeenCalledWith('test-index');
+            expect(mockClient.ft.info).toHaveBeenCalledWith('redisvl-test-index');
         });
 
         it('should return false if index does not exist', async () => {
@@ -178,7 +181,7 @@ describe('SearchIndex', () => {
             const index = new SearchIndex(schema, mockClient);
             await index.delete();
 
-            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('test-index');
+            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('redisvl-test-index');
         });
 
         it('should drop data when drop=true', async () => {
@@ -187,7 +190,9 @@ describe('SearchIndex', () => {
             const index = new SearchIndex(schema, mockClient);
             await index.delete({ drop: true });
 
-            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('test-index', { DD: true });
+            expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('redisvl-test-index', {
+                DD: true,
+            });
         });
 
         it('should handle errors when deleting non-existent index', async () => {
@@ -202,7 +207,7 @@ describe('SearchIndex', () => {
     describe('info()', () => {
         it('should return index information', async () => {
             const mockInfo = {
-                index_name: 'test-index',
+                index_name: 'redisvl-test-index',
                 num_docs: 100,
                 num_records: 100,
             };
@@ -213,7 +218,7 @@ describe('SearchIndex', () => {
             const info = await index.info();
 
             expect(info).toEqual(mockInfo);
-            expect(mockClient.ft.info).toHaveBeenCalledWith('test-index');
+            expect(mockClient.ft.info).toHaveBeenCalledWith('redisvl-test-index');
         });
 
         it('should handle errors when fetching info for non-existent index', async () => {
@@ -232,8 +237,8 @@ describe('SearchIndex', () => {
         beforeEach(() => {
             // HASH storage schema
             const hashIndexInfo = new IndexInfo({
-                name: 'hash-index',
-                prefix: 'doc',
+                name: 'redisvl-test-hash',
+                prefix: 'rvl-test-hash',
                 storageType: StorageType.HASH,
             });
             hashSchema = new IndexSchema({ index: hashIndexInfo });
@@ -243,8 +248,8 @@ describe('SearchIndex', () => {
 
             // JSON storage schema
             const jsonIndexInfo = new IndexInfo({
-                name: 'json-index',
-                prefix: 'doc',
+                name: 'redisvl-test-json',
+                prefix: 'rvl-test-json',
                 storageType: StorageType.JSON,
             });
             jsonSchema = new IndexSchema({ index: jsonIndexInfo });
@@ -273,8 +278,8 @@ describe('SearchIndex', () => {
                 const keys = await index.load(data);
 
                 expect(keys).toHaveLength(2);
-                expect(keys[0]).toMatch(/^doc:/); // Should start with prefix
-                expect(keys[1]).toMatch(/^doc:/);
+                expect(keys[0]).toMatch(/^rvl-test-hash:/); // Should start with prefix
+                expect(keys[1]).toMatch(/^rvl-test-hash:/);
                 expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(2);
                 expect((mockClient as any).mockPipeline.execAsPipeline).toHaveBeenCalled();
             });
@@ -288,10 +293,10 @@ describe('SearchIndex', () => {
 
                 const keys = await index.load(data, { idField: 'id' });
 
-                expect(keys).toEqual(['doc:user1', 'doc:user2']);
+                expect(keys).toEqual(['rvl-test-hash:user1', 'rvl-test-hash:user2']);
                 expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(2);
                 expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledWith(
-                    'doc:user1',
+                    'rvl-test-hash:user1',
                     expect.objectContaining({ id: 'user1', title: 'Document 1', score: 100 })
                 );
             });
@@ -302,14 +307,14 @@ describe('SearchIndex', () => {
                     { title: 'Document 1', score: 100 },
                     { title: 'Document 2', score: 200 },
                 ];
-                const customKeys = ['doc:custom1', 'doc:custom2'];
+                const customKeys = ['rvl-test-hash:custom1', 'rvl-test-hash:custom2'];
 
                 const keys = await index.load(data, { keys: customKeys });
 
                 expect(keys).toEqual(customKeys);
                 expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledTimes(2);
                 expect((mockClient as any).mockPipeline.hSet).toHaveBeenCalledWith(
-                    'doc:custom1',
+                    'rvl-test-hash:custom1',
                     expect.objectContaining({ title: 'Document 1', score: 100 })
                 );
             });
@@ -376,8 +381,8 @@ describe('SearchIndex', () => {
                 const keys = await index.load(data);
 
                 expect(keys).toHaveLength(2);
-                expect(keys[0]).toMatch(/^doc:/);
-                expect(keys[1]).toMatch(/^doc:/);
+                expect(keys[0]).toMatch(/^rvl-test-json:/);
+                expect(keys[1]).toMatch(/^rvl-test-json:/);
                 expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(2);
                 expect((mockClient as any).mockPipeline.execAsPipeline).toHaveBeenCalled();
             });
@@ -391,10 +396,10 @@ describe('SearchIndex', () => {
 
                 const keys = await index.load(data, { idField: 'id' });
 
-                expect(keys).toEqual(['doc:user1', 'doc:user2']);
+                expect(keys).toEqual(['rvl-test-json:user1', 'rvl-test-json:user2']);
                 expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(2);
                 expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledWith(
-                    'doc:user1',
+                    'rvl-test-json:user1',
                     '$',
                     expect.objectContaining({ id: 'user1', title: 'Document 1', score: 100 })
                 );
@@ -406,7 +411,7 @@ describe('SearchIndex', () => {
                     { title: 'Document 1', score: 100 },
                     { title: 'Document 2', score: 200 },
                 ];
-                const customKeys = ['doc:custom1', 'doc:custom2'];
+                const customKeys = ['rvl-test-json:custom1', 'rvl-test-json:custom2'];
 
                 const keys = await index.load(data, { keys: customKeys });
 
@@ -464,8 +469,8 @@ describe('SearchIndex', () => {
             it('should fetch single document by key (HASH storage)', async () => {
                 // Create index with HASH storage
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-data-fetch-hash',
+                    prefix: 'rvl-test-data-fetch-hash',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -492,14 +497,14 @@ describe('SearchIndex', () => {
 
                 // Assert document matches
                 expect(result).toEqual(mockDoc);
-                expect(mockHGetAll).toHaveBeenCalledWith('user:123');
+                expect(mockHGetAll).toHaveBeenCalledWith('rvl-test-data-fetch-hash:123');
             });
 
             it('should fetch single document by key (JSON storage)', async () => {
                 // Create index with JSON storage
                 const indexInfo = new IndexInfo({
-                    name: 'product-index',
-                    prefix: 'product',
+                    name: 'redisvl-test-data-fetch-json',
+                    prefix: 'rvl-test-data-fetch-json',
                     storageType: StorageType.JSON,
                 });
                 const jsonSchema = new IndexSchema({ index: indexInfo });
@@ -528,13 +533,13 @@ describe('SearchIndex', () => {
 
                 // Assert document matches
                 expect(result).toEqual(mockDoc);
-                expect(mockJsonGet).toHaveBeenCalledWith('product:456');
+                expect(mockJsonGet).toHaveBeenCalledWith('rvl-test-data-fetch-json:456');
             });
 
             it('should return null for non-existent key (HASH storage)', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-data-fetch-hash',
+                    prefix: 'rvl-test-data-fetch-hash',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -556,13 +561,13 @@ describe('SearchIndex', () => {
 
                 // Assert returns null
                 expect(result).toBeNull();
-                expect(mockHGetAll).toHaveBeenCalledWith('user:999');
+                expect(mockHGetAll).toHaveBeenCalledWith('rvl-test-data-fetch-hash:999');
             });
 
             it('should return null for non-existent key (JSON storage)', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'product-index',
-                    prefix: 'product',
+                    name: 'redisvl-test-fetch-nonexistent-json',
+                    prefix: 'rvl-test-fetch-nonexistent-json',
                     storageType: StorageType.JSON,
                 });
                 const jsonSchema = new IndexSchema({ index: indexInfo });
@@ -586,13 +591,13 @@ describe('SearchIndex', () => {
 
                 // Assert returns null
                 expect(result).toBeNull();
-                expect(mockJsonGet).toHaveBeenCalledWith('product:999');
+                expect(mockJsonGet).toHaveBeenCalledWith('rvl-test-fetch-nonexistent-json:999');
             });
 
             it('should handle keys with custom separator', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-custom-separator-hash',
+                    prefix: 'rvl-test-custom-separator-hash',
                     keySeparator: '::',
                     storageType: StorageType.HASH,
                 });
@@ -612,12 +617,12 @@ describe('SearchIndex', () => {
                 const result = await index.fetch('123');
 
                 expect(result).toEqual(mockDoc);
-                expect(mockHGetAll).toHaveBeenCalledWith('user::123');
+                expect(mockHGetAll).toHaveBeenCalledWith('rvl-test-custom-separator-hash::123');
             });
 
             it('should handle array prefix (use first prefix)', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
+                    name: 'redisvl-test-array-prefix',
                     prefix: ['user', 'person'],
                     storageType: StorageType.HASH,
                 });
@@ -645,8 +650,8 @@ describe('SearchIndex', () => {
         describe('fetchMany()', () => {
             it('should fetch multiple documents (HASH storage)', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-data-fetch-many-hash',
+                    prefix: 'rvl-test-data-fetch-many-hash',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -682,8 +687,8 @@ describe('SearchIndex', () => {
 
             it('should fetch multiple documents (JSON storage)', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'product-index',
-                    prefix: 'product',
+                    name: 'redisvl-test-data-fetch-many-json',
+                    prefix: 'rvl-test-data-fetch-many-json',
                     storageType: StorageType.JSON,
                 });
                 const jsonSchema = new IndexSchema({ index: indexInfo });
@@ -721,8 +726,8 @@ describe('SearchIndex', () => {
 
             it('should return null for missing keys in array', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-fetch-many-missing-keys',
+                    prefix: 'rvl-test-fetch-many-missing-keys',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -751,8 +756,8 @@ describe('SearchIndex', () => {
 
             it('should return empty array for empty keys array', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-fetch-many-empty-keys',
+                    prefix: 'rvl-test-fetch-many-empty-keys',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -767,8 +772,8 @@ describe('SearchIndex', () => {
 
             it('should maintain order of results', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-fetch-many-order',
+                    prefix: 'rvl-test-fetch-many-order',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -797,8 +802,8 @@ describe('SearchIndex', () => {
 
             it('should use custom batch size', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-fetch-many-batch-size',
+                    prefix: 'rvl-test-fetch-many-batch-size',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -835,8 +840,8 @@ describe('SearchIndex', () => {
         describe('load() with preprocess option', () => {
             it('should apply preprocess function to each document', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-data-preprocess',
+                    prefix: 'rvl-test-data-preprocess',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -879,8 +884,8 @@ describe('SearchIndex', () => {
 
             it('should add computed fields via preprocess', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-computed-fields',
+                    prefix: 'rvl-test-computed-fields',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -917,8 +922,8 @@ describe('SearchIndex', () => {
 
             it('should transform field names via preprocess', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'product-index',
-                    prefix: 'product',
+                    name: 'redisvl-test-field-transform',
+                    prefix: 'rvl-test-field-transform',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -959,8 +964,8 @@ describe('SearchIndex', () => {
 
             it('should apply preprocess before validation', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-preprocess-before-validation',
+                    prefix: 'rvl-test-preprocess-before-validation',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -996,8 +1001,8 @@ describe('SearchIndex', () => {
 
             it('should support async preprocess function', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'doc-index',
-                    prefix: 'doc',
+                    name: 'redisvl-test-async-preprocess',
+                    prefix: 'rvl-test-async-preprocess',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -1037,8 +1042,8 @@ describe('SearchIndex', () => {
 
             it('should work without preprocess (undefined)', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-no-preprocess',
+                    prefix: 'rvl-test-no-preprocess',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -1067,8 +1072,8 @@ describe('SearchIndex', () => {
 
             it('should handle preprocess errors gracefully', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-preprocess-errors',
+                    prefix: 'rvl-test-preprocess-errors',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });
@@ -1090,8 +1095,8 @@ describe('SearchIndex', () => {
 
             it('should apply preprocess to all documents in batch', async () => {
                 const indexInfo = new IndexInfo({
-                    name: 'user-index',
-                    prefix: 'user',
+                    name: 'redisvl-test-preprocess-batch',
+                    prefix: 'rvl-test-preprocess-batch',
                     storageType: StorageType.HASH,
                 });
                 const hashSchema = new IndexSchema({ index: indexInfo });

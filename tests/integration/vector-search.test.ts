@@ -9,7 +9,7 @@ describe('Vector Search Integration', () => {
     let client: RedisClientType;
     let index: SearchIndex;
     let vectorizer: HuggingFaceVectorizer;
-    let products: any[]; // Make products available to all tests
+    let products: any[]; // Shared test data
 
     beforeAll(async () => {
         // Connect to Redis
@@ -26,8 +26,8 @@ describe('Vector Search Integration', () => {
         // Create schema for product search
         const schema = IndexSchema.fromObject({
             index: {
-                name: 'products-vector-test',
-                prefix: 'product:',
+                name: 'redisvl-test-vector-search',
+                prefix: 'rvl-test-vector',
                 storageType: 'hash',
             },
             fields: [
@@ -48,14 +48,6 @@ describe('Vector Search Integration', () => {
 
         // Create index
         index = new SearchIndex(schema, client);
-
-        // Clean up any existing index
-        try {
-            await index.delete({ drop: true });
-        } catch {
-            // Ignore if index doesn't exist
-        }
-
         await index.create();
 
         // Load test data with embeddings
@@ -86,13 +78,7 @@ describe('Vector Search Integration', () => {
     });
 
     afterAll(async () => {
-        // Clean up
-        if (index) {
-            await index.delete({ drop: true });
-        }
-        if (client) {
-            await client.quit();
-        }
+        await client.quit();
     });
 
     it('should perform basic vector similarity search', async () => {

@@ -7,13 +7,13 @@ import { SchemaValidationError, RedisVLError } from '../../../src/errors.js';
 describe('IndexInfo Tests', () => {
     describe('IndexInfo Creation', () => {
         it('should create IndexInfo with required name field', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
 
-            expect(indexInfo.name).toBe('test-index');
+            expect(indexInfo.name).toBe('redisvl-test-index');
         });
 
         it('should use default values for optional fields', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
 
             expect(indexInfo.prefix).toBe('rvl');
             expect(indexInfo.keySeparator).toBe(':');
@@ -23,25 +23,29 @@ describe('IndexInfo Tests', () => {
 
         it('should accept custom prefix as string', () => {
             const indexInfo = new IndexInfo({
-                name: 'user-index',
-                prefix: 'user',
+                name: 'redisvl-test-user-index',
+                prefix: 'rvl-test-user',
             });
 
-            expect(indexInfo.prefix).toBe('user');
+            expect(indexInfo.prefix).toBe('rvl-test-user');
         });
 
         it('should accept custom prefix as array of strings', () => {
             const indexInfo = new IndexInfo({
-                name: 'multi-index',
-                prefix: ['user', 'product', 'order'],
+                name: 'redisvl-test-multi-index',
+                prefix: ['rvl-test-user', 'rvl-test-product', 'rvl-test-order'],
             });
 
-            expect(indexInfo.prefix).toEqual(['user', 'product', 'order']);
+            expect(indexInfo.prefix).toEqual([
+                'rvl-test-user',
+                'rvl-test-product',
+                'rvl-test-order',
+            ]);
         });
 
         it('should accept custom keySeparator', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 keySeparator: '-',
             });
 
@@ -50,7 +54,7 @@ describe('IndexInfo Tests', () => {
 
         it('should accept JSON storage type', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 storageType: StorageType.JSON,
             });
 
@@ -59,7 +63,7 @@ describe('IndexInfo Tests', () => {
 
         it('should accept stopwords as empty array (disabled)', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 stopwords: [],
             });
 
@@ -68,7 +72,7 @@ describe('IndexInfo Tests', () => {
 
         it('should accept custom stopwords list', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 stopwords: ['the', 'a', 'an'],
             });
 
@@ -90,7 +94,7 @@ describe('IndexInfo Tests', () => {
 describe('IndexSchema Tests', () => {
     describe('IndexSchema Creation', () => {
         it('should create IndexSchema with IndexInfo and empty fields', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
 
             const schema = new IndexSchema({ index: indexInfo });
 
@@ -100,7 +104,7 @@ describe('IndexSchema Tests', () => {
         });
 
         it('should create IndexSchema with IndexInfo and fields', () => {
-            const indexInfo = new IndexInfo({ name: 'user-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-user-index' });
             const fields = {
                 username: new TagField('username'),
                 bio: new TextField('bio'),
@@ -115,7 +119,7 @@ describe('IndexSchema Tests', () => {
         });
 
         it('should access fields by name', () => {
-            const indexInfo = new IndexInfo({ name: 'user-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-user-index' });
             const usernameField = new TagField('username');
             const fields = { username: usernameField };
 
@@ -127,7 +131,7 @@ describe('IndexSchema Tests', () => {
 
     describe('IndexSchema Properties', () => {
         it('should return empty array for fieldNames when no fields', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
             const schema = new IndexSchema({ index: indexInfo });
 
             const fieldNames = schema.fieldNames;
@@ -136,7 +140,7 @@ describe('IndexSchema Tests', () => {
         });
 
         it('should return array of field names', () => {
-            const indexInfo = new IndexInfo({ name: 'user-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-user-index' });
             const fields = {
                 username: new TagField('username'),
                 bio: new TextField('bio'),
@@ -155,7 +159,7 @@ describe('IndexSchema Tests', () => {
 
     describe('IndexSchema Field Management', () => {
         it('should add a single field using addField', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
             const schema = new IndexSchema({ index: indexInfo });
 
             schema.addField({ name: 'title', type: 'text' });
@@ -166,7 +170,7 @@ describe('IndexSchema Tests', () => {
         });
 
         it('should add multiple fields using addFields', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
             const schema = new IndexSchema({ index: indexInfo });
 
             schema.addFields([
@@ -182,7 +186,7 @@ describe('IndexSchema Tests', () => {
         });
 
         it('should throw SchemaValidationError when adding duplicate field name', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
             const schema = new IndexSchema({ index: indexInfo });
             schema.addField({ name: 'title', type: 'text' });
 
@@ -195,7 +199,7 @@ describe('IndexSchema Tests', () => {
         });
 
         it('should remove a field using removeField', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
             const schema = new IndexSchema({ index: indexInfo });
             schema.addField({ name: 'title', type: 'text' });
 
@@ -206,7 +210,7 @@ describe('IndexSchema Tests', () => {
         });
 
         it('should not throw error when removing non-existent field', () => {
-            const indexInfo = new IndexInfo({ name: 'test-index' });
+            const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
             const schema = new IndexSchema({ index: indexInfo });
 
             expect(() => {
@@ -218,7 +222,7 @@ describe('IndexSchema Tests', () => {
     describe('IndexSchema Field Path Validation', () => {
         it('should auto-set path to $.fieldname for JSON storage', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 storageType: StorageType.JSON,
             });
             const schema = new IndexSchema({ index: indexInfo });
@@ -230,7 +234,7 @@ describe('IndexSchema Tests', () => {
 
         it('should use custom path for JSON storage if provided', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 storageType: StorageType.JSON,
             });
             const schema = new IndexSchema({ index: indexInfo });
@@ -242,7 +246,7 @@ describe('IndexSchema Tests', () => {
 
         it('should set path to null for HASH storage', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 storageType: StorageType.HASH,
             });
             const schema = new IndexSchema({ index: indexInfo });
@@ -254,7 +258,7 @@ describe('IndexSchema Tests', () => {
 
         it('should ignore custom path for HASH storage', () => {
             const indexInfo = new IndexInfo({
-                name: 'test-index',
+                name: 'redisvl-test-index',
                 storageType: StorageType.HASH,
             });
             const schema = new IndexSchema({ index: indexInfo });
@@ -270,7 +274,7 @@ describe('IndexSchema.fromObject()', () => {
     it('should create IndexSchema from dict with fields as array', () => {
         const schema = IndexSchema.fromObject({
             index: {
-                name: 'example_index',
+                name: 'redisvl-test-example-index',
                 prefix: 'ex',
                 key_separator: '|', // snake_case input (from YAML/JSON)
                 storage_type: StorageType.JSON, // snake_case input (from YAML/JSON)
@@ -281,7 +285,7 @@ describe('IndexSchema.fromObject()', () => {
             ],
         });
 
-        expect(schema.index.name).toBe('example_index');
+        expect(schema.index.name).toBe('redisvl-test-example-index');
         expect(schema.index.keySeparator).toBe('|'); // camelCase property
         expect(schema.index.prefix).toBe('ex');
         expect(schema.index.storageType).toBe(StorageType.JSON); // camelCase property
@@ -292,8 +296,8 @@ describe('IndexSchema.fromObject()', () => {
 
     it('should create IndexSchema from dict with IndexInfo instance', () => {
         const indexInfo = new IndexInfo({
-            name: 'test-index',
-            prefix: 'test',
+            name: 'redisvl-test-index',
+            prefix: 'rvl-test',
             storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
 
@@ -310,8 +314,8 @@ describe('IndexSchema.fromObject()', () => {
     it('should create IndexSchema from dict with fields as object', () => {
         const schema = IndexSchema.fromObject({
             index: {
-                name: 'test-index',
-                prefix: 'test',
+                name: 'redisvl-test-index',
+                prefix: 'rvl-test',
             },
             fields: {
                 title: { name: 'title', type: 'text' },
@@ -328,8 +332,8 @@ describe('IndexSchema.fromObject()', () => {
         expect(() => {
             IndexSchema.fromObject({
                 index: {
-                    name: 'test-index',
-                    prefix: 'test',
+                    name: 'redisvl-test-index',
+                    prefix: 'rvl-test',
                 },
                 fields: {
                     title: { name: 'wrong_name', type: 'text' },
@@ -339,8 +343,8 @@ describe('IndexSchema.fromObject()', () => {
         expect(() => {
             IndexSchema.fromObject({
                 index: {
-                    name: 'test-index',
-                    prefix: 'test',
+                    name: 'redisvl-test-index',
+                    prefix: 'rvl-test',
                 },
                 fields: {
                     title: { name: 'wrong_name', type: 'text' },
@@ -352,8 +356,8 @@ describe('IndexSchema.fromObject()', () => {
     it('should create IndexSchema without fields', () => {
         const schema = IndexSchema.fromObject({
             index: {
-                name: 'test-index',
-                prefix: 'test',
+                name: 'redisvl-test-index',
+                prefix: 'rvl-test',
             },
         });
 
@@ -363,8 +367,8 @@ describe('IndexSchema.fromObject()', () => {
     it('should set version if provided', () => {
         const schema = IndexSchema.fromObject({
             index: {
-                name: 'test-index',
-                prefix: 'test',
+                name: 'redisvl-test-index',
+                prefix: 'rvl-test',
             },
             version: '0.1.0',
         });
@@ -375,8 +379,8 @@ describe('IndexSchema.fromObject()', () => {
     it('should handle JSON storage with auto-path setting', () => {
         const schema = IndexSchema.fromObject({
             index: {
-                name: 'test-index',
-                prefix: 'test',
+                name: 'redisvl-test-index',
+                prefix: 'rvl-test',
                 storage_type: StorageType.JSON, // snake_case input (from YAML/JSON)
             },
             fields: [{ name: 'title', type: 'text' }],
@@ -388,8 +392,8 @@ describe('IndexSchema.fromObject()', () => {
     it('should handle HASH storage with null paths', () => {
         const schema = IndexSchema.fromObject({
             index: {
-                name: 'test-index',
-                prefix: 'test',
+                name: 'redisvl-test-index',
+                prefix: 'rvl-test',
                 storage_type: StorageType.HASH, // snake_case input (from YAML/JSON)
             },
             fields: [{ name: 'title', type: 'text' }],
@@ -402,8 +406,8 @@ describe('IndexSchema.fromObject()', () => {
 describe('IndexSchema.toObject()', () => {
     it('should serialize IndexSchema to dictionary', () => {
         const indexInfo = new IndexInfo({
-            name: 'test-index',
-            prefix: 'test',
+            name: 'redisvl-test-index',
+            prefix: 'rvl-test',
             keySeparator: ':', // camelCase input (TypeScript API)
             storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
@@ -416,8 +420,8 @@ describe('IndexSchema.toObject()', () => {
 
         const dict = schema.toObject();
 
-        expect(dict.index.name).toBe('test-index');
-        expect(dict.index.prefix).toBe('test');
+        expect(dict.index.name).toBe('redisvl-test-index');
+        expect(dict.index.prefix).toBe('rvl-test');
         expect(dict.index.key_separator).toBe(':'); // snake_case in output (YAML/JSON)
         expect(dict.index.storage_type).toBe('hash'); // snake_case in output (YAML/JSON)
         expect(dict.fields).toBeInstanceOf(Array);
@@ -426,7 +430,7 @@ describe('IndexSchema.toObject()', () => {
     });
 
     it('should serialize fields as array with all properties', () => {
-        const indexInfo = new IndexInfo({ name: 'test-index' });
+        const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
         const schema = new IndexSchema({ index: indexInfo });
         schema.addField({ name: 'title', type: 'text', attrs: { sortable: true } }); // camelCase method
 
@@ -439,19 +443,19 @@ describe('IndexSchema.toObject()', () => {
 
     it('should handle prefix as array', () => {
         const indexInfo = new IndexInfo({
-            name: 'test-index',
-            prefix: ['user', 'product'],
+            name: 'redisvl-test-index',
+            prefix: ['rvl-test-user', 'product'],
         });
         const schema = new IndexSchema({ index: indexInfo });
 
         const dict = schema.toObject();
 
-        expect(dict.index.prefix).toEqual(['user', 'product']);
+        expect(dict.index.prefix).toEqual(['rvl-test-user', 'product']);
     });
 
     it('should handle stopwords', () => {
         const indexInfo = new IndexInfo({
-            name: 'test-index',
+            name: 'redisvl-test-index',
             stopwords: ['the', 'a', 'an'],
         });
         const schema = new IndexSchema({ index: indexInfo });
@@ -463,8 +467,8 @@ describe('IndexSchema.toObject()', () => {
 
     it('should be able to recreate schema from toObject output', () => {
         const indexInfo = new IndexInfo({
-            name: 'test-index',
-            prefix: 'test',
+            name: 'redisvl-test-index',
+            prefix: 'rvl-test',
             storageType: StorageType.JSON, // camelCase input (TypeScript API)
         });
         const schema = new IndexSchema({ index: indexInfo });
@@ -487,8 +491,8 @@ describe('IndexSchema.toObject()', () => {
 describe('IndexSchema.toYAML()', () => {
     it('should write schema to YAML file', async () => {
         const indexInfo = new IndexInfo({
-            name: 'test-index',
-            prefix: 'test',
+            name: 'redisvl-test-index',
+            prefix: 'rvl-test',
             storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
         const schema = new IndexSchema({ index: indexInfo });
@@ -512,7 +516,7 @@ describe('IndexSchema.toYAML()', () => {
     });
 
     it('should throw error if file exists and overwrite is false', async () => {
-        const indexInfo = new IndexInfo({ name: 'test-index' });
+        const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
         const schema = new IndexSchema({ index: indexInfo });
 
         const filePath = 'test-schema-exists.yaml';
@@ -526,7 +530,7 @@ describe('IndexSchema.toYAML()', () => {
     });
 
     it('should overwrite file if overwrite is true', async () => {
-        const indexInfo = new IndexInfo({ name: 'test-index' });
+        const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
         const schema = new IndexSchema({ index: indexInfo });
 
         const filePath = 'test-schema-overwrite.yaml';
@@ -547,8 +551,8 @@ describe('IndexSchema.toYAML()', () => {
 describe('IndexSchema.fromYAML()', () => {
     it('should load schema from YAML file', async () => {
         const indexInfo = new IndexInfo({
-            name: 'test-index',
-            prefix: 'test',
+            name: 'redisvl-test-index',
+            prefix: 'rvl-test',
             storageType: StorageType.HASH, // camelCase input (TypeScript API)
         });
         const schema = new IndexSchema({ index: indexInfo });
@@ -563,8 +567,8 @@ describe('IndexSchema.fromYAML()', () => {
 
         const loaded = await IndexSchema.fromYAML(filePath);
 
-        expect(loaded.index.name).toBe('test-index');
-        expect(loaded.index.prefix).toBe('test');
+        expect(loaded.index.name).toBe('redisvl-test-index');
+        expect(loaded.index.prefix).toBe('rvl-test');
         expect(loaded.index.storageType).toBe(StorageType.HASH); // camelCase property
         expect(loaded.fieldNames).toEqual(['title', 'category']); // camelCase property
 
@@ -582,7 +586,7 @@ describe('IndexSchema.fromYAML()', () => {
     it('should handle round-trip: toYAML -> fromYAML', async () => {
         const indexInfo = new IndexInfo({
             name: 'round-trip-test',
-            prefix: ['user', 'product'],
+            prefix: ['rvl-test-user', 'product'],
             keySeparator: '|', // camelCase input (TypeScript API)
             storageType: StorageType.JSON, // camelCase input (TypeScript API)
             stopwords: ['the', 'a'],
@@ -613,8 +617,8 @@ describe('IndexSchema.fromYAML()', () => {
 
     it('should load YAML with fields as array', async () => {
         const yamlContent = `index:
-  name: test-index
-  prefix: test
+  name: redisvl-test-index
+  prefix: rvl-test
   key_separator: ':'
   storage_type: hash
 fields:
@@ -630,7 +634,7 @@ version: 0.1.0
 
         const loaded = await IndexSchema.fromYAML(filePath);
 
-        expect(loaded.index.name).toBe('test-index');
+        expect(loaded.index.name).toBe('redisvl-test-index');
         expect(loaded.fieldNames).toEqual(['title', 'category']); // camelCase property
 
         await fs.unlink(filePath);
