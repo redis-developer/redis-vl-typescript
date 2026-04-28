@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
-import { IndexSchema, SearchIndex } from '../../src/index.js';
+import { IndexSchema, SearchIndex, StorageType } from '../../src/index.js';
 
 // Use naming convention (redisvl-test-*, rvl-test-*) to identify test data.
 describe('SearchIndex Integration Tests', () => {
@@ -181,6 +181,253 @@ describe('SearchIndex Integration Tests', () => {
             // Data should still be there - same count as before
             const keys = await client.keys('rvl-test-no-overwrite:*');
             expect(keys.length).toBe(keyCountBefore);
+        });
+
+        describe('fromExisting()', () => {
+            it('should load existing simple index with fromExisting()', async () => {
+                // Create a simple index first
+                const schema = IndexSchema.fromObject({
+                    index: {
+                        name: 'redisvl-test-fromexisting',
+                        prefix: 'rvl-test-fromexisting',
+                        storage_type: 'hash',
+                    },
+                    fields: [
+                        { name: 'name', type: 'text' },
+                        { name: 'age', type: 'numeric' },
+                    ],
+                });
+
+                const index = new SearchIndex(schema, client);
+                await index.create({ overwrite: true });
+                expect(await index.exists()).toBe(true);
+
+                try {
+                    // Load from existing
+                    const index2 = await SearchIndex.fromExisting(
+                        'redisvl-test-fromexisting',
+                        client
+                    );
+                    expect(await index2.exists()).toBe(true);
+
+                    // Verify index name matches
+                    expect(index2.name).toBe('redisvl-test-fromexisting');
+
+                    // Verify storage type matches
+                    expect(index2.schema.index.storageType).toBe(schema.index.storageType);
+
+                    // Verify fields were reconstructed
+                    expect(index2.schema.fields).toBeDefined();
+                    expect(Object.keys(index2.schema.fields)).toHaveLength(2);
+                    expect(index2.schema.fields.name.type).toBe('text');
+                    expect(index2.schema.fields.age.type).toBe('numeric');
+
+                    // Verify we can use the reconstructed index
+                    const keys = await index2.load([
+                        { name: 'Alice', age: 30 },
+                        { name: 'Bob', age: 25 },
+                    ]);
+                    expect(keys).toHaveLength(2);
+
+                    // Clean up
+                    await index2.delete({ drop: true });
+                } finally {
+                    // Ensure index is deleted
+                    try {
+                        await index.delete({ drop: true });
+                    } catch {
+                        // Ignore if already deleted
+                    }
+                }
+            });
+
+            it('should load existing complex index with all field types', async () => {
+                // Create complex schema with all field types
+                const schema = IndexSchema.fromObject({
+                    index: {
+                        name: 'redisvl-test-fromexisting-complex',
+                        prefix: 'rvl-test-fe-complex',
+                        storage_type: 'hash',
+                    },
+                    fields: [
+                        { name: 'title', type: 'text' },
+                        { name: 'category', type: 'tag' },
+                        { name: 'price', type: 'numeric' },
+                        {
+                            name: 'embedding',
+                            type: 'vector',
+                            attrs: {
+                                algorithm: 'flat',
+                                dims: 3,
+                                distance_metric: 'cosine',
+                                datatype: 'float32',
+                            },
+                        },
+                    ],
+                });
+
+                const index = new SearchIndex(schema, client);
+                await index.create({ overwrite: true });
+                expect(await index.exists()).toBe(true);
+
+                try {
+                    // Load from existing
+                    const index2 = await SearchIndex.fromExisting(
+                        'redisvl-test-fromexisting-complex',
+                        client
+                    );
+                    expect(await index2.exists()).toBe(true);
+
+                    // Verify index metadata
+                    expect(index2.name).toBe('redisvl-test-fromexisting-complex');
+                    expect(index2.schema.index.storageType).toBe(schema.index.storageType);
+
+                    // Verify all fields were reconstructed
+                    expect(Object.keys(index2.schema.fields)).toHaveLength(4);
+                    expect(index2.schema.fields.title.type).toBe('text');
+                    expect(index2.schema.fields.category.type).toBe('tag');
+                    expect(index2.schema.fields.price.type).toBe('numeric');
+                    expect(index2.schema.fields.embedding.type).toBe('vector');
+
+                    // Clean up
+                    await index2.delete({ drop: true });
+                } finally {
+                    try {
+                        await index.delete({ drop: true });
+                    } catch {
+                        // Ignore
+                    }
+                }
+            });
+
+            it('should preserve multiple prefixes when loading existing index', async () => {
+                const indexName = 'redisvl-test-multiprefix';
+
+                try {
+                    // Create index using raw FT.CREATE command with multiple prefixes
+                    await client.sendCommand([
+                        'FT.CREATE',
+                        indexName,
+                        'ON',
+                        'HASH',
+                        'PREFIX',
+                        '3',
+                        'prefix_a:',
+                        'prefix_b:',
+                        'prefix_c:',
+                        'SCHEMA',
+                        'user',
+                        'TAG',
+                        'text',
+                        'TEXT',
+                    ]);
+
+                    const loadedIndex = await SearchIndex.fromExisting(indexName, client);
+                    expect(await loadedIndex.exists()).toBe(true);
+
+                    // Verify index name
+                    expect(loadedIndex.name).toBe(indexName);
+
+                    // Verify storage type
+                    expect(loadedIndex.schema.index.storageType).toBe(StorageType.HASH);
+
+                    // Verify prefix (should be first one)
+                    expect(loadedIndex.schema.index.prefix).toBe('prefix_a:');
+
+                    // Verify fields
+                    expect(loadedIndex.schema.fields.user).toBeDefined();
+                    expect(loadedIndex.schema.fields.text).toBeDefined();
+
+                    // Clean up
+                    await loadedIndex.delete({ drop: true });
+                } catch (error) {
+                    // Clean up on error
+                    try {
+                        await client.sendCommand(['FT.DROPINDEX', indexName]);
+                    } catch {
+                        // Ignore
+                    }
+                    throw error;
+                }
+            });
+
+            it("should allow fetch() when index prefix ends with ':'", async () => {
+                const indexName = 'redisvl-test-fromexisting-prefix-colon';
+                const prefix = 'rvl-test-fe-colon:';
+
+                try {
+                    await client.sendCommand([
+                        'FT.CREATE',
+                        indexName,
+                        'ON',
+                        'HASH',
+                        'PREFIX',
+                        '1',
+                        prefix,
+                        'SCHEMA',
+                        'name',
+                        'TEXT',
+                    ]);
+
+                    // Insert a document under a key that matches the prefix + ':' + id
+                    await client.hSet(`${prefix}1`, { name: 'Alice' });
+
+                    const loadedIndex = await SearchIndex.fromExisting(indexName, client);
+                    expect(await loadedIndex.exists()).toBe(true);
+
+                    const doc = await loadedIndex.fetch('1');
+                    expect(doc).toBeDefined();
+                    expect(doc?.name).toBe('Alice');
+
+                    await loadedIndex.delete({ drop: true });
+                } finally {
+                    // Ensure cleanup even if test fails
+                    try {
+                        await client.sendCommand(['FT.DROPINDEX', indexName, 'DD']);
+                    } catch {
+                        // Ignore
+                    }
+                }
+            });
+
+            it("should allow fetch() when index prefix does not end with ':'", async () => {
+                const indexName = 'redisvl-test-fromexisting-prefix-nocolon';
+                const prefix = 'rvl-test-fe-nocolon';
+
+                try {
+                    await client.sendCommand([
+                        'FT.CREATE',
+                        indexName,
+                        'ON',
+                        'HASH',
+                        'PREFIX',
+                        '1',
+                        prefix,
+                        'SCHEMA',
+                        'name',
+                        'TEXT',
+                    ]);
+
+                    // Insert a document under a key that matches the normalized key building: prefix + ':' + id
+                    await client.hSet(`${prefix}:1`, { name: 'Bob' });
+
+                    const loadedIndex = await SearchIndex.fromExisting(indexName, client);
+                    expect(await loadedIndex.exists()).toBe(true);
+
+                    const doc = await loadedIndex.fetch('1');
+                    expect(doc).toBeDefined();
+                    expect(doc?.name).toBe('Bob');
+
+                    await loadedIndex.delete({ drop: true });
+                } finally {
+                    // Ensure cleanup even if test fails
+                    try {
+                        await client.sendCommand(['FT.DROPINDEX', indexName, 'DD']);
+                    } catch {
+                        // Ignore
+                    }
+                }
+            });
         });
     });
 

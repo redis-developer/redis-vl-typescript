@@ -32,6 +32,33 @@ const index = new SearchIndex(schema, client);
 await index.create();
 ```
 
+## Loading an Existing Index
+
+If an index already exists in Redis (for example, it was created by another
+service or via `FT.CREATE`), you can load it into RedisVL using
+`SearchIndex.fromExisting()`.
+
+RedisVL reconstructs the schema using `FT.INFO` so you can use RedisVL APIs like
+`fetch()`, `load()`, and `delete()`.
+
+```typescript
+import { SearchIndex } from 'redisvl';
+import { createClient } from 'redis';
+
+const client = createClient();
+await client.connect();
+
+// Load an existing index by name
+const index = await SearchIndex.fromExisting('products', client);
+
+// Optional sanity check
+console.log('Index exists:', await index.exists());
+
+// Fetch documents by ID (RedisVL builds the full Redis key using the index prefix)
+const docs = await index.fetchMany(['prod-1', 'prod-2']);
+console.log(docs);
+```
+
 ## Loading Data
 
 ### With Explicit IDs

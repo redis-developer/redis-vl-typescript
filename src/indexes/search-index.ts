@@ -6,6 +6,7 @@
 import type { RedisClientType, RedisClusterType } from 'redis';
 import type { RediSearchSchema } from '@redis/search';
 import { IndexSchema } from '../schema/schema.js';
+import { buildRedisVLSchemaFromRedisIndexInfo } from '../redis/index-info-parser.js';
 import { BaseStorage, HashStorage, JsonStorage } from '../storage/index.js';
 import { RedisVLError, SchemaValidationError } from '../errors.js';
 import type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from '../query/base.js';
@@ -173,6 +174,51 @@ export class SearchIndex {
         // Initialize appropriate storage based on storage type
         const isJson = this.schema.index.storageType.toLowerCase() === 'json';
         this.storage = isJson ? new JsonStorage(schema) : new HashStorage(schema);
+    }
+
+    /**
+     * Load an existing index from Redis by name.
+     *
+     * This method fetches the index metadata using FT.INFO and reconstructs
+     * the IndexSchema from the stored information.
+     *
+     * @param name - Name of the existing index in Redis
+     * @param client - Redis client instance
+     * @param validateOnLoad - Whether to validate documents on load (default: false)
+     * @returns SearchIndex instance with reconstructed schema
+     * @throws {RedisVLError} If index doesn't exist or cannot be loaded
+     *
+     * @example
+     * ```typescript
+     * // Load an existing index
+     * const index = await SearchIndex.fromExisting('my-index', client);
+     *
+     * // Use the loaded index
+     * const docs = await index.fetchMany(['key1', 'key2']);
+     * ```
+     */
+    static async fromExisting(
+        name: string,
+        client: RedisClientType | RedisClusterType,
+        validateOnLoad = false
+    ): Promise<SearchIndex> {
+        let info: Awaited<ReturnType<(RedisClientType | RedisClusterType)['ft']['info']>>;
+        try {
+            // Fetch index info from Redis
+            info = await client.ft.info(name);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new RedisVLError(`Failed to load index '${name}' via FT.INFO: ${message}`, {
+                cause: error,
+            });
+        }
+
+        // Convert to IndexSchema
+        // The parser accepts the raw return type from client.ft.info()
+        const schema = buildRedisVLSchemaFromRedisIndexInfo(info);
+
+        // Create SearchIndex with reconstructed schema
+        return new SearchIndex(schema, client, validateOnLoad);
     }
 
     /**
