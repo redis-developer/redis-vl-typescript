@@ -57,6 +57,7 @@ export function buildRedisVLSchemaFromRedisIndexInfo(info: RedisIndexInfoReply):
     const storageType = parseStorageType(indexDef);
     const isJson = storageType === StorageType.JSON;
     const prefix = parsePrefix(indexName, indexDef);
+    const stopwords = parseStopwords(info.stopwords_list);
 
     // Parse fields
     const fields: Record<string, BaseField> = {};
@@ -77,6 +78,7 @@ export function buildRedisVLSchemaFromRedisIndexInfo(info: RedisIndexInfoReply):
         // Redis FT.INFO does not expose the key separator used by the application.
         // Default to ':' (library default).
         keySeparator: ':',
+        ...(stopwords !== undefined && { stopwords }),
     });
 
     return new IndexSchema({ index: indexInfo, fields });
@@ -91,7 +93,7 @@ function parseStorageType(indexDef: Record<string, unknown>): StorageType {
     return keyType === 'json' ? StorageType.JSON : StorageType.HASH;
 }
 
-function parsePrefix(indexName: string, indexDef: Record<string, unknown>): string {
+function parsePrefix(indexName: string, indexDef: Record<string, unknown>): string | string[] {
     const prefixesValue = indexDef['prefixes'];
     if (typeof prefixesValue === 'string') {
         return prefixesValue;
@@ -102,12 +104,21 @@ function parsePrefix(indexName: string, indexDef: Record<string, unknown>): stri
         prefixesValue.length > 0 &&
         prefixesValue.every((p) => typeof p === 'string')
     ) {
-        return prefixesValue[0];
+        // Preserve all prefixes when more than one is configured so the schema
+        // round-trips through fromExisting() without silently dropping data.
+        return prefixesValue.length === 1 ? prefixesValue[0] : [...prefixesValue];
     }
 
     throw new RedisVLError(
         `RedisIndexParseError: Invalid index definition for '${indexName}': missing or invalid 'prefixes' value.`
     );
+}
+
+function parseStopwords(value: unknown): string[] | undefined {
+    if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+        return [...(value as string[])];
+    }
+    return undefined;
 }
 
 // ================================
