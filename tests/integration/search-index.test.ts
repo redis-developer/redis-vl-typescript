@@ -1036,13 +1036,24 @@ describe('SearchIndex Integration Tests', () => {
                 })
             );
 
-            expect(normalizedResults.documents[0].score).toBeCloseTo(1, 10);
-            expect(rawResults.documents[0].score).toBeCloseTo(0, 10);
-            expect(normalizedResults.documents[1].score).toBeCloseTo(
-                1 - (rawResults.documents[1].score ?? 0) / 2,
-                10
+            const normalizedById = new Map(
+                normalizedResults.documents.map((doc) => [doc.id, doc.score])
             );
-            expect(normalizedResults.documents[1].score).toBeGreaterThan(0.99);
+            const rawById = new Map(rawResults.documents.map((doc) => [doc.id, doc.score]));
+
+            expect(normalizedById.get('rvl-test-searchindex-normalize-smoke:1')).toBeCloseTo(1, 10);
+            expect(rawById.get('rvl-test-searchindex-normalize-smoke:1')).toBeCloseTo(0, 10);
+
+            const rawSecondScore = rawById.get('rvl-test-searchindex-normalize-smoke:2');
+            const normalizedSecondScore = normalizedById.get(
+                'rvl-test-searchindex-normalize-smoke:2'
+            );
+
+            expect(rawSecondScore).toBeDefined();
+            expect(normalizedSecondScore).toBeDefined();
+            expect(normalizedSecondScore).toBeCloseTo(1 - (rawSecondScore ?? 0) / 2, 10);
+            expect(normalizedSecondScore).toBeLessThan(1);
+            expect(normalizedSecondScore).toBeGreaterThan(0.99);
         });
     });
 });
