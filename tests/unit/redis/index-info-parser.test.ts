@@ -49,7 +49,7 @@ describe('buildRedisVLSchemaFromRedisIndexInfo', () => {
             expect(schema.index.storageType).toBe('json');
         });
 
-        it('should handle multiple prefixes', () => {
+        it('should preserve all prefixes when multiple are configured', () => {
             const info: MockInfoReply = {
                 index_name: 'multi-prefix-index',
                 index_definition: {
@@ -64,8 +64,59 @@ describe('buildRedisVLSchemaFromRedisIndexInfo', () => {
             const schema = buildRedisVLSchemaFromRedisIndexInfo(info);
 
             expect(schema.index.name).toBe('multi-prefix-index');
-            // First prefix should be used as default
-            expect(schema.index.prefix).toBe('prefix_a:');
+            expect(schema.index.prefix).toEqual(['prefix_a:', 'prefix_b:', 'prefix_c:']);
+        });
+
+        it('should keep prefix as a string when only one is configured', () => {
+            const info: MockInfoReply = {
+                index_name: 'single-prefix-index',
+                index_definition: {
+                    key_type: 'HASH',
+                    prefixes: ['only:'],
+                    default_score: '1',
+                    indexes_all: 'false',
+                },
+                attributes: [],
+            };
+
+            const schema = buildRedisVLSchemaFromRedisIndexInfo(info);
+
+            expect(schema.index.prefix).toBe('only:');
+        });
+
+        it('should preserve stopwords_list when present', () => {
+            const info: MockInfoReply = {
+                index_name: 'with-stopwords',
+                index_definition: {
+                    key_type: 'HASH',
+                    prefixes: ['doc:'],
+                    default_score: '1',
+                    indexes_all: 'false',
+                },
+                stopwords_list: ['the', 'a', 'and'],
+                attributes: [],
+            } as MockInfoReply;
+
+            const schema = buildRedisVLSchemaFromRedisIndexInfo(info);
+
+            expect(schema.index.stopwords).toEqual(['the', 'a', 'and']);
+        });
+
+        it('should leave stopwords undefined when stopwords_list is absent', () => {
+            const info: MockInfoReply = {
+                index_name: 'no-stopwords',
+                index_definition: {
+                    key_type: 'HASH',
+                    prefixes: ['doc:'],
+                    default_score: '1',
+                    indexes_all: 'false',
+                },
+                attributes: [],
+            };
+
+            const schema = buildRedisVLSchemaFromRedisIndexInfo(info);
+
+            expect(schema.index.stopwords).toBeUndefined();
         });
     });
 
