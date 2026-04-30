@@ -309,7 +309,7 @@ export abstract class BaseStorage {
         }
 
         // Get dimensions from field attributes
-        const attrs = field.attrs as any;
+        const attrs = field.attrs as Partial<VectorFieldAttrs> & { dim?: number };
         const expectedDims = attrs?.dims || attrs?.dim;
 
         if (expectedDims) {
