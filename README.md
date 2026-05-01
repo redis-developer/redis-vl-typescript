@@ -8,10 +8,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Language](https://img.shields.io/badge/language-TypeScript-blue)
-![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)
+![Node Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)
 ![Status](https://img.shields.io/badge/status-beta-orange)
-
-**[Browse Recipes](https://github.com/redis-developer/redis-ai-resources)**
 
 </div>
 
@@ -25,45 +23,33 @@
 
 Redis Vector Library (RedisVL) is the TypeScript/Node.js client for building AI applications on Redis.
 
-<div align="center">
+## Features
 
-|                                 **Core Capabilities**                                 |                                  **AI Extensions**                                  |                            **Dev Utilities**                             |
-| :-----------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
-| **[Index Management](#index-management)**<br/>_Schema design, data loading, CRUD ops_ | **[Semantic Caching](#semantic-caching)**<br/>_Reduce LLM costs & boost throughput_ | **[Vectorizers](#vectorizers)**<br/>_8+ embedding provider integrations_ |
-|     **[Vector Search](#retrieval)**<br/>_Similarity search with metadata filters_     |          **[LLM Memory](#llm-memory)**<br/>_Agentic AI context management_          |    **[Rerankers](#rerankers)**<br/>_Improve search result relevancy_     |
-|       **[Hybrid Queries](#retrieval)**<br/>_Vector + text + metadata combined_        |  **[Semantic Routing](#semantic-routing)**<br/>_Intelligent query classification_   |                                                                          |
-|    **[Multi-Query Types](#retrieval)**<br/>_Vector, Range, Filter, Count queries_     |  **[Embedding Caching](#embedding-caching)**<br/>_Cache embeddings for efficiency_  |                                                                          |
+- **Index Management** — Schema design, data loading, and CRUD operations
+- **Vector Search** — Similarity search with metadata filters and hybrid queries via `VectorQuery`
+- **Vectorizers** — HuggingFace embeddings for semantic search
+- **Distance Normalization** — User-friendly 0–1 similarity scores
 
-</div>
+### Use Cases
 
-### Built for Modern AI Workloads
-
-RedisVL helps you build production-ready AI applications:
-
-- **RAG Pipelines** - Combine vector similarity search with metadata filtering to retrieve the most relevant context for your LLMs
-- **Semantic Caching** - Cache LLM responses based on semantic similarity to improve response times and reduce costs
-- **AI Agents** - Give your agents memory that persists across conversations and sessions, with semantic routing for quick intelligent decision-making
-- **Recommendation Systems** - Find similar items quickly and rerank results based on user preferences or business logic
+- **RAG Pipelines** — Combine vector similarity search with metadata filtering to retrieve the most relevant context for your LLMs
+- **Recommendation Systems** — Find similar items using vector similarity search
 
 ## Getting Started
 
-Install `redisvl` into your Node.js (>=22.0.0) environment using `npm`:
-
-```bash
-npm install redisvl
-```
-
-Or using `yarn`:
-
-```bash
-yarn add redisvl
-```
-
-Or using `pnpm`:
-
-```bash
-pnpm add redisvl
-```
+> ⚠️ `redisvl` has not been published to npm yet. To try it out, clone the repo and link it into your project:
+>
+> ```bash
+> git clone https://github.com/redis-developer/redis-vl-typescript.git
+> cd redis-vl-typescript
+> npm install
+> npm run build
+> npm link
+> # then in your project:
+> npm link redisvl
+> ```
+>
+> A published release will follow once the API stabilizes.
 
 ### Redis
 
@@ -75,16 +61,6 @@ Choose from multiple Redis deployment options:
     ```bash
     docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
     ```
-
-3. [Redis Enterprise](https://redis.io/enterprise/): Commercial, self-hosted database
-4. [Redis Sentinel](https://redis.io/docs/management/sentinel/): High availability with automatic failover
-
-    ```typescript
-    // Connect via Sentinel
-    const redisUrl = 'redis+sentinel://sentinel1:26379,sentinel2:26379/mymaster';
-    ```
-
-5. [Azure Managed Redis](https://azure.microsoft.com/en-us/products/managed-redis): Fully managed Redis Enterprise on Azure
 
 > Enhance your experience and observability with the free [Redis Insight GUI](https://redis.io/insight/).
 
@@ -100,7 +76,7 @@ RedisVL is a TypeScript client for building AI applications on Redis. It sits on
 - **Embeddings** - Generate vectors with HuggingFace (local, no API key)
 - **Type Safety** - Full TypeScript support
 
-📚 **[Read the full documentation →](https://redis-developer.github.io/docs/redis-vl-typescript/)**
+📚 **[Read the full documentation →](https://redis-developer.github.io/redis-vl-typescript/)**
 
 ## Features
 
@@ -126,7 +102,7 @@ const schema = IndexSchema.fromObject({
 });
 ```
 
-**[Learn more about schemas →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/schema)**
+**[Learn more about schemas →](https://redis-developer.github.io/redis-vl-typescript/docs/user-guide/schema)**
 
 ### Index Operations
 
@@ -143,7 +119,7 @@ const index = new SearchIndex(schema, client);
 await index.create();
 ```
 
-**[Learn more about indexes →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/search-index)**
+**[Learn more about indexes →](https://redis-developer.github.io/redis-vl-typescript/docs/user-guide/search-index)**
 
 ### Data Loading & Retrieval
 
@@ -163,7 +139,7 @@ const doc = await index.fetch('1');
 const docs = await index.fetchMany(['1', '2']);
 ```
 
-**[Learn more about CRUD operations →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/search-index#crud-operations)**
+**[Learn more about CRUD operations →](https://redis-developer.github.io/redis-vl-typescript/docs/user-guide/search-index#crud-operations)**
 
 ### Vector Search
 
@@ -187,7 +163,7 @@ results.documents.forEach((doc) => {
 });
 ```
 
-**[Learn more about vector search →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/search-index#vector-search)**
+**[Learn more about vector search →](https://redis-developer.github.io/redis-vl-typescript/docs/user-guide/search-index#vector-search)**
 
 ### Vectorizers
 
@@ -211,7 +187,7 @@ await index.load(documents, {
 });
 ```
 
-**[Learn more about vectorizers →](https://redis-developer.github.io/docs/redis-vl-typescript/docs/user-guide/vectorizers)**
+**[Learn more about vectorizers →](https://redis-developer.github.io/redis-vl-typescript/docs/user-guide/vectorizers)**
 
 ## Coming Soon
 
