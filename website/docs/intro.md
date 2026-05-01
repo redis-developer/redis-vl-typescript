@@ -10,18 +10,31 @@ sidebar_position: 1
 
 - **Schema-driven index management** - Define your data model once, use it everywhere
 - **Vector search abstractions** - Simplified APIs for similarity search and hybrid queries
-- **Advanced tuning** - Algorithm-specific parameters, distance normalization, hybrid policies
-- **AI-native utilities** - Semantic caching, LLM memory, vectorizer integrations
-- **Type safety** - Full TypeScript support with auto-complete and type checking
-- **Production features** - Batch operations, validation, error handling, TTL management
+- **Advanced tuning** (coming soon) - Algorithm-specific parameters, distance normalization, hybrid policies
+- **AI-native utilities** (coming soon) - Semantic caching, LLM memory, vectorizer integrations
+- **Type safety** (coming soon) - Full TypeScript support with auto-complete and type checking
+- **Production features** (coming soon)- Batch operations, validation, error handling, TTL management
 
 ---
 
 ## Installation
 
+:::warning Not yet released
+`redisvl` has not been published to npm yet. To try it out, clone the repo and link it locally:
+
 ```bash
-npm install redisvl redis
+git clone https://github.com/redis-developer/redis-vl-typescript.git
+cd redis-vl-typescript
+npm install
+npm run build
+npm link
+# then in your project:
+npm link redisvl
+npm install redis
 ```
+
+A published release will follow once the API stabilizes.
+:::
 
 ## Prerequisites
 
@@ -100,14 +113,16 @@ console.log(`Found ${results.total} products`);
 ### 🔍 Vector Search
 
 - Similarity search with metadata filters
+
+**Coming soon**:
+
 - Hybrid queries (vector + text + numeric)
 - Multiple distance metrics (cosine, L2, IP)
 - Distance normalization for user-friendly 0-1 similarity scores
 - Algorithm-specific tuning (HNSW, FLAT, SVS-VAMANA)
-- Hybrid search policies for optimal performance
-- Range queries and filtering
 
-### 🤖 AI Extensions
+
+### 🤖 AI Extensions (Coming soon)
 
 - **Semantic Caching** - Cache LLM responses by semantic similarity
 - **LLM Memory** - Manage conversation history for AI agents
