@@ -331,8 +331,12 @@ describe('SearchIndex Integration Tests', () => {
                     // Verify storage type
                     expect(loadedIndex.schema.index.storageType).toBe(StorageType.HASH);
 
-                    // Verify prefix (should be first one)
-                    expect(loadedIndex.schema.index.prefix).toBe('prefix_a:');
+                    // Verify all prefixes are preserved on round-trip
+                    expect(loadedIndex.schema.index.prefix).toEqual([
+                        'prefix_a:',
+                        'prefix_b:',
+                        'prefix_c:',
+                    ]);
 
                     // Verify fields
                     expect(loadedIndex.schema.fields.user).toBeDefined();
