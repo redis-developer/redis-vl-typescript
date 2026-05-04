@@ -18,9 +18,8 @@ export async function setup() {
         // In GitHub Actions, use the service container
         if (isGitHubActions) {
             console.log('🔍 Running in GitHub Actions - using service container');
-            const client = createClient({
-                url: process.env.REDIS_URL || 'redis://localhost:6379',
-            });
+            const url = process.env.REDIS_URL || 'redis://localhost:6379';
+            const client = createClient({ url });
 
             await client.connect();
             const pingResult = await client.ping();
@@ -30,7 +29,7 @@ export async function setup() {
                 throw new Error('GitHub Actions Redis service container not accessible');
             }
 
-            console.log('✅ Redis service container is ready');
+            console.log(`✅ Redis service container is ready at ${url}`);
             console.timeEnd('⏱️  global-setup');
             return;
         }
@@ -60,6 +59,19 @@ export async function setup() {
             stdio: 'inherit',
         });
 
+        // Resolve the dynamically-assigned host port and expose it via REDIS_URL
+        // so test files (which read process.env.REDIS_URL) connect to the right port.
+        if (!process.env.REDIS_URL) {
+            const portMapping = execSync(`docker compose -f ${composeFile} port redis 6379`, {
+                encoding: 'utf-8',
+            }).trim();
+            const hostPort = portMapping.split(':').pop();
+            if (!hostPort) {
+                throw new Error(`Could not resolve host port from mapping: ${portMapping}`);
+            }
+            process.env.REDIS_URL = `redis://localhost:${hostPort}`;
+        }
+
         // Wait for Redis to be healthy
         console.log('⏳ Waiting for Redis to be ready...');
         execSync(`docker compose -f ${composeFile} exec -T redis redis-cli ping`, {
@@ -69,7 +81,7 @@ export async function setup() {
 
         // Verify connection from Node
         const client = createClient({
-            url: process.env.REDIS_URL || 'redis://localhost:6379',
+            url: process.env.REDIS_URL,
         });
 
         await client.connect();
@@ -80,7 +92,9 @@ export async function setup() {
             throw new Error('Redis ping failed');
         }
 
-        console.log('✅ Redis Stack is ready for testing');
+        console.log(
+            `✅ Redis Stack is ready to be used for testing RedisVL at ${process.env.REDIS_URL}`
+        );
     } catch (error) {
         console.error('❌ Failed to start Redis:', error);
         // Cleanup on failure

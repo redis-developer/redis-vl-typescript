@@ -11,7 +11,7 @@
         "build": "tsc",
         "build:watch": "tsc --watch",
         "test": "npm run type-check:tests && vitest run",
-        "test:unit": "vitest run tests/unit",
+        "test:unit": "vitest run --config vitest.unit.config.ts",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         "lint": "eslint .",
