@@ -75,9 +75,7 @@ export function decodeVectorBuffer(
         case VectorDataType.FLOAT64:
             return decodeFloat64Buffer(buffer);
         case VectorDataType.FLOAT16:
-            return Array.from(
-                new Float16Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 2)
-            );
+            return decodeFloat16Buffer(buffer);
         case VectorDataType.BFLOAT16:
             return decodeBFloat16Buffer(buffer);
         case VectorDataType.INT8:
@@ -141,6 +139,21 @@ function decodeFloat64Buffer(buffer: Buffer): number[] {
 
     for (let offset = 0; offset + 8 <= buffer.byteLength; offset += 8) {
         values.push(buffer.readDoubleLE(offset));
+    }
+
+    return values;
+}
+
+// Float16Array requires its byte offset to be a multiple of 2. Buffers returned by
+// node-redis are slices of the parser's RESP buffer, so byteOffset depends on the
+// shape of the whole reply (field name lengths, ordering, etc.) and is not guaranteed
+// to be aligned. Read via DataView to sidestep the constraint (matches BFLOAT16 path).
+function decodeFloat16Buffer(buffer: Buffer): number[] {
+    const values: number[] = [];
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    for (let offset = 0; offset + 2 <= buffer.byteLength; offset += 2) {
+        values.push(view.getFloat16(offset, true));
     }
 
     return values;

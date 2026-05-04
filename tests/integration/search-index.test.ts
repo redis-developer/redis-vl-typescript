@@ -8,6 +8,37 @@ import {
     VectorQuery,
 } from '../../src/index.js';
 
+// Helpers for the parametric vector round-trip suite (see fetch() block below).
+type ExtraField = { name: string; value: string };
+
+// Deterministic value generators so the tests are reproducible across runs.
+function floatSample(dims: number): number[] {
+    const out = new Array(dims);
+    for (let i = 0; i < dims; i++) {
+        out[i] = ((i % 200) - 100) / 100; // -1.00 .. 0.99 in 0.01 steps
+    }
+    return out;
+}
+
+function fp16Sample(dims: number): number[] {
+    // Values exactly representable in FP16 / BF16 so toBeCloseTo with low tolerance holds.
+    const out = new Array(dims);
+    for (let i = 0; i < dims; i++) {
+        const k = i % 8;
+        out[i] = [-2, -1, -0.5, -0.25, 0, 0.25, 0.5, 1][k];
+    }
+    return out;
+}
+
+function intSample(dims: number, min: number, max: number): number[] {
+    const span = max - min + 1;
+    const out = new Array(dims);
+    for (let i = 0; i < dims; i++) {
+        out[i] = min + (i % span);
+    }
+    return out;
+}
+
 // Use naming convention (redisvl-test-*, rvl-test-*) to identify test data.
 describe('SearchIndex Integration Tests', () => {
     let client: RedisClientType;
@@ -938,67 +969,108 @@ describe('SearchIndex Integration Tests', () => {
             expect(embedding[2]).toBeCloseTo(1.75, 6);
         });
 
-        it.each([
+        // Round-trip every vector datatype across multiple schema shapes.
+        // The shape (field count, field name lengths, value lengths, doc count) determines
+        // where each value lands inside the parsed RESP buffer, so byteOffset varies.
+        // A typed-array view constructor that requires an aligned offset will fail under
+        // some shapes and pass under others (see fix/float16-decode-misalignment).
+        const vectorRoundTripDatatypes: Array<{
+            datatype: VectorDataType;
+            tolerance: number;
+            // Build a deterministic vector for this datatype: values must round-trip exactly
+            // within the tolerance below for both small and 384-dim cases.
+            sample: (dims: number) => number[];
+        }> = [
+            { datatype: VectorDataType.FLOAT32, tolerance: 6, sample: (n) => floatSample(n) },
+            { datatype: VectorDataType.FLOAT64, tolerance: 12, sample: (n) => floatSample(n) },
+            { datatype: VectorDataType.FLOAT16, tolerance: 2, sample: (n) => fp16Sample(n) },
+            { datatype: VectorDataType.BFLOAT16, tolerance: 1, sample: (n) => fp16Sample(n) },
+            { datatype: VectorDataType.INT8, tolerance: 0, sample: (n) => intSample(n, -128, 127) },
+            { datatype: VectorDataType.UINT8, tolerance: 0, sample: (n) => intSample(n, 0, 255) },
+        ];
+
+        const vectorRoundTripShapes = [
+            // Original shape kept for parity. Embedding lands at an even offset under this layout.
+            { name: 'minimal', dims: 3, docCount: 1, extraFields: [] as ExtraField[] },
+            // Adds extra fields with varying name lengths so the embedding lands at a different
+            // offset inside the HGETALL reply.
             {
-                datatype: VectorDataType.FLOAT32,
-                embedding: [0.1, -0.2, 3.75],
+                name: 'multi-field',
+                dims: 3,
+                docCount: 1,
+                extraFields: [
+                    { name: 'title', value: 'Vec' },
+                    { name: 'description_text', value: 'A short description' },
+                    { name: 'category', value: 'test' },
+                ],
             },
+            // Realistic embedding dim count (Xenova/all-MiniLM-L6-v2 etc.) with a single field —
+            // exercises larger payloads through the storage layer.
+            { name: 'realistic-dims', dims: 384, docCount: 1, extraFields: [] },
+            // Multiple docs in a single load; each fetch goes through its own HGETALL response,
+            // so byteOffset is re-rolled per call. Catches any code path that depends on
+            // first-call alignment luck.
             {
-                datatype: VectorDataType.FLOAT64,
-                embedding: [0.1, -0.2, 3.75],
+                name: 'multi-doc-realistic',
+                dims: 384,
+                docCount: 5,
+                extraFields: [
+                    { name: 'title', value: 'Document title' },
+                    { name: 'long_content_field', value: 'Body text of varying length here.' },
+                ],
             },
-            {
-                datatype: VectorDataType.FLOAT16,
-                embedding: [1, -2, 0.5],
-            },
-            {
-                datatype: VectorDataType.BFLOAT16,
-                embedding: [1, -2, 0.5],
-            },
-            {
-                datatype: VectorDataType.INT8,
-                embedding: [-128, 0, 127],
-            },
-            {
-                datatype: VectorDataType.UINT8,
-                embedding: [0, 127, 255],
-            },
-        ])(
-            'should round-trip HASH vector fields with $datatype datatype',
-            async ({ datatype, embedding }) => {
-                const keySuffix = datatype.toLowerCase();
-                const schema = IndexSchema.fromObject({
-                    index: {
-                        name: `redisvl-test-searchindex-fetch-vectors-${keySuffix}`,
-                        prefix: `rvl-test-searchindex-fetch-vectors-${keySuffix}`,
-                        storage_type: 'hash',
-                    },
-                    fields: [
-                        { name: 'id', type: 'tag' },
-                        {
-                            name: 'embedding',
-                            type: 'vector',
-                            attrs: {
-                                algorithm: 'flat',
-                                dims: 3,
-                                datatype,
-                            },
+        ];
+
+        for (const { datatype, tolerance, sample } of vectorRoundTripDatatypes) {
+            for (const shape of vectorRoundTripShapes) {
+                it(`should round-trip ${datatype} HASH vectors (${shape.name} shape)`, async () => {
+                    const keySuffix = `${datatype.toLowerCase()}-${shape.name}`;
+                    const schema = IndexSchema.fromObject({
+                        index: {
+                            name: `redisvl-test-searchindex-fetch-vectors-${keySuffix}`,
+                            prefix: `rvl-test-searchindex-fetch-vectors-${keySuffix}`,
+                            storage_type: 'hash',
                         },
-                    ],
+                        fields: [
+                            { name: 'id', type: 'tag' },
+                            ...shape.extraFields.map((f) => ({
+                                name: f.name,
+                                type: 'text' as const,
+                            })),
+                            {
+                                name: 'embedding',
+                                type: 'vector',
+                                attrs: {
+                                    algorithm: 'flat',
+                                    dims: shape.dims,
+                                    datatype,
+                                },
+                            },
+                        ],
+                    });
+
+                    const index = new SearchIndex(schema, client);
+                    const embedding = sample(shape.dims);
+                    const docs = Array.from({ length: shape.docCount }, (_, i) => ({
+                        id: `vec-${i}`,
+                        embedding,
+                        ...Object.fromEntries(shape.extraFields.map((f) => [f.name, f.value])),
+                    }));
+
+                    await index.load(docs, { idField: 'id' });
+
+                    for (let i = 0; i < shape.docCount; i++) {
+                        const doc = await index.fetch(`vec-${i}`);
+                        const roundTripped = doc?.embedding as number[];
+
+                        expect(roundTripped).toHaveLength(shape.dims);
+                        for (let j = 0; j < shape.dims; j++) {
+                            expect(roundTripped[j]).toBeCloseTo(embedding[j], tolerance);
+                        }
+                    }
                 });
-
-                const index = new SearchIndex(schema, client);
-                await index.load([{ id: 'vec-1', embedding }], { idField: 'id' });
-
-                const doc = await index.fetch('vec-1');
-                const roundTripped = doc?.embedding as number[];
-
-                expect(roundTripped).toHaveLength(embedding.length);
-                for (let i = 0; i < embedding.length; i++) {
-                    expect(roundTripped[i]).toBeCloseTo(embedding[i], 6);
-                }
             }
-        );
+        }
     });
 
     describe('fetchMany()', () => {
