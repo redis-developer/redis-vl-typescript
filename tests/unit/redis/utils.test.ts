@@ -95,6 +95,44 @@ describe('vector buffer utilities', () => {
                 SchemaValidationError
             );
         });
+
+        // Buffers returned by node-redis come from a parsed RESP reply, so their
+        // byteOffset reflects the position of the field inside the reply and is not
+        // guaranteed to be aligned to the element size. This test will Cover odd and even-non-zero
+        // start offsets for every datatype; offset 0 is already covered by the
+        // round-trip block above.
+        const datatypeSamples = [
+            { datatype: VectorDataType.FLOAT64, vector: [0.1, -0.2, 3.75] },
+            { datatype: VectorDataType.FLOAT32, vector: [0.1, -0.2, 3.75] },
+            { datatype: VectorDataType.FLOAT16, vector: [1, -2, 0.5] },
+            { datatype: VectorDataType.BFLOAT16, vector: [1, -2, 0.5] },
+            { datatype: VectorDataType.INT8, vector: [-128, 0, 127] },
+            { datatype: VectorDataType.UINT8, vector: [0, 127, 255] },
+        ];
+
+        const startOffsets = [1, 2, 3, 7, 8] as const;
+
+        it.each(
+            datatypeSamples.flatMap(({ datatype, vector }) =>
+                startOffsets.map((startOffset) => ({ datatype, vector, startOffset }))
+            )
+        )(
+            'should decode $datatype buffers whose underlying ArrayBuffer starts at offset $startOffset',
+            ({ datatype, vector, startOffset }) => {
+                const encoded = encodeVectorBuffer(vector, datatype);
+                const padded = Buffer.alloc(encoded.byteLength + startOffset);
+                encoded.copy(padded, startOffset);
+                const offsetBuffer = padded.subarray(startOffset);
+
+                expect(offsetBuffer.byteOffset).toBe(startOffset);
+
+                const decoded = decodeVectorBuffer(offsetBuffer, datatype);
+                expect(decoded).toHaveLength(vector.length);
+                for (let i = 0; i < vector.length; i++) {
+                    expect(decoded[i]).toBeCloseTo(vector[i], 6);
+                }
+            }
+        );
     });
 
     describe('normalizeVectorDataType()', () => {
