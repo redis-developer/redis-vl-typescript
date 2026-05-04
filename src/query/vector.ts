@@ -1,6 +1,7 @@
 import { BaseQuery } from './base.js';
-import { VectorDistanceMetric } from '../schema/types.js';
-import { QueryValidationError } from '../errors.js';
+import { VectorDataType, VectorDistanceMetric } from '../schema/types.js';
+import { QueryValidationError, SchemaValidationError } from '../errors.js';
+import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
 
 /**
  * Hybrid policy options for vector search with filters
@@ -33,6 +34,13 @@ export interface VectorQueryConfig {
 
     /** Distance metric to use */
     distanceMetric?: VectorDistanceMetric;
+
+    /**
+     * Vector datatype to use when serializing the query vector.
+     * Must match the datatype declared on the schema's vector field.
+     * @default 'FLOAT32'
+     */
+    datatype?: VectorDataType | string;
 
     /** Pagination offset */
     offset?: number;
@@ -180,6 +188,7 @@ export class VectorQuery implements BaseQuery {
     public readonly filter?: string;
     public readonly returnFields?: string[];
     public readonly distanceMetric: VectorDistanceMetric;
+    public readonly datatype: VectorDataType;
     public readonly offset?: number;
     public readonly limit?: number;
     public readonly scoreAlias: string;
@@ -258,6 +267,14 @@ export class VectorQuery implements BaseQuery {
         this.filter = config.filter;
         this.returnFields = config.returnFields;
         this.distanceMetric = config.distanceMetric ?? VectorDistanceMetric.COSINE;
+        try {
+            this.datatype = normalizeVectorDataType(config.datatype);
+        } catch (error) {
+            if (error instanceof SchemaValidationError) {
+                throw new QueryValidationError(error.message);
+            }
+            throw error;
+        }
         this.offset = config.offset;
         this.limit = config.limit;
         this.scoreAlias = config.scoreAlias ?? 'vector_distance';
@@ -322,8 +339,7 @@ export class VectorQuery implements BaseQuery {
      * @returns Query parameters object with vector buffer and algorithm params
      */
     buildParams(): Record<string, unknown> {
-        // Convert vector to Float32Array buffer (Redis expects binary data)
-        const vectorBuffer = Buffer.from(new Float32Array(this.vector).buffer);
+        const vectorBuffer = encodeVectorBuffer(this.vector, this.datatype);
 
         const params: Record<string, unknown> = {
             vector: vectorBuffer,

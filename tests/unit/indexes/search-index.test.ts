@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { MockedFunction } from 'vitest';
 import { SearchIndex } from '../../../src/indexes/search-index.js';
 import { IndexSchema, IndexInfo } from '../../../src/schema/schema.js';
 import { StorageType, VectorDataType } from '../../../src/schema/types.js';
@@ -9,6 +10,8 @@ import { VectorQuery } from '../../../src/query/vector.js';
 describe('SearchIndex', () => {
     let schema: IndexSchema;
     let mockClient: RedisClientType;
+
+    type SearchFunction = RedisClientType['ft']['search'];
 
     beforeEach(() => {
         // Create a basic schema for testing
@@ -370,6 +373,49 @@ describe('SearchIndex', () => {
                 const keys = ['doc:1']; // Only 1 key for 2 documents
 
                 await expect(index.load(data, { keys })).rejects.toThrow();
+            });
+
+            it('should serialize HASH vector arrays using the schema datatype', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'redisvl-test-data-load-vector-float64',
+                    prefix: 'rvl-test-data-load-vector-float64',
+                    storageType: StorageType.HASH,
+                });
+                const vectorSchema = new IndexSchema({ index: indexInfo });
+                vectorSchema.addField({ name: 'id', type: 'tag' });
+                vectorSchema.addField({
+                    name: 'embedding',
+                    type: 'vector',
+                    attrs: {
+                        algorithm: 'flat',
+                        dims: 3,
+                        datatype: VectorDataType.FLOAT64,
+                    },
+                });
+
+                const hSet = vi.fn().mockReturnThis();
+                const mockPipeline = {
+                    hSet,
+                    expire: vi.fn().mockReturnThis(),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                mockClient.multi = vi
+                    .fn()
+                    .mockReturnValue(mockPipeline) as RedisClientType['multi'];
+
+                const index = new SearchIndex(vectorSchema, mockClient);
+                await index.load([{ id: 'doc-1', embedding: [0.1, 0.2, 0.3] }], {
+                    idField: 'id',
+                });
+
+                const storedDocument = hSet.mock.calls[0][1] as Record<string, unknown>;
+                const embedding = storedDocument.embedding;
+
+                expect(Buffer.isBuffer(embedding)).toBe(true);
+                expect((embedding as Buffer).byteLength).toBe(24);
+                expect((embedding as Buffer).readDoubleLE(0)).toBeCloseTo(0.1, 12);
+                expect((embedding as Buffer).readDoubleLE(8)).toBeCloseTo(0.2, 12);
+                expect((embedding as Buffer).readDoubleLE(16)).toBeCloseTo(0.3, 12);
             });
         });
 
@@ -1248,6 +1294,47 @@ describe('SearchIndex', () => {
             );
             expect(results.documents[0].score).toBe(1);
             expect(results.documents[1].score).toBeCloseTo(0.99694186449051, 10);
+        });
+
+        it('should serialize query vectors using the query datatype', async () => {
+            const indexInfo = new IndexInfo({
+                name: 'redisvl-test-search-float64',
+                prefix: 'rvl-test-search-float64',
+                storageType: StorageType.HASH,
+            });
+            const vectorSchema = new IndexSchema({ index: indexInfo });
+            vectorSchema.addField({
+                name: 'embedding',
+                type: 'vector',
+                attrs: {
+                    algorithm: 'flat',
+                    dims: 3,
+                    datatype: VectorDataType.FLOAT64,
+                },
+            });
+
+            const ftSearch = mockClient.ft.search as MockedFunction<SearchFunction>;
+            ftSearch.mockResolvedValue({
+                total: 0,
+                documents: [],
+            } as Awaited<ReturnType<SearchFunction>>);
+
+            const index = new SearchIndex(vectorSchema, mockClient);
+            await index.search(
+                new VectorQuery({
+                    vector: [0.1, 0.2, 0.3],
+                    vectorField: 'embedding',
+                    datatype: VectorDataType.FLOAT64,
+                })
+            );
+
+            const searchOptions = ftSearch.mock.calls[0][2] as { PARAMS: { vector: Buffer } };
+            const vector = searchOptions.PARAMS.vector;
+
+            expect(vector.byteLength).toBe(24);
+            expect(vector.readDoubleLE(0)).toBeCloseTo(0.1, 12);
+            expect(vector.readDoubleLE(8)).toBeCloseTo(0.2, 12);
+            expect(vector.readDoubleLE(16)).toBeCloseTo(0.3, 12);
         });
     });
 });
