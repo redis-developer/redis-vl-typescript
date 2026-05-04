@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
-import { IndexSchema, SearchIndex, StorageType, VectorQuery } from '../../src/index.js';
+import {
+    IndexSchema,
+    SearchIndex,
+    StorageType,
+    VectorDataType,
+    VectorQuery,
+} from '../../src/index.js';
 
 // Use naming convention (redisvl-test-*, rvl-test-*) to identify test data.
 describe('SearchIndex Integration Tests', () => {
@@ -887,48 +893,12 @@ describe('SearchIndex Integration Tests', () => {
             expect(product2).toBeDefined();
             expect(product2?.name).toBe('Product 2');
         });
-    });
-
-    describe('fetchMany()', () => {
-        it('should fetch multiple documents at once', async () => {
-            const schema = IndexSchema.fromObject({
-                index: {
-                    name: 'redisvl-test-searchindex-fetchmany',
-                    prefix: 'rvl-test-searchindex-fetchmany',
-                    storage_type: 'hash',
-                },
-                fields: [
-                    { name: 'name', type: 'text' },
-                    { name: 'value', type: 'numeric' },
-                ],
-            });
-
-            const index = new SearchIndex(schema, client);
-            await index.create();
-
-            const items = [
-                { name: 'Item A', value: 100 },
-                { name: 'Item B', value: 200 },
-                { name: 'Item C', value: 300 },
-            ];
-
-            const keys = await index.load(items);
-            const ids = keys.map((key: string) => key.split(':')[1]);
-
-            // Test fetchMany()
-            const docs = await index.fetchMany([ids[0], ids[1]]);
-            expect(docs).toHaveLength(2);
-            expect(docs[0]).toBeDefined();
-            expect(docs[0]?.name).toBe('Item A');
-            expect(docs[1]).toBeDefined();
-            expect(docs[1]?.name).toBe('Item B');
-        });
 
         it('should decode HASH vector fields when fetching documents', async () => {
             const schema = IndexSchema.fromObject({
                 index: {
-                    name: 'redisvl-test-searchindex-fetchmany-vectors',
-                    prefix: 'rvl-test-searchindex-fetchmany-vectors',
+                    name: 'redisvl-test-searchindex-fetch-vectors',
+                    prefix: 'rvl-test-searchindex-fetch-vectors',
                     storage_type: 'hash',
                 },
                 fields: [
@@ -966,6 +936,104 @@ describe('SearchIndex Integration Tests', () => {
             expect(embedding[0]).toBeCloseTo(0.125, 6);
             expect(embedding[1]).toBeCloseTo(-0.5, 6);
             expect(embedding[2]).toBeCloseTo(1.75, 6);
+        });
+
+        it.each([
+            {
+                datatype: VectorDataType.FLOAT32,
+                embedding: [0.1, -0.2, 3.75],
+            },
+            {
+                datatype: VectorDataType.FLOAT64,
+                embedding: [0.1, -0.2, 3.75],
+            },
+            {
+                datatype: VectorDataType.FLOAT16,
+                embedding: [1, -2, 0.5],
+            },
+            {
+                datatype: VectorDataType.BFLOAT16,
+                embedding: [1, -2, 0.5],
+            },
+            {
+                datatype: VectorDataType.INT8,
+                embedding: [-128, 0, 127],
+            },
+            {
+                datatype: VectorDataType.UINT8,
+                embedding: [0, 127, 255],
+            },
+        ])(
+            'should round-trip HASH vector fields with $datatype datatype',
+            async ({ datatype, embedding }) => {
+                const keySuffix = datatype.toLowerCase();
+                const schema = IndexSchema.fromObject({
+                    index: {
+                        name: `redisvl-test-searchindex-fetch-vectors-${keySuffix}`,
+                        prefix: `rvl-test-searchindex-fetch-vectors-${keySuffix}`,
+                        storage_type: 'hash',
+                    },
+                    fields: [
+                        { name: 'id', type: 'tag' },
+                        {
+                            name: 'embedding',
+                            type: 'vector',
+                            attrs: {
+                                algorithm: 'flat',
+                                dims: 3,
+                                datatype,
+                            },
+                        },
+                    ],
+                });
+
+                const index = new SearchIndex(schema, client);
+                await index.load([{ id: 'vec-1', embedding }], { idField: 'id' });
+
+                const doc = await index.fetch('vec-1');
+                const roundTripped = doc?.embedding as number[];
+
+                expect(roundTripped).toHaveLength(embedding.length);
+                for (let i = 0; i < embedding.length; i++) {
+                    expect(roundTripped[i]).toBeCloseTo(embedding[i], 6);
+                }
+            }
+        );
+    });
+
+    describe('fetchMany()', () => {
+        it('should fetch multiple documents at once', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-fetchmany',
+                    prefix: 'rvl-test-searchindex-fetchmany',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'name', type: 'text' },
+                    { name: 'value', type: 'numeric' },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create();
+
+            const items = [
+                { name: 'Item A', value: 100 },
+                { name: 'Item B', value: 200 },
+                { name: 'Item C', value: 300 },
+            ];
+
+            const keys = await index.load(items);
+            const ids = keys.map((key: string) => key.split(':')[1]);
+
+            // Test fetchMany()
+            const docs = await index.fetchMany([ids[0], ids[1]]);
+            expect(docs).toHaveLength(2);
+            expect(docs[0]).toBeDefined();
+            expect(docs[0]?.name).toBe('Item A');
+            expect(docs[1]).toBeDefined();
+            expect(docs[1]?.name).toBe('Item B');
         });
 
         it('should normalize COSINE distances in the manual smoke-style HASH flow', async () => {

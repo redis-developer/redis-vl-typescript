@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { VectorQuery } from '../../../src/query/vector.js';
 import { QueryValidationError } from '../../../src/errors.js';
-import { VectorDistanceMetric } from '../../../src/schema/types.js';
+import { VectorDataType, VectorDistanceMetric } from '../../../src/schema/types.js';
 
 describe('VectorQuery', () => {
     describe('constructor', () => {
@@ -47,6 +47,16 @@ describe('VectorQuery', () => {
             });
 
             expect(query.distanceMetric).toBe(VectorDistanceMetric.COSINE);
+        });
+
+        it('should throw QueryValidationError if datatype is invalid', () => {
+            expect(() => {
+                new VectorQuery({
+                    vector: [0.1, 0.2, 0.3],
+                    vectorField: 'embedding',
+                    datatype: 'float25',
+                });
+            }).toThrow(QueryValidationError);
         });
     });
 
@@ -134,6 +144,22 @@ describe('VectorQuery', () => {
             expect(float32Array[0]).toBeCloseTo(0.1);
             expect(float32Array[1]).toBeCloseTo(0.2);
             expect(float32Array[2]).toBeCloseTo(0.3);
+        });
+
+        it('should create buffer from configured datatype', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+                datatype: VectorDataType.FLOAT64,
+            });
+
+            const params = query.buildParams();
+            const buffer = params.vector as Buffer;
+
+            expect(buffer.byteLength).toBe(24);
+            expect(buffer.readDoubleLE(0)).toBeCloseTo(0.1, 12);
+            expect(buffer.readDoubleLE(8)).toBeCloseTo(0.2, 12);
+            expect(buffer.readDoubleLE(16)).toBeCloseTo(0.3, 12);
         });
     });
 

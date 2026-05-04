@@ -2,7 +2,10 @@ import { RESP_TYPES } from 'redis';
 import type { RedisClient, WriteOptions } from './base-storage.js';
 import { BaseStorage } from './base-storage.js';
 import type { IndexSchema } from '../schema/schema.js';
+import type { VectorFieldAttrs } from '../schema/fields.js';
+import { FieldType } from '../schema/types.js';
 import { SchemaValidationError } from '../errors.js';
+import { decodeVectorBuffer, encodeVectorBuffer } from '../redis/utils.js';
 
 /**
  * Storage implementation for Redis HASH data type.
@@ -43,8 +46,8 @@ export class HashStorage extends BaseStorage {
         for (let i = 0; i < preparedDocs.length; i++) {
             const { key, doc } = preparedDocs[i];
 
-            // Convert vector arrays to buffers for HASH storage
-            const processedDoc = this.convertVectorsToBuffers(doc);
+            // Convert public JS values to Redis HASH-compatible values
+            const processedDoc = this.serializeHashDocument(doc);
 
             // Add HSET command to pipeline
             pipeline.hSet(key, processedDoc as Record<string, string | number | Buffer>);
@@ -70,19 +73,42 @@ export class HashStorage extends BaseStorage {
     }
 
     /**
-     * Convert vector arrays to Buffer objects for HASH storage.
-     * Redis HSET requires all values to be strings, numbers, or Buffers.
-     * Vector arrays (number[]) must be converted to Buffer format.
+     * Encode vector fields as binary buffers; pass other fields through unchanged.
+     * Required because Redis HSET only accepts strings, numbers, or Buffers.
      */
-    private convertVectorsToBuffers(doc: Record<string, unknown>): Record<string, unknown> {
+    private serializeHashDocument(doc: Record<string, unknown>): Record<string, unknown> {
         const result: Record<string, unknown> = {};
 
         for (const [key, value] of Object.entries(doc)) {
-            // Convert number arrays to Float32Array buffer (vectors)
-            if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'number') {
-                result[key] = Buffer.from(new Float32Array(value).buffer);
+            const field = this.schema.fields[key];
+
+            if (field?.type === FieldType.VECTOR && Array.isArray(value)) {
+                result[key] = encodeVectorBuffer(value, (field.attrs as VectorFieldAttrs).datatype);
             } else {
                 result[key] = value;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Convert a HASH document returned in Buffer mode into public API values.
+     * Non-vector fields preserve the existing string-based HASH behavior.
+     */
+    private deserializeHashDocument(doc: Record<string, Buffer>): Record<string, unknown> {
+        const result: Record<string, unknown> = {};
+
+        for (const [fieldName, value] of Object.entries(doc)) {
+            const field = this.schema.fields[fieldName];
+
+            if (field?.type === FieldType.VECTOR) {
+                result[fieldName] = decodeVectorBuffer(
+                    value,
+                    (field.attrs as VectorFieldAttrs).datatype
+                );
+            } else {
+                result[fieldName] = value.toString();
             }
         }
 

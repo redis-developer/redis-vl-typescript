@@ -8,7 +8,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Language](https://img.shields.io/badge/language-TypeScript-blue)
-![Node Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)
+![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)
 ![Status](https://img.shields.io/badge/status-beta-orange)
 
 </div>
