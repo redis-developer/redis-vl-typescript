@@ -1,7 +1,7 @@
 import type { RedisClientType, RedisClusterType } from 'redis';
 import type { IndexSchema } from '../schema/schema.js';
-import type { BaseField } from '../schema/fields.js';
-import { FieldType } from '../schema/types.js';
+import type { BaseField, VectorFieldAttrs } from '../schema/fields.js';
+import { FieldType, VectorDataType } from '../schema/types.js';
 import { SchemaValidationError } from '../errors.js';
 import { randomBytes } from 'crypto';
 
@@ -92,6 +92,112 @@ export abstract class BaseStorage {
         }
 
         return `${normalizedPrefix}${keySeparator}${id}`;
+    }
+
+    /**
+     * Convert a HASH document returned in Buffer mode into public API values.
+     * Non-vector fields preserve the existing string-based HASH behavior.
+     */
+    protected deserializeHashDocument(doc: Record<string, Buffer>): Record<string, unknown> {
+        const result: Record<string, unknown> = {};
+
+        for (const [fieldName, value] of Object.entries(doc)) {
+            const field = this.schema.fields[fieldName];
+
+            if (field?.type === FieldType.VECTOR) {
+                result[fieldName] = this.decodeVectorBuffer(value, field.attrs as VectorFieldAttrs);
+            } else {
+                result[fieldName] = value.toString();
+            }
+        }
+
+        return result;
+    }
+
+    private decodeVectorBuffer(buffer: Buffer, attrs: VectorFieldAttrs): number[] {
+        const datatype = attrs.datatype ?? VectorDataType.FLOAT32;
+
+        switch (datatype) {
+            case VectorDataType.FLOAT64:
+                return this.decodeFloat64Buffer(buffer);
+            case VectorDataType.FLOAT16:
+                return this.decodeFloat16Buffer(buffer, false);
+            case VectorDataType.BFLOAT16:
+                return this.decodeFloat16Buffer(buffer, true);
+            case VectorDataType.INT8:
+                return Array.from(
+                    new Int8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+                );
+            case VectorDataType.UINT8:
+                return Array.from(
+                    new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+                );
+            case VectorDataType.FLOAT32:
+            default:
+                return this.decodeFloat32Buffer(buffer);
+        }
+    }
+
+    private decodeFloat32Buffer(buffer: Buffer): number[] {
+        const values: number[] = [];
+
+        for (let offset = 0; offset + 4 <= buffer.byteLength; offset += 4) {
+            values.push(buffer.readFloatLE(offset));
+        }
+
+        return values;
+    }
+
+    private decodeFloat64Buffer(buffer: Buffer): number[] {
+        const values: number[] = [];
+
+        for (let offset = 0; offset + 8 <= buffer.byteLength; offset += 8) {
+            values.push(buffer.readDoubleLE(offset));
+        }
+
+        return values;
+    }
+
+    private decodeFloat16Buffer(buffer: Buffer, isBFloat16: boolean): number[] {
+        const values: number[] = [];
+
+        for (let offset = 0; offset < buffer.byteLength; offset += 2) {
+            const bits = buffer.readUInt16LE(offset);
+            values.push(isBFloat16 ? this.decodeBFloat16(bits) : this.decodeFloat16(bits));
+        }
+
+        return values;
+    }
+
+    private decodeBFloat16(bits: number): number {
+        const uint32 = bits << 16;
+        const dataView = new DataView(new ArrayBuffer(4));
+        dataView.setUint32(0, uint32, false);
+        return dataView.getFloat32(0, false);
+    }
+
+    private decodeFloat16(bits: number): number {
+        const sign = (bits & 0x8000) >> 15;
+        const exponent = (bits & 0x7c00) >> 10;
+        const fraction = bits & 0x03ff;
+
+        if (exponent === 0) {
+            if (fraction === 0) {
+                return sign ? -0 : 0;
+            }
+
+            return (sign ? -1 : 1) * Math.pow(2, -14) * (fraction / 1024);
+        }
+
+        if (exponent === 0x1f) {
+            if (fraction === 0) {
+                return sign ? -Infinity : Infinity;
+            }
+
+            return Number.NaN;
+        }
+
+        return (sign ? -1 : 1) * Math.pow(2, exponent - 15) * (1 + fraction / 1024);
     }
 
     /**
@@ -203,7 +309,7 @@ export abstract class BaseStorage {
         }
 
         // Get dimensions from field attributes
-        const attrs = field.attrs as any;
+        const attrs = field.attrs as Partial<VectorFieldAttrs> & { dim?: number };
         const expectedDims = attrs?.dims || attrs?.dim;
 
         if (expectedDims) {

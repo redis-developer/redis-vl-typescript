@@ -1,3 +1,4 @@
+import { RESP_TYPES } from 'redis';
 import type { RedisClient, WriteOptions } from './base-storage.js';
 import { BaseStorage } from './base-storage.js';
 import type { IndexSchema } from '../schema/schema.js';
@@ -101,11 +102,14 @@ export class HashStorage extends BaseStorage {
         }
 
         const results: (Record<string, unknown> | null)[] = [];
+        const binaryClient = client.withTypeMapping({
+            [RESP_TYPES.BLOB_STRING]: Buffer,
+        });
 
         // Process in batches
         for (let i = 0; i < keys.length; i += batchSize) {
             const batch = keys.slice(i, i + batchSize);
-            const pipeline = client.multi();
+            const pipeline = binaryClient.multi();
 
             // Add HGETALL commands to pipeline
             for (const key of batch) {
@@ -114,13 +118,13 @@ export class HashStorage extends BaseStorage {
 
             // Execute pipeline and get results
             const batchResults = (await pipeline.execAsPipeline()) as unknown as Array<
-                Record<string, string>
+                Record<string, Buffer>
             >;
 
             // Process batch results
             for (const data of batchResults) {
                 if (data && Object.keys(data).length > 0) {
-                    results.push(data as Record<string, unknown>);
+                    results.push(this.deserializeHashDocument(data));
                 } else {
                     results.push(null);
                 }

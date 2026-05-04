@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
-import { IndexSchema, SearchIndex, StorageType } from '../../src/index.js';
+import { IndexSchema, SearchIndex, StorageType, VectorQuery } from '../../src/index.js';
 
 // Use naming convention (redisvl-test-*, rvl-test-*) to identify test data.
 describe('SearchIndex Integration Tests', () => {
@@ -922,6 +922,142 @@ describe('SearchIndex Integration Tests', () => {
             expect(docs[0]?.name).toBe('Item A');
             expect(docs[1]).toBeDefined();
             expect(docs[1]?.name).toBe('Item B');
+        });
+
+        it('should decode HASH vector fields when fetching documents', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-fetchmany-vectors',
+                    prefix: 'rvl-test-searchindex-fetchmany-vectors',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'id', type: 'tag' },
+                    { name: 'title', type: 'text' },
+                    {
+                        name: 'embedding',
+                        type: 'vector',
+                        attrs: {
+                            algorithm: 'flat',
+                            dims: 3,
+                        },
+                    },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+
+            const item = {
+                id: 'vec-1',
+                title: 'Vector Item',
+                embedding: [0.125, -0.5, 1.75],
+            };
+
+            await index.load([item], { idField: 'id' });
+
+            const doc = await index.fetch('vec-1');
+            expect(doc).toBeDefined();
+            expect(doc?.id).toBe('vec-1');
+            expect(doc?.title).toBe('Vector Item');
+            expect(Array.isArray(doc?.embedding)).toBe(true);
+
+            const embedding = doc?.embedding as number[];
+            expect(embedding[0]).toBeCloseTo(0.125, 6);
+            expect(embedding[1]).toBeCloseTo(-0.5, 6);
+            expect(embedding[2]).toBeCloseTo(1.75, 6);
+        });
+
+        it('should normalize COSINE distances in the manual smoke-style HASH flow', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-normalize-smoke',
+                    prefix: 'rvl-test-searchindex-normalize-smoke',
+                    storage_type: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'category', type: 'tag' },
+                    {
+                        name: 'embedding',
+                        type: 'vector',
+                        attrs: {
+                            algorithm: 'flat',
+                            dims: 4,
+                            distanceMetric: 'cosine',
+                        },
+                    },
+                ],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+            await index.load(
+                [
+                    {
+                        id: '1',
+                        title: 'red running shoes',
+                        category: 'apparel',
+                        embedding: [1, 0, 0, 0],
+                    },
+                    {
+                        id: '2',
+                        title: 'blue hiking boots',
+                        category: 'apparel',
+                        embedding: [0.9, 0.1, 0, 0],
+                    },
+                    {
+                        id: '3',
+                        title: 'coffee beans',
+                        category: 'grocery',
+                        embedding: [0, 1, 0, 0],
+                    },
+                ],
+                { idField: 'id' }
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 200));
+
+            const normalizedResults = await index.search(
+                new VectorQuery({
+                    vector: [1, 0, 0, 0],
+                    vectorField: 'embedding',
+                    filter: '@category:{apparel}',
+                    numResults: 2,
+                    returnFields: ['title', 'category'],
+                    normalizeDistance: true,
+                })
+            );
+
+            const rawResults = await index.search(
+                new VectorQuery({
+                    vector: [1, 0, 0, 0],
+                    vectorField: 'embedding',
+                    filter: '@category:{apparel}',
+                    numResults: 2,
+                    returnFields: ['title', 'category'],
+                    normalizeDistance: false,
+                })
+            );
+
+            const normalizedById = new Map(
+                normalizedResults.documents.map((doc) => [doc.id, doc.score])
+            );
+            const rawById = new Map(rawResults.documents.map((doc) => [doc.id, doc.score]));
+
+            expect(normalizedById.get('rvl-test-searchindex-normalize-smoke:1')).toBeCloseTo(1, 10);
+            expect(rawById.get('rvl-test-searchindex-normalize-smoke:1')).toBeCloseTo(0, 10);
+
+            const rawSecondScore = rawById.get('rvl-test-searchindex-normalize-smoke:2');
+            const normalizedSecondScore = normalizedById.get(
+                'rvl-test-searchindex-normalize-smoke:2'
+            );
+
+            expect(rawSecondScore).toBeDefined();
+            expect(normalizedSecondScore).toBeDefined();
+            expect(normalizedSecondScore).toBeCloseTo(1 - (rawSecondScore ?? 0) / 2, 10);
+            expect(normalizedSecondScore).toBeLessThan(1);
+            expect(normalizedSecondScore).toBeGreaterThan(0.99);
         });
     });
 });

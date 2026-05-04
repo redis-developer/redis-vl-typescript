@@ -12,6 +12,7 @@ import { RedisVLError, SchemaValidationError } from '../errors.js';
 import type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from '../query/base.js';
 import { VectorQuery } from '../query/vector.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
+import type { VectorFieldAttrs } from '../schema/fields.js';
 
 /**
  * Options for creating an index.
@@ -257,6 +258,25 @@ export class SearchIndex {
         }
 
         return redisSchema;
+    }
+
+    private getVectorScoreAlias(query: BaseQuery): string | null {
+        return query instanceof VectorQuery ? query.scoreAlias : null;
+    }
+
+    private getVectorDistanceNormalizer(query: BaseQuery): ((distance: number) => number) | null {
+        if (!(query instanceof VectorQuery) || !query.normalizeDistance) {
+            return null;
+        }
+
+        const vectorField = this.schema.fields[query.vectorField];
+        const metricFromSchema =
+            vectorField?.type === 'vector'
+                ? (vectorField.attrs as VectorFieldAttrs).distanceMetric
+                : undefined;
+        const distanceMetric = (metricFromSchema ?? query.distanceMetric ?? 'COSINE').toUpperCase();
+
+        return DISTANCE_NORMALIZERS[distanceMetric] || null;
     }
 
     /**
@@ -537,6 +557,8 @@ export class SearchIndex {
         try {
             const queryString = query.buildQuery();
             const params = query.buildParams();
+            const scoreAlias = this.getVectorScoreAlias(query);
+            const normalizer = this.getVectorDistanceNormalizer(query);
 
             // Build FT.SEARCH options
             const searchOptions: Record<string, unknown> = {
@@ -548,16 +570,8 @@ export class SearchIndex {
             // For VectorQuery, always include the score field (vector_distance by default)
             if (query.returnFields && query.returnFields.length > 0) {
                 const returnFields = [...query.returnFields];
-                // Check if this is a vector query by looking at the query string
-                if (queryString.includes('=>[KNN')) {
-                    // Extract the score alias from the query string (after "AS ")
-                    const scoreAliasMatch = queryString.match(/AS\s+(\w+)\]/);
-                    const scoreAlias = scoreAliasMatch ? scoreAliasMatch[1] : 'vector_distance';
-
-                    // Only add if not already in returnFields
-                    if (!returnFields.includes(scoreAlias)) {
-                        returnFields.push(scoreAlias);
-                    }
+                if (scoreAlias && !returnFields.includes(scoreAlias)) {
+                    returnFields.push(scoreAlias);
                 }
                 searchOptions.RETURN = returnFields;
             }
@@ -587,39 +601,10 @@ export class SearchIndex {
                 searchOptions
             );
 
-            // Determine if we need to normalize distances
-            const isVectorQuery = query instanceof VectorQuery;
-            const shouldNormalize = isVectorQuery && query.normalizeDistance;
-            let normalizer: ((distance: number) => number) | null = null;
-
-            if (shouldNormalize) {
-                // Find the vector field being queried to get its distance metric
-                const vectorFieldName = query.vectorField;
-                if (vectorFieldName && this.schema) {
-                    const vectorField = this.schema.fields[vectorFieldName];
-
-                    if (
-                        vectorField &&
-                        vectorField.type === 'vector' &&
-                        'distanceMetric' in vectorField
-                    ) {
-                        const distanceMetric = (vectorField as any).distanceMetric || 'COSINE';
-                        normalizer = DISTANCE_NORMALIZERS[distanceMetric] || null;
-                    }
-                }
-            }
-
             // Transform response to SearchResult format
             const documents: SearchDocument<T>[] = response.documents.map((doc) => {
                 const value = doc.value as Record<string, unknown>;
-
-                // Extract score from the document value
-                // The score is returned with the alias specified in the query (e.g., 'vector_distance', 'similarity')
-                // Try to detect the score field from the query string
-                const scoreAliasMatch = queryString.match(/AS\s+(\w+)\]/);
-                const scoreAlias = scoreAliasMatch ? scoreAliasMatch[1] : 'vector_distance';
-
-                const scoreValue = value[scoreAlias];
+                const scoreValue = scoreAlias ? value[scoreAlias] : undefined;
                 let score =
                     typeof scoreValue === 'string'
                         ? parseFloat(scoreValue)

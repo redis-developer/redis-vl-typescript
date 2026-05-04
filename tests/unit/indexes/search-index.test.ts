@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SearchIndex } from '../../../src/indexes/search-index.js';
 import { IndexSchema, IndexInfo } from '../../../src/schema/schema.js';
-import { StorageType } from '../../../src/schema/types.js';
+import { StorageType, VectorDataType } from '../../../src/schema/types.js';
 import type { RedisClientType } from 'redis';
 import { RedisVLError, SchemaValidationError } from '../../../src/errors.js';
+import { VectorQuery } from '../../../src/query/vector.js';
 
 describe('SearchIndex', () => {
     let schema: IndexSchema;
@@ -37,8 +38,10 @@ describe('SearchIndex', () => {
                 _list: vi.fn(),
                 dropIndex: vi.fn(),
                 info: vi.fn(),
+                search: vi.fn(),
             },
             multi: vi.fn().mockReturnValue(mockPipeline),
+            withTypeMapping: vi.fn().mockReturnThis(),
             hSet: vi.fn().mockResolvedValue(1),
             expire: vi.fn().mockResolvedValue(1),
             json: {
@@ -498,6 +501,52 @@ describe('SearchIndex', () => {
                 // Assert document matches
                 expect(result).toEqual(mockDoc);
                 expect(mockHGetAll).toHaveBeenCalledWith('rvl-test-data-fetch-hash:123');
+            });
+
+            it('should decode HASH vector fields into number arrays', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'redisvl-test-data-fetch-vector-hash',
+                    prefix: 'rvl-test-data-fetch-vector-hash',
+                    storageType: StorageType.HASH,
+                });
+                const hashSchema = new IndexSchema({ index: indexInfo });
+                hashSchema.addField({ name: 'id', type: 'tag' });
+                hashSchema.addField({ name: 'title', type: 'text' });
+                hashSchema.addField({
+                    name: 'embedding',
+                    type: 'vector',
+                    attrs: {
+                        algorithm: 'flat',
+                        dims: 3,
+                        datatype: VectorDataType.FLOAT32,
+                    },
+                });
+
+                const embedding = [0.25, -1.5, 3.75];
+                const mockDoc = {
+                    id: Buffer.from('123'),
+                    title: Buffer.from('Vector doc'),
+                    embedding: Buffer.from(new Float32Array(embedding).buffer),
+                };
+
+                const mockHGetAll = vi.fn();
+                const mockPipeline = {
+                    hGetAll: mockHGetAll,
+                    execAsPipeline: vi.fn().mockResolvedValue([mockDoc]),
+                };
+
+                (mockClient as any).withTypeMapping = vi.fn().mockReturnValue({
+                    multi: vi.fn().mockReturnValue(mockPipeline),
+                });
+
+                const index = new SearchIndex(hashSchema, mockClient);
+                const result = await index.fetch('123');
+
+                expect(result).toEqual({
+                    id: '123',
+                    title: 'Vector doc',
+                    embedding,
+                });
             });
 
             it('should fetch single document by key (JSON storage)', async () => {
@@ -1142,6 +1191,63 @@ describe('SearchIndex', () => {
                     expect.objectContaining({ count: 3 })
                 );
             });
+        });
+    });
+
+    describe('search()', () => {
+        it('should normalize vector scores using the query score alias', async () => {
+            const indexInfo = new IndexInfo({
+                name: 'redisvl-test-search-normalize',
+                prefix: 'rvl-test-search-normalize',
+                storageType: StorageType.HASH,
+            });
+            const vectorSchema = new IndexSchema({ index: indexInfo });
+            vectorSchema.addField({ name: 'title', type: 'text' });
+            vectorSchema.addField({
+                name: 'embedding',
+                type: 'vector',
+                attrs: {
+                    algorithm: 'flat',
+                    dims: 4,
+                    distanceMetric: 'cosine',
+                },
+            });
+
+            (mockClient.ft.search as any).mockResolvedValue({
+                total: 2,
+                documents: [
+                    {
+                        id: 'doc:1',
+                        value: { title: 'exact', similarity: '0' },
+                    },
+                    {
+                        id: 'doc:2',
+                        value: { title: 'close', similarity: '0.00611627101898' },
+                    },
+                ],
+            });
+
+            const index = new SearchIndex(vectorSchema, mockClient);
+            const query = new VectorQuery({
+                vector: [1, 0, 0, 0],
+                vectorField: 'embedding',
+                numResults: 2,
+                scoreAlias: 'similarity',
+                returnFields: ['title'],
+                normalizeDistance: true,
+            });
+
+            const results = await index.search(query);
+
+            expect(mockClient.ft.search).toHaveBeenCalledWith(
+                'redisvl-test-search-normalize',
+                expect.any(String),
+                expect.objectContaining({
+                    RETURN: ['title', 'similarity'],
+                })
+            );
+            expect(results.documents[0].score).toBe(1);
+            expect(results.documents[1].score).toBeCloseTo(0.99694186449051, 10);
         });
     });
 });
