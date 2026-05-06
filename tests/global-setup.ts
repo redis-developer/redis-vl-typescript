@@ -1,17 +1,60 @@
 import { createClient } from 'redis';
-import { execSync } from 'child_process';
-import path from 'path';
+import {
+    GenericContainer,
+    Wait,
+    getContainerRuntimeClient,
+    type StartedTestContainer,
+} from 'testcontainers';
+
+const REDIS_IMAGE = 'redis:8.0';
+const REDIS_PORT = 6379;
+const CONTAINER_LABELS = { 'com.redis.redisvl.test': 'true' } as const;
+const CONTAINER_LABEL_FILTERS = Object.entries(CONTAINER_LABELS).map(([k, v]) => `${k}=${v}`);
+
+let startedContainer: StartedTestContainer | undefined;
+
+/**
+ * Remove any containers labelled as RedisVL test containers.
+ *
+ * Used when TESTCONTAINERS_REUSE_ENABLE=false to guarantee a fresh container.
+ * Without this, disabling reuse would leave the previously-reused container
+ * running while spinning up a new one alongside it.
+ */
+async function removeLabelledContainers() {
+    const runtime = await getContainerRuntimeClient();
+    const matches = await runtime.container.dockerode.listContainers({
+        all: true,
+        filters: { label: CONTAINER_LABEL_FILTERS },
+    });
+
+    if (matches.length === 0) {
+        return;
+    }
+
+    console.log(`🧹 Removing ${matches.length} previous RedisVL test container(s)`);
+    for (const info of matches) {
+        const container = runtime.container.dockerode.getContainer(info.Id);
+        try {
+            await container.remove({ force: true, v: true });
+        } catch (error) {
+            console.warn(`⚠️  Failed to remove container ${info.Id}:`, error);
+        }
+    }
+}
 
 /**
  * Global setup for all tests
  * Runs once before all test suites
  *
- * Starts Redis Stack Docker container and verifies it's ready
+ * Starts a Redis container via Testcontainers and exposes its URL via REDIS_URL.
+ *
+ * Container reuse is enabled by default (the container persists across runs
+ * for fast subsequent test runs). To force a fresh container, set
+ * TESTCONTAINERS_REUSE_ENABLE=false.
  */
 export async function setup() {
     console.time('⏱️  global-setup');
 
-    const composeFile = path.join(__dirname, 'docker-compose.yml');
     const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
 
     try {
@@ -34,75 +77,41 @@ export async function setup() {
             return;
         }
 
-        // Local development: Start our own Docker container
-        console.log('📦 Local development - starting Docker container...');
-
-        // Check if there's an existing Docker container on port 6379
-        try {
-            const existingContainers = execSync(
-                `docker ps --filter "publish=6379" --format "{{.Names}}"`,
-                { encoding: 'utf-8' }
-            ).trim();
-
-            if (existingContainers) {
-                console.log(`⚠️  Found existing container on port 6379: ${existingContainers}`);
-                console.log('🛑 Stopping existing containers...');
-                execSync(`docker stop ${existingContainers}`, { stdio: 'inherit' });
-            }
-        } catch (error) {
-            // Ignore errors - no existing containers
+        // When the user explicitly opts out of reuse, sweep any previously
+        // reused container so a true fresh container can take its place.
+        if (process.env.TESTCONTAINERS_REUSE_ENABLE === 'false') {
+            await removeLabelledContainers();
         }
 
-        // Start Redis Stack container
-        console.log('🐳 Starting Redis Stack container...');
-        execSync(`docker compose -f ${composeFile} up -d`, {
-            stdio: 'inherit',
-        });
+        console.log(`🐳 Starting Redis container (${REDIS_IMAGE}) via Testcontainers...`);
+        startedContainer = await new GenericContainer(REDIS_IMAGE)
+            .withExposedPorts(REDIS_PORT)
+            .withCommand(['redis-server', '--save', '', '--appendonly', 'no'])
+            .withLabels(CONTAINER_LABELS)
+            .withWaitStrategy(Wait.forLogMessage(/Ready to accept connections/))
+            .withReuse()
+            .start();
 
-        // Resolve the dynamically-assigned host port and expose it via REDIS_URL
-        // so test files (which read process.env.REDIS_URL) connect to the right port.
-        if (!process.env.REDIS_URL) {
-            const portMapping = execSync(`docker compose -f ${composeFile} port redis 6379`, {
-                encoding: 'utf-8',
-            }).trim();
-            const hostPort = portMapping.split(':').pop();
-            if (!hostPort) {
-                throw new Error(`Could not resolve host port from mapping: ${portMapping}`);
-            }
-            process.env.REDIS_URL = `redis://localhost:${hostPort}`;
-        }
+        const host = startedContainer.getHost();
+        const port = startedContainer.getMappedPort(REDIS_PORT);
+        process.env.REDIS_URL = `redis://${host}:${port}`;
 
-        // Wait for Redis to be healthy
-        console.log('⏳ Waiting for Redis to be ready...');
-        execSync(`docker compose -f ${composeFile} exec -T redis redis-cli ping`, {
-            stdio: 'pipe',
-            timeout: 30000,
-        });
-
-        // Verify connection from Node
-        const client = createClient({
-            url: process.env.REDIS_URL,
-        });
-
+        // Verify connection and reset state from any previous run (the
+        // container is reused across runs, so leftover keys/indexes can
+        // otherwise leak between runs).
+        const client = createClient({ url: process.env.REDIS_URL });
         await client.connect();
         const pingResult = await client.ping();
+        await client.flushAll();
         await client.quit();
 
         if (pingResult !== 'PONG') {
             throw new Error('Redis ping failed');
         }
 
-        console.log(
-            `✅ Redis Stack is ready to be used for testing RedisVL at ${process.env.REDIS_URL}`
-        );
+        console.log(`✅ Redis is ready to be used for testing RedisVL at ${process.env.REDIS_URL}`);
     } catch (error) {
         console.error('❌ Failed to start Redis:', error);
-        // Cleanup on failure
-        try {
-            execSync(`docker compose -f ${composeFile} down -v`, { stdio: 'inherit' });
-        } catch {
-            // Ignore cleanup errors
-        }
         throw error;
     }
 
@@ -113,44 +122,25 @@ export async function setup() {
  * Global teardown for all tests
  * Runs once after all test suites
  *
- * Stops and removes the Redis Stack Docker container (local dev only)
- * In GitHub Actions, the service container is managed by GitHub
+ * With container reuse, the container is intentionally left running so
+ * subsequent test runs reattach to it (fast startup, inspectable state).
+ * In GitHub Actions, the service container is managed by GitHub.
  *
- * Usage:
- *   npm test                  # Stops container after tests (local dev)
- *   NO_CLEANUP=true npm test  # Keeps container running for debugging
+ * To force a fresh container on the next run:
+ *   TESTCONTAINERS_REUSE_ENABLE=false npm test
  */
 export async function teardown() {
-    console.time('⏱️  global-teardown');
-
-    const composeFile = path.join(__dirname, 'docker-compose.yml');
-    const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
-    const noCleanup = process.env.NO_CLEANUP === 'true';
-
-    // In GitHub Actions, service container is managed by GitHub
-    if (isGitHubActions) {
+    if (process.env.GITHUB_ACTIONS === 'true') {
         console.log('⏭️  GitHub Actions - service container managed by GitHub');
-        console.timeEnd('⏱️  global-teardown');
         return;
     }
 
-    // Local development: Stop our Docker container
-    if (noCleanup) {
-        console.log('⏭️  Keeping container running (NO_CLEANUP=true)');
-        console.timeEnd('⏱️  global-teardown');
+    if (!startedContainer) {
         return;
     }
 
-    try {
-        console.log('🐳 Stopping Redis Stack container...');
-        execSync(`docker compose -f ${composeFile} down -v`, {
-            stdio: 'inherit',
-        });
-        console.log('✅ Container stopped and removed');
-    } catch (error) {
-        console.error('❌ Failed to stop container:', error);
-        // Don't throw - cleanup failure shouldn't fail the test suite
-    }
-
-    console.timeEnd('⏱️  global-teardown');
+    const port = startedContainer.getMappedPort(REDIS_PORT);
+    const url = `redis://default@127.0.0.1:${port}`;
+    console.log(`\n⏭️  Keeping Redis container running for reuse.`);
+    console.log(`Inspect test data at ${url} using redis-cli or Redis Insight\n`);
 }
