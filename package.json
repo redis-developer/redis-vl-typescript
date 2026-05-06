@@ -1,6 +1,6 @@
 {
     "name": "redisvl",
-    "version": "0.1.0",
+    "version": "0.1.0-beta.0",
     "description": "The AI-native Redis TypeScript/Node.js client for vector operations",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -8,12 +8,14 @@
         "access": "public"
     },
     "scripts": {
-        "build": "tsc",
+        "clean": "rm -rf dist",
+        "build": "npm run clean && tsc",
         "build:watch": "tsc --watch",
         "test": "npm run type-check:tests && vitest run",
         "test:unit": "vitest run --config vitest.unit.config.ts",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
+        "test:redis-url": "tsx tests/print-redis-url.ts",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
@@ -77,6 +79,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^16.2.7",
         "prettier": "^3.8.0",
+        "testcontainers": "^11.14.0",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
         "vitest": "^4.0.17"
