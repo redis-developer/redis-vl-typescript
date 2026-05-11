@@ -18,11 +18,14 @@ jobs:
             fail-fast: false
             matrix:
                 node-version: [24]
-                redis-version: ['latest', '7.4.0-v8']
+                # Redis 8.4+ is required for FT.HYBRID. Redis 8 also bundles
+                # the search/JSON modules into the official image, so the
+                # separate redis/redis-stack-server image is no longer needed.
+                redis-version: ['8.4', 'latest']
 
         services:
             redis:
-                image: redis/redis-stack-server:${{ matrix.redis-version }}
+                image: redis:${{ matrix.redis-version }}
                 ports:
                     - 6379:6379
                 options: >-
