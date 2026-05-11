@@ -42,7 +42,7 @@ export function encodeVectorBuffer(
         case VectorDataType.FLOAT64:
             return Buffer.from(new Float64Array(validateVectorValues(vector)).buffer);
         case VectorDataType.FLOAT16:
-            return Buffer.from(new Float16Array(validateVectorValues(vector)).buffer);
+            return encodeFloat16Buffer(validateVectorValues(vector));
         case VectorDataType.BFLOAT16:
             return encodeBFloat16Buffer(validateVectorValues(vector));
         case VectorDataType.INT8:
@@ -144,19 +144,106 @@ function decodeFloat64Buffer(buffer: Buffer): number[] {
     return values;
 }
 
-// Float16Array requires its byte offset to be a multiple of 2. Buffers returned by
-// node-redis are slices of the parser's RESP buffer, so byteOffset depends on the
-// shape of the whole reply (field name lengths, ordering, etc.) and is not guaranteed
-// to be aligned. Read via DataView to sidestep the constraint (matches BFLOAT16 path).
+// Float16 (IEEE 754 binary16) encode/decode implemented manually on top of
+// DataView. The standard `Float16Array` and `DataView#getFloat16` both
+// landed in V8 13.0 — Node 23+ — so we can't rely on them while we support
+// Node 22 LTS. The BFloat16 path uses the same DataView-based approach.
+
+function encodeFloat16Buffer(values: readonly number[]): Buffer {
+    const buffer = Buffer.alloc(values.length * 2);
+    for (let i = 0; i < values.length; i++) {
+        buffer.writeUInt16LE(encodeFloat16(values[i]), i * 2);
+    }
+    return buffer;
+}
+
 function decodeFloat16Buffer(buffer: Buffer): number[] {
     const values: number[] = [];
-    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-
     for (let offset = 0; offset + 2 <= buffer.byteLength; offset += 2) {
-        values.push(view.getFloat16(offset, true));
+        values.push(decodeFloat16(buffer.readUInt16LE(offset)));
+    }
+    return values;
+}
+
+// Float16 layout: 1 sign | 5 exponent (bias 15) | 10 mantissa.
+// Bridges through float32's bit pattern to preserve IEEE 754 semantics,
+// then rounds to nearest with ties-to-even — matching `Float16Array` so a
+// round-trip through this code produces identical bits on Node 22 vs 24+.
+function encodeFloat16(value: number): number {
+    const dataView = new DataView(new ArrayBuffer(4));
+    dataView.setFloat32(0, value);
+    const x = dataView.getUint32(0);
+
+    const sign = (x >>> 16) & 0x8000;
+    const exp32 = (x >>> 23) & 0xff;
+    const mant32 = x & 0x7fffff;
+
+    // NaN / Infinity (exp32 all-ones)
+    if (exp32 === 0xff) {
+        if (mant32 !== 0) {
+            // NaN — keep at least one mantissa bit set so it stays a NaN.
+            return sign | 0x7c00 | (mant32 >>> 13) | 0x200;
+        }
+        return sign | 0x7c00; // signed Infinity
     }
 
-    return values;
+    const unbiased = exp32 - 127;
+
+    // Overflow → signed Infinity.
+    if (unbiased >= 16) return sign | 0x7c00;
+    // Underflow past the smallest subnormal → signed zero.
+    if (unbiased < -24) return sign;
+
+    // Subnormal range: unbiased in [-24, -15].
+    if (unbiased < -14) {
+        const fullMant = mant32 | 0x800000; // restore the implicit leading 1
+        const shiftBy = -1 - unbiased; // 14..23
+        const half = 1 << (shiftBy - 1);
+        const low = fullMant & ((1 << shiftBy) - 1);
+        let mant16 = fullMant >>> shiftBy;
+        if (low > half || (low === half && (mant16 & 1) !== 0)) {
+            mant16++;
+            // Subnormal mantissa rolled into the smallest normal value.
+            if (mant16 === 0x400) return sign | 0x0400;
+        }
+        return sign | mant16;
+    }
+
+    // Normal range: unbiased in [-14, 15].
+    const exp16 = unbiased + 15;
+    const halfBit = 1 << 12;
+    const low = mant32 & 0x1fff;
+    let mant16 = mant32 >>> 13;
+    if (low > halfBit || (low === halfBit && (mant16 & 1) !== 0)) {
+        mant16++;
+        if (mant16 === 0x400) {
+            // Mantissa rolled over — bump the exponent and possibly overflow to Inf.
+            const newExp = exp16 + 1;
+            if (newExp >= 31) return sign | 0x7c00;
+            return sign | (newExp << 10);
+        }
+    }
+    return sign | (exp16 << 10) | mant16;
+}
+
+function decodeFloat16(bits: number): number {
+    const sign = (bits >>> 15) & 1;
+    const exp = (bits >>> 10) & 0x1f;
+    const mantissa = bits & 0x3ff;
+
+    let abs: number;
+    if (exp === 0x1f) {
+        // NaN or Infinity
+        abs = mantissa === 0 ? Infinity : NaN;
+    } else if (exp === 0) {
+        // Zero or subnormal: value = mantissa × 2^-24
+        abs = mantissa === 0 ? 0 : mantissa * Math.pow(2, -24);
+    } else {
+        // Normal: value = (1 + mantissa/2^10) × 2^(exp - 15)
+        //              = (1024 + mantissa) × 2^(exp - 25)
+        abs = (1024 + mantissa) * Math.pow(2, exp - 25);
+    }
+    return sign ? -abs : abs;
 }
 
 function encodeBFloat16Buffer(values: readonly number[]): Buffer {
