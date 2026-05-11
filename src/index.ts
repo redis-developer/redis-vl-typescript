@@ -29,7 +29,21 @@ export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-in
 // Query exports
 export { VectorQuery } from './query/vector.js';
 export type { VectorQueryConfig, HybridPolicy, UseSearchHistory } from './query/vector.js';
-export type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from './query/base.js';
+export { HybridQuery } from './query/hybrid.js';
+export type {
+    HybridQueryConfig,
+    HybridVectorMethod,
+    HybridCombine,
+    HybridCommand,
+    HybridTextScorer,
+} from './query/hybrid.js';
+export type {
+    BaseQuery,
+    SearchResult,
+    SearchDocument,
+    QueryOptions,
+    HybridSearchResult,
+} from './query/base.js';
 
 // Error exports
 export {

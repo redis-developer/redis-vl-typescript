@@ -49,6 +49,19 @@ export interface SearchResult<T = Record<string, unknown>> {
 }
 
 /**
+ * Result returned by {@link SearchIndex.hybridSearch}. Adds the FT.HYBRID
+ * specific fields (`executionTime`, `warnings`) on top of the standard
+ * {@link SearchResult} shape.
+ */
+export interface HybridSearchResult<T = Record<string, unknown>> extends SearchResult<T> {
+    /** Server-reported query execution time in milliseconds. */
+    executionTime?: number;
+
+    /** Warnings emitted by the server (e.g. truncated KNN, missing scorer). */
+    warnings?: string[];
+}
+
+/**
  * Options for query execution
  */
 export interface QueryOptions {

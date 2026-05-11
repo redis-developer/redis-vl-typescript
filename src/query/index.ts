@@ -5,3 +5,4 @@
 
 export * from './base.js';
 export * from './vector.js';
+export * from './hybrid.js';
