@@ -239,7 +239,7 @@ describe('Query types integration (FilterQuery / CountQuery / VectorRangeQuery /
                 vector: VEC_LAPTOP,
                 vectorField: 'embedding',
                 distanceThreshold: 0.2,
-                numResults: 10,
+                limit: 10,
             });
             const results = await index.search(q);
 
@@ -265,7 +265,7 @@ describe('Query types integration (FilterQuery / CountQuery / VectorRangeQuery /
                 vectorField: 'embedding',
                 distanceThreshold: 0.2,
                 filter: Tag('brand').eq('acme'),
-                numResults: 10,
+                limit: 10,
             });
             const results = await index.search(q);
 
