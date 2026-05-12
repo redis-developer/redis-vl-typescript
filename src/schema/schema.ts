@@ -273,13 +273,17 @@ export class IndexSchema {
      * schema.removeField('old_field');
      * ```
      */
-    removeField(fieldName: string): void {
-        if (!Object.hasOwn(this.fields, fieldName)) {
-            // TODO: log a warning
-            return;
-        }
-        delete this.fields[fieldName];
+removeField(fieldName: string): void {
+    if (!Object.hasOwn(this.fields, fieldName)) {
+        const knownFields = Object.keys(this.fields);
+        console.warn(
+            `Field '${fieldName}' not found in schema. ` +
+            `Available fields: ${knownFields.length > 0 ? knownFields.join(', ') : '(none)'}`
+        );
+        return;
     }
+    delete this.fields[fieldName];
+}
 
     /**
      * Create an IndexSchema from a plain object.

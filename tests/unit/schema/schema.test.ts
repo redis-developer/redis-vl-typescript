@@ -217,6 +217,61 @@ describe('IndexSchema Tests', () => {
                 schema.removeField('non-existent');
             }).not.toThrow();
         });
+
+        it('should log warning when removing non-existent field (with known fields)', () => {
+        const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
+        const schema = new IndexSchema({ index: indexInfo });
+        
+        // Add fields first so warning shows available fields
+        schema.addField({ name: 'title', type: 'text' });
+        schema.addField({ name: 'category', type: 'tag' });
+        
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        
+        schema.removeField('non-existent');
+        
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining("Field 'non-existent' not found in schema")
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Available fields: title, category')
+        );
+        
+        warnSpy.mockRestore();
+    });
+
+    it('should log warning with (none) when removing field from empty schema', () => {
+        const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
+        const schema = new IndexSchema({ index: indexInfo });
+        
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        
+        schema.removeField('any-field');
+        
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining("Field 'any-field' not found in schema")
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Available fields: (none)')
+        );
+        
+        warnSpy.mockRestore();
+    });
+
+    it('should NOT log warning when removing existing field', () => {
+        const indexInfo = new IndexInfo({ name: 'redisvl-test-index' });
+        const schema = new IndexSchema({ index: indexInfo });
+        schema.addField({ name: 'title', type: 'text' });
+        
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        
+        schema.removeField('title');
+        
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(schema.fields['title']).toBeUndefined();
+        
+        warnSpy.mockRestore();
+    });
     });
 
     describe('IndexSchema Field Path Validation', () => {
