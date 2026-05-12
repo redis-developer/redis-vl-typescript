@@ -22,6 +22,7 @@ const sidebars: SidebarsConfig = {
                 'user-guide/schema',
                 'user-guide/search-index',
                 'user-guide/advanced-vector-search',
+                'user-guide/hybrid-search',
                 'user-guide/vectorizers',
             ],
         },
