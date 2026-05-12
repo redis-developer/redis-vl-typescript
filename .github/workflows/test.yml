@@ -17,7 +17,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                node-version: [24]
+                node-version: [22, 23, 24]
                 # Redis 8.4+ is required for FT.HYBRID. Redis 8 also bundles
                 # the search/JSON modules into the official image, so the
                 # separate redis/redis-stack-server image is no longer needed.
