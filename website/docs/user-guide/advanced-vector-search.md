@@ -18,7 +18,7 @@ The `normalizeDistance` parameter converts all scores to a 0-1 similarity range 
 ### Basic Usage
 
 ```typescript
-import { VectorQuery, VectorDistanceMetric } from 'redisvl';
+import { VectorQuery, VectorDistanceMetric } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: embedding,
@@ -75,7 +75,7 @@ similarity = (distance + 1) / 2
 **Best for:** Most semantic search use cases, text embeddings
 
 ```typescript
-import { VectorQuery, VectorDistanceMetric } from 'redisvl';
+import { VectorQuery, VectorDistanceMetric } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: embedding,
@@ -101,7 +101,7 @@ const results = await index.search(query);
 **Best for:** Clustering, exact matching, image embeddings
 
 ```typescript
-import { VectorQuery, VectorDistanceMetric } from 'redisvl';
+import { VectorQuery, VectorDistanceMetric } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: embedding,
@@ -127,7 +127,7 @@ const results = await index.search(query);
 **Best for:** Pre-normalized vectors, maximum inner product search (MIPS)
 
 ```typescript
-import { VectorQuery, VectorDistanceMetric } from 'redisvl';
+import { VectorQuery, VectorDistanceMetric } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: embedding,
@@ -219,7 +219,7 @@ import TabItem from '@theme/TabItem';
 Iteratively searches vector index in batches, filtering results until K matches found.
 
 ```typescript
-import { VectorQuery } from 'redisvl';
+import { VectorQuery } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: embedding,
@@ -249,7 +249,7 @@ const query = new VectorQuery({
 Computes vector scores for all documents passing the filter (brute force on filtered set).
 
 ```typescript
-import { VectorQuery } from 'redisvl';
+import { VectorQuery } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: embedding,
@@ -376,7 +376,7 @@ const query = new VectorQuery({
 Here's a production-ready query combining multiple advanced features:
 
 ```typescript
-import { VectorQuery, VectorDistanceMetric, HuggingFaceVectorizer } from 'redisvl';
+import { VectorQuery, VectorDistanceMetric, HuggingFaceVectorizer } from 'redis-vl';
 
 // Generate embedding
 const vectorizer = new HuggingFaceVectorizer({

@@ -19,7 +19,7 @@ Schema in RedisVL provides a structured format to define index settings and fiel
 The most common way to create a schema is using `IndexSchema.fromObject()`:
 
 ```typescript
-import { IndexSchema } from 'redisvl';
+import { IndexSchema } from 'redis-vl';
 
 const schema = IndexSchema.fromObject({
     index: {
@@ -191,7 +191,7 @@ Simple and concise for basic vector fields:
 Use `HNSWVectorField` or `FlatVectorField` for full type safety:
 
 ```typescript
-import { HNSWVectorField, FlatVectorField } from 'redisvl';
+import { HNSWVectorField, FlatVectorField } from 'redis-vl';
 
 // HNSW index (most common)
 const hnswField = new HNSWVectorField({
@@ -228,7 +228,7 @@ schema.addFields([hnswField]);
 Use the generic `VectorField` class when you want flexibility:
 
 ```typescript
-import { VectorField } from 'redisvl';
+import { VectorField } from 'redis-vl';
 
 // Works with both HNSW and FLAT algorithms
 const field = new VectorField({
@@ -366,7 +366,7 @@ const query = new VectorQuery({
 Schema validation errors are thrown when invalid field configurations are provided:
 
 ```typescript
-import { SchemaValidationError } from 'redisvl';
+import { SchemaValidationError } from 'redis-vl';
 
 try {
     const schema = IndexSchema.fromObject({
