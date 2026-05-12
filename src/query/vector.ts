@@ -158,7 +158,7 @@ export interface VectorQueryConfig {
  *
  * @example
  * ```typescript
- * import { VectorQuery } from 'redisvl';
+ * import { VectorQuery } from 'redis-vl';
  *
  * // Basic vector search
  * const query = new VectorQuery({

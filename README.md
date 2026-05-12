@@ -37,19 +37,26 @@ Redis Vector Library (RedisVL) is the TypeScript/Node.js client for building AI 
 
 ## Getting Started
 
-> ⚠️ `redisvl` has not been published to npm yet. To try it out, clone the repo and link it into your project:
->
-> ```bash
-> git clone https://github.com/redis-developer/redis-vl-typescript.git
-> cd redis-vl-typescript
-> npm install
-> npm run build
-> npm link
-> # then in your project:
-> npm link redisvl
-> ```
->
-> A published release will follow once the API stabilizes.
+> [!WARNING]
+> `RedisVL TypeScript` is in beta. APIs, defaults, and the package itself may change between minor versions.
+
+**Option A: Install from npm:**
+
+```bash
+npm install redis-vl@beta
+```
+
+**Option B: Install from source** by cloning the repo and linking it locally:
+
+```bash
+git clone https://github.com/redis-developer/redis-vl-typescript.git
+cd redis-vl-typescript
+npm install
+npm run build
+npm link
+# then in your project:
+npm link redis-vl
+```
 
 ### Redis
 
@@ -85,7 +92,7 @@ RedisVL is a TypeScript client for building AI applications on Redis. It sits on
 Define your data structure with fields for text, tags, numbers, geo locations, and vectors:
 
 ```typescript
-import { IndexSchema } from 'redisvl';
+import { IndexSchema } from 'redis-vl';
 
 const schema = IndexSchema.fromObject({
     index: { name: 'products', prefix: 'product:', storage_type: 'json' },
@@ -110,7 +117,7 @@ Create and manage search indexes:
 
 ```typescript
 import { createClient } from 'redis';
-import { SearchIndex } from 'redisvl';
+import { SearchIndex } from 'redis-vl';
 
 const client = createClient();
 await client.connect();
@@ -146,7 +153,7 @@ const docs = await index.fetchMany(['1', '2']);
 Perform semantic similarity search:
 
 ```typescript
-import { VectorQuery } from 'redisvl';
+import { VectorQuery } from 'redis-vl';
 
 // Create query
 const query = new VectorQuery({
@@ -170,7 +177,7 @@ results.documents.forEach((doc) => {
 Generate embeddings for semantic search:
 
 ```typescript
-import { HuggingFaceVectorizer } from 'redisvl';
+import { HuggingFaceVectorizer } from 'redis-vl';
 
 const vectorizer = new HuggingFaceVectorizer({
     model: 'Xenova/all-MiniLM-L6-v2',
@@ -197,7 +204,6 @@ await index.load(documents, {
 - **LLM Memory** - Context management for AI agents
 - **Semantic Routing** - Intent-based query classification
 - **More Vectorizers** - OpenAI, Cohere, Azure, VertexAI
-- **Rerankers** - Improve search result relevancy
 
 ## Helpful Links
 

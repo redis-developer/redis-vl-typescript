@@ -30,7 +30,7 @@ The Redis client provides low-level access to all Redis commands, while RedisVL 
 
 ```typescript
 import { createClient } from 'redis';
-import { SearchIndex, IndexSchema } from 'redisvl';
+import { SearchIndex, IndexSchema } from 'redis-vl';
 
 const client = await createClient().connect();
 const index = new SearchIndex(schema, client); // RedisVL uses the client
