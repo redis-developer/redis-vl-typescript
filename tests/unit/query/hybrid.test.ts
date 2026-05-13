@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { HybridQuery } from '../../../src/query/hybrid.js';
+import { Tag, Num } from '../../../src/query/filter.js';
 import { QueryValidationError } from '../../../src/errors.js';
 import { VectorDataType } from '../../../src/schema/types.js';
 
@@ -246,6 +247,19 @@ describe('HybridQuery', () => {
             });
             const { options } = q.toCommand();
             expect(options.VSIM.FILTER).toBe('@brand:{nike}');
+        });
+
+        it('emits VSIM FILTER from a FilterExpression', () => {
+            // The widening to FilterInput lets callers compose with the typed
+            // filter DSL instead of hand-crafting filter strings.
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                vsimFilter: Tag('brand').eq('nike').and(Num('price').lt(100)),
+            });
+            const { options } = q.toCommand();
+            expect(options.VSIM.FILTER).toBe('(@brand:{nike} @price:[-inf (100])');
         });
 
         it('emits YIELD_SCORE_AS on VSIM when vectorScoreAlias is provided', () => {

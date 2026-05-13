@@ -14,63 +14,15 @@
  * release. Pin your `@redis/search` version if stability matters.
  */
 
-// -----------------------------------------------------------------------------
-// TODO(filter-dsl-merge): Once the filter DSL PR (feat/filter-dsl-and-queries)
-// merges to main, replace the inlined helpers below with imports from their
-// canonical homes:
-//   - Delete the local TokenEscaper class and import it from
-//     '../utils/token-escaper.js'.
-//   - Delete `type HybridTextScorer` and use the exported `TextScorer` from
-//     './text.js'. Update src/index.ts to export the shared name.
-//   - Widen `vsimFilter`/`renderFilter` to also accept a `FilterExpression`
-//     by importing `FilterInput` and `renderFilter` from './base.js'.
-//
-// The duplication exists so this PR can land independently of the filter DSL
-// work. Track removal in a small follow-up cleanup commit.
-// -----------------------------------------------------------------------------
-
 import type { FtHybridOptions } from '@redis/search/dist/lib/commands/HYBRID.js';
 import { QueryValidationError, SchemaValidationError } from '../errors.js';
 import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
 import { VectorDataType } from '../schema/types.js';
-
-// ---------- Inlined helpers (see TODO above) ---------------------------------
-
-/**
- * Subset of Redis Search special characters that need backslash-escaping when
- * embedding a user string into a query body. Mirrors the `ESCAPED_CHARS` list
- * used by Python redisvl's `TokenEscaper`. The wildcard chars `*` and `?` are
- * preserved unescaped so they retain their Redis Search meaning.
- */
-const ESCAPED_CHARS_NO_WILDCARD = /[,.<>{}[\]\\"':;!@#$%^&()\-+=~/ ]/g;
-
-class TokenEscaper {
-    escape(value: string): string {
-        if (typeof value !== 'string') {
-            throw new TypeError(
-                `Value must be a string for token escaping, got type ${typeof value}`
-            );
-        }
-        return value.replace(ESCAPED_CHARS_NO_WILDCARD, (match) => `\\${match}`);
-    }
-}
+import { TokenEscaper } from '../utils/token-escaper.js';
+import { renderFilter, type FilterInput } from './base.js';
+import type { TextScorer } from './text.js';
 
 const escaper = new TokenEscaper();
-
-/**
- * Built-in Redis Search text scorer name. Named with a `Hybrid` prefix so it
- * doesn't collide with the `TextScorer` exported by `./text.js` once the
- * filter DSL PR lands.
- */
-export type HybridTextScorer =
-    | 'BM25'
-    | 'BM25STD'
-    | 'TFIDF'
-    | 'TFIDF.DOCNORM'
-    | 'DISMAX'
-    | 'DOCSCORE';
-
-// ---------- Public types -----------------------------------------------------
 
 /**
  * Vector retrieval method used by FT.HYBRID's VSIM clause.
@@ -124,13 +76,12 @@ export interface HybridQueryConfig {
 
     /**
      * Pre-filter applied inside the VSIM clause (FT.HYBRID `VSIM ... FILTER`).
-     * Uses the FT.SEARCH filter dialect — pass a raw filter string such as
-     * `'@brand:{nike}'` or `'@price:[0 1000]'`.
      *
-     * (When the filter DSL PR merges, this will widen to accept a
-     * `FilterExpression` as well.)
+     * Accepts either a {@link FilterExpression} built with the typed filter
+     * DSL (`Tag('brand').eq('nike')`) or a raw filter string in the FT.SEARCH
+     * filter dialect (`'@brand:{nike}'`, `'@price:[0 1000]'`).
      */
-    vsimFilter?: string;
+    vsimFilter?: FilterInput;
 
     /**
      * Post-filter applied after fusion (FT.HYBRID top-level `FILTER`).
@@ -142,7 +93,7 @@ export interface HybridQueryConfig {
     postFilter?: string;
 
     /** Text scorer (defaults to server default `BM25STD`). */
-    textScorer?: HybridTextScorer;
+    textScorer?: TextScorer;
 
     /** Score fusion configuration. When omitted, the server default is used. */
     combine?: HybridCombine;
@@ -227,9 +178,9 @@ export class HybridQuery {
     public readonly vector: number[];
     public readonly vectorField: string;
     public readonly vectorMethod: HybridVectorMethod;
-    public readonly vsimFilter?: string;
+    public readonly vsimFilter?: FilterInput;
     public readonly postFilter?: string;
-    public readonly textScorer?: HybridTextScorer;
+    public readonly textScorer?: TextScorer;
     public readonly combine?: HybridCombine;
     public readonly textScoreAlias?: string;
     public readonly vectorScoreAlias?: string;
@@ -401,7 +352,7 @@ export class HybridQuery {
             vector: `$${VECTOR_PARAM_NAME}`,
             method: this.encodeVectorMethod(),
         };
-        if (this.vsimFilter !== undefined) vsim.FILTER = this.vsimFilter;
+        if (this.vsimFilter !== undefined) vsim.FILTER = renderFilter(this.vsimFilter);
         if (this.vectorScoreAlias !== undefined) vsim.YIELD_SCORE_AS = this.vectorScoreAlias;
         return vsim;
     }

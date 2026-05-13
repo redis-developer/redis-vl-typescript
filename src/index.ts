@@ -43,7 +43,6 @@ export type {
     HybridVectorMethod,
     HybridCombine,
     HybridCommand,
-    HybridTextScorer,
 } from './query/hybrid.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
 export type { Inclusive, GeoUnit } from './query/filter.js';

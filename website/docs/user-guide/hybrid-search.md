@@ -180,20 +180,33 @@ new HybridQuery({
 
 `HybridQuery` exposes **two filter slots**, and they use **different filter syntaxes**:
 
-| Field | Applies to | Syntax |
-| ----- | ---------- | ------ |
-| `vsimFilter` | Vector candidates only (pre-fusion) | Redis Search filter dialect (e.g. `'@brand:{nike}'`) |
-| `postFilter` | Every result after fusion | Redis aggregation expression dialect (e.g. `'@price < 200'`) |
+| Field | Applies to | Accepts | Syntax |
+| ----- | ---------- | ------- | ------ |
+| `vsimFilter` | Vector candidates only (pre-fusion) | `FilterExpression` *or* `string` | FT.SEARCH filter dialect |
+| `postFilter` | Every result after fusion | `string` only | FT.AGGREGATE expression dialect |
+
+`vsimFilter` accepts the same [filter expression DSL](./filters-and-queries#filter-expression-dsl) used by `VectorQuery`, `FilterQuery`, and the other query types. `postFilter` uses a different Redis dialect — pass it as a raw string.
 
 ```typescript
+import { HybridQuery, Tag, Num } from 'redisvl';
+
 new HybridQuery({
     text: 'ergonomic',
     textFieldName: 'description',
     vector: embedding,
     vectorField: 'embedding',
-    vsimFilter: '@category:{furniture}', // narrows the vector candidate set
+    vsimFilter: Tag('category').eq('furniture').and(Num('rating').gt(4)),
     postFilter: '@price < 1000', // applied after RRF/LINEAR fusion
     combine: { type: 'RRF' },
+});
+```
+
+A raw filter string works just as well for `vsimFilter` when you don't need the DSL:
+
+```typescript
+new HybridQuery({
+    // ...
+    vsimFilter: '@category:{furniture}',
 });
 ```
 
