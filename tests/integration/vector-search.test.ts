@@ -430,7 +430,7 @@ describe('Vector Search Integration', () => {
         }); // End Combined Features
     }); // End Distance Normalization
 
-    describe('HNSW tuning attributes (end-to-end)', () => {
+    describe('KNN tuning attributes (end-to-end)', () => {
         it('accepts efRuntime against Redis without syntax error', async () => {
             const queryEmbedding = await vectorizer.embed('laptop computer');
 
