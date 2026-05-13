@@ -18,7 +18,7 @@ import {
     ToList,
 } from '../../src/query/aggregation.js';
 import { Tag } from '../../src/query/filter.js';
-import { AField } from '../../src/query/aggregation-expr.js';
+import { Expr } from '../../src/query/aggregation-expr.js';
 
 interface Product extends Record<string, unknown> {
     id: string;
@@ -209,7 +209,7 @@ describe('AggregationQuery integration (FT.AGGREGATE)', () => {
 
         it('paginates and applies a typed postFilter via the expression DSL', async () => {
             // Same query as above, but postFilter is built with the typed
-            // AField DSL instead of a raw string. Exercises the round-trip
+            // Expr DSL instead of a raw string. Exercises the round-trip
             // through renderAggregationExpr().
             const q = new AggregationQuery({
                 groupBy: {
@@ -217,7 +217,7 @@ describe('AggregationQuery integration (FT.AGGREGATE)', () => {
                     reducers: [Count().as('total'), Sum('price').as('revenue')],
                 },
                 sortBy: [{ field: 'revenue', direction: 'DESC' }],
-                postFilter: AField('total').gt(1),
+                postFilter: Expr('total').gt(1),
                 limit: 10,
             });
 

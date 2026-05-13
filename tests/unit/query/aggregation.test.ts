@@ -13,7 +13,7 @@ import {
     FirstValue,
 } from '../../../src/query/aggregation.js';
 import { Tag, Num } from '../../../src/query/filter.js';
-import { AField } from '../../../src/query/aggregation-expr.js';
+import { Expr } from '../../../src/query/aggregation-expr.js';
 import { QueryValidationError } from '../../../src/errors.js';
 
 const empty = { filter: '*' as const };
@@ -238,7 +238,7 @@ describe('AggregationQuery — toCommand() STEPS canonical order', () => {
     it('emits FILTER from an AggregationExpr (typed DSL)', () => {
         const q = new AggregationQuery({
             ...empty,
-            postFilter: AField('total').gt(10).and(AField('revenue').lt(1000)),
+            postFilter: Expr('total').gt(10).and(Expr('revenue').lt(1000)),
         });
         const steps = q.toCommand().options.STEPS!;
         expect(steps).toEqual([{ type: 'FILTER', expression: '(@total > 10 && @revenue < 1000)' }]);
@@ -249,7 +249,7 @@ describe('AggregationQuery — toCommand() STEPS canonical order', () => {
             ...empty,
             apply: [
                 { expression: '@a + @b', as: 'sum' },
-                { expression: AField('flag').eq(1), as: 'is_flagged' },
+                { expression: Expr('flag').eq(1), as: 'is_flagged' },
             ],
         });
         const steps = q.toCommand().options.STEPS!;

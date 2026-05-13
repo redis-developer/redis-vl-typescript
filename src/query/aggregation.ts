@@ -220,7 +220,7 @@ export interface AggregationQueryConfig {
 
     /**
      * Post-aggregation FILTER step. Accepts either an {@link AggregationExpr}
-     * built with the typed expression DSL (`AField('total').gt(10)`) or a
+     * built with the typed expression DSL (`Expr('total').gt(10)`) or a
      * raw string (`'@total > 10'`). Uses the FT.AGGREGATE expression dialect,
      * NOT the FT.SEARCH filter dialect that {@link AggregationQueryConfig.filter}
      * accepts.

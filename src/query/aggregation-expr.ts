@@ -7,7 +7,7 @@
  * - FT.SEARCH filter: `@price:[-inf (200]`, `@brand:{nike}`. Composes via the
  *   `Tag` / `Num` / `Text` / `Geo` / `Timestamp` builders in `./filter.ts`.
  * - FT.AGGREGATE expression: `@price < 200`, `@brand == "nike"`. Composes via
- *   the `AField(...)` builder in this file.
+ *   the `Expr(...)` builder in this file.
  *
  * v1 covers comparison (`<`, `<=`, `>`, `>=`, `==`, `!=`) and logical (`&&`,
  * `||`, `!`) operators — enough for typical `postFilter` use. Arithmetic
@@ -19,7 +19,7 @@
 
 /**
  * A composable FT.AGGREGATE expression. Returned by every comparison built
- * via {@link AField}, and further composable via `.and()`, `.or()`, `.not()`.
+ * via {@link Expr}, and further composable via `.and()`, `.or()`, `.not()`.
  * `.toString()` renders the expression string the server expects.
  */
 export class AggregationExpr {
@@ -65,9 +65,9 @@ export function renderAggregationExpr(input: AggregationExprInput | undefined): 
     return rendered === '' ? undefined : rendered;
 }
 
-// ---------- AField -----------------------------------------------------------
+// ---------- Expr -------------------------------------------------------------
 
-type Operand = number | string | AFieldRef;
+type Operand = number | string | ExprRef;
 
 function prefixFieldRef(name: string): string {
     return name.startsWith('@') || name.startsWith('$') ? name : `@${name}`;
@@ -82,19 +82,20 @@ function formatOperand(value: Operand): string {
         const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
         return `"${escaped}"`;
     }
-    if (value instanceof AFieldRef) return value.ref;
+    if (value instanceof ExprRef) return value.ref;
     throw new TypeError(
-        `Unsupported AField operand: ${typeof value}. Expected number, string, or AField.`
+        `Unsupported Expr operand: ${typeof value}. Expected number, string, or Expr.`
     );
 }
 
 /**
  * Field reference for an FT.AGGREGATE expression. Construct via the
- * {@link AField} factory function — `AField('price')` parallels the filter
- * DSL's `Tag('brand')` / `Num('age')` ergonomics. The class itself is
- * deliberately unexported; the factory return value is the public surface.
+ * {@link Expr} factory function — `Expr('price')` is the entry point to the
+ * aggregation expression DSL. The class itself is deliberately unexported;
+ * the factory return value is the public surface. Operators (`.eq`, `.lt`,
+ * etc.) return {@link AggregationExpr}, the composable type users do annotate.
  */
-class AFieldRef {
+class ExprRef {
     /** The `@`-prefixed reference emitted into the expression. */
     public readonly ref: string;
 
@@ -133,22 +134,18 @@ class AFieldRef {
     }
 }
 
-/** Public type alias for the {@link AField} factory's return. */
-export type AField = AFieldRef;
-
 /**
  * Build a field reference for the FT.AGGREGATE expression DSL.
  *
  * @example
  * ```typescript
- * import { AField } from 'redisvl';
+ * import { Expr } from 'redisvl';
  *
- * AField('price').lt(200);                              // @price < 200
- * AField('brand').eq('nike');                           // @brand == "nike"
- * AField('total').gt(10).and(AField('rating').ge(4));   // (@total > 10 && @rating >= 4)
+ * Expr('price').lt(200);                            // @price < 200
+ * Expr('brand').eq('nike');                         // @brand == "nike"
+ * Expr('total').gt(10).and(Expr('rating').ge(4));   // (@total > 10 && @rating >= 4)
  * ```
  */
-// eslint-disable-next-line no-redeclare -- intentional TS declaration merging: `AField` is both a type alias and a factory function.
-export function AField(field: string): AField {
-    return new AFieldRef(field);
+export function Expr(field: string): ExprRef {
+    return new ExprRef(field);
 }

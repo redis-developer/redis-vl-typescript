@@ -111,7 +111,7 @@ Bare property names (`'price'`) are auto-prefixed with `@`. Pass `'@field'` or `
 7. **`postFilter`** — final `FILTER` step using the FT.AGGREGATE expression dialect.
 
 ```typescript
-import { AggregationQuery, Count, Sum, Tag, AField } from 'redisvl';
+import { AggregationQuery, Count, Sum, Tag, Expr } from 'redisvl';
 
 new AggregationQuery({
     filter: Tag('category').eq('electronics'),
@@ -124,12 +124,12 @@ new AggregationQuery({
     sortBy: [{ field: 'revenue', direction: 'DESC' }],
     limit: 25,
     offset: 0,
-    postFilter: AField('total').ge(3), // or '@total >= 3'
+    postFilter: Expr('total').ge(3), // or '@total >= 3'
 });
 ```
 
 :::caution Two filter dialects
-The pre-aggregation `filter` uses the FT.SEARCH filter dialect (`@brand:{nike}`), and the `FilterExpression` DSL renders to it. The post-aggregation `postFilter` uses the FT.AGGREGATE *expression* dialect (`@total > 10`, `@revenue / @total > 100`) — pass an `AggregationExpr` built with [`AField`](#typed-postfilter--apply-expressions-aggregationexpr) or a raw string. The two filter shapes are **not** interchangeable.
+The pre-aggregation `filter` uses the FT.SEARCH filter dialect (`@brand:{nike}`), and the `FilterExpression` DSL renders to it. The post-aggregation `postFilter` uses the FT.AGGREGATE *expression* dialect (`@total > 10`, `@revenue / @total > 100`) — pass an `AggregationExpr` built with [`Expr`](#typed-postfilter--apply-expressions-aggregationexpr) or a raw string. The two filter shapes are **not** interchangeable.
 :::
 
 :::note Pre-GROUPBY APPLY
@@ -138,26 +138,26 @@ v1 emits all `apply` steps **after** `groupBy`. Pipelines that need an APPLY bef
 
 ## Typed `postFilter` + `apply` Expressions: `AggregationExpr`
 
-`postFilter` and `apply[].expression` both accept either a raw string or a typed `AggregationExpr` built with the `AField(...)` factory. The DSL covers comparison and logical operators — enough for typical `postFilter` use.
+`postFilter` and `apply[].expression` both accept either a raw string or a typed `AggregationExpr` built with the `Expr(...)` factory. The DSL covers comparison and logical operators — enough for typical `postFilter` use.
 
 ```typescript
-import { AField } from 'redisvl';
+import { Expr } from 'redisvl';
 
 // Comparisons — auto-prefixes bare field names with @, auto-quotes string literals
-AField('price').lt(200);           // @price < 200
-AField('total').ge(10);            // @total >= 10
-AField('brand').eq('nike');        // @brand == "nike"
-AField('hidden').ne(1);            // @hidden != 1
-AField('revenue').gt(AField('cost')); // @revenue > @cost  (field-to-field)
+Expr('price').lt(200);           // @price < 200
+Expr('total').ge(10);            // @total >= 10
+Expr('brand').eq('nike');        // @brand == "nike"
+Expr('hidden').ne(1);            // @hidden != 1
+Expr('revenue').gt(Expr('cost')); // @revenue > @cost  (field-to-field)
 
 // Logical composition
-AField('total').gt(10).and(AField('revenue').lt(1000));
+Expr('total').gt(10).and(Expr('revenue').lt(1000));
 // (@total > 10 && @revenue < 1000)
 
-AField('total').gt(10).or(AField('priority').eq('high'));
+Expr('total').gt(10).or(Expr('priority').eq('high'));
 // (@total > 10 || @priority == "high")
 
-AField('hidden').eq(1).not();
+Expr('hidden').eq(1).not();
 // !(@hidden == 1)
 ```
 
@@ -166,8 +166,8 @@ Use anywhere the FT.AGGREGATE expression dialect is expected:
 ```typescript
 new AggregationQuery({
     groupBy: { fields: ['brand'], reducers: [Count().as('total')] },
-    apply: [{ expression: AField('total').gt(0), as: 'has_any' }],
-    postFilter: AField('total').ge(3).and(AField('total').lt(1000)),
+    apply: [{ expression: Expr('total').gt(0), as: 'has_any' }],
+    postFilter: Expr('total').ge(3).and(Expr('total').lt(1000)),
 });
 ```
 
