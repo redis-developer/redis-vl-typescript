@@ -64,6 +64,8 @@ export type {
     CursorConfig,
     ReducerBuilder,
 } from './query/aggregation.js';
+export { AField, AggregationExpr, renderAggregationExpr } from './query/aggregation-expr.js';
+export type { AggregationExprInput } from './query/aggregation-expr.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
 export type { Inclusive, GeoUnit } from './query/filter.js';
 export type {

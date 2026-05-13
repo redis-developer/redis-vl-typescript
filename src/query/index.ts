@@ -11,3 +11,4 @@ export * from './count.js';
 export * from './range.js';
 export * from './text.js';
 export * from './aggregation.js';
+export * from './aggregation-expr.js';

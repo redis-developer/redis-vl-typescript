@@ -111,6 +111,8 @@ Bare property names (`'price'`) are auto-prefixed with `@`. Pass `'@field'` or `
 7. **`postFilter`** — final `FILTER` step using the FT.AGGREGATE expression dialect.
 
 ```typescript
+import { AggregationQuery, Count, Sum, Tag, AField } from 'redisvl';
+
 new AggregationQuery({
     filter: Tag('category').eq('electronics'),
     load: ['title', 'price'],
@@ -122,16 +124,67 @@ new AggregationQuery({
     sortBy: [{ field: 'revenue', direction: 'DESC' }],
     limit: 25,
     offset: 0,
-    postFilter: '@total >= 3',
+    postFilter: AField('total').ge(3), // or '@total >= 3'
 });
 ```
 
 :::caution Two filter dialects
-The pre-aggregation `filter` uses the FT.SEARCH filter dialect (`@brand:{nike}`), and the `FilterExpression` DSL renders to it. The post-aggregation `postFilter` uses the FT.AGGREGATE *expression* dialect (`@total > 10`, `@revenue / @total > 100`) — pass it as a raw string. The two are not interchangeable.
+The pre-aggregation `filter` uses the FT.SEARCH filter dialect (`@brand:{nike}`), and the `FilterExpression` DSL renders to it. The post-aggregation `postFilter` uses the FT.AGGREGATE *expression* dialect (`@total > 10`, `@revenue / @total > 100`) — pass an `AggregationExpr` built with [`AField`](#typed-postfilter--apply-expressions-aggregationexpr) or a raw string. The two filter shapes are **not** interchangeable.
 :::
 
 :::note Pre-GROUPBY APPLY
 v1 emits all `apply` steps **after** `groupBy`. Pipelines that need an APPLY before GROUPBY (e.g. computing a derived bucketing field) aren't yet exposed through this API — drop down to `client.ft.aggregate()` directly for those.
+:::
+
+## Typed `postFilter` + `apply` Expressions: `AggregationExpr`
+
+`postFilter` and `apply[].expression` both accept either a raw string or a typed `AggregationExpr` built with the `AField(...)` factory. The DSL covers comparison and logical operators — enough for typical `postFilter` use.
+
+```typescript
+import { AField } from 'redisvl';
+
+// Comparisons — auto-prefixes bare field names with @, auto-quotes string literals
+AField('price').lt(200);           // @price < 200
+AField('total').ge(10);            // @total >= 10
+AField('brand').eq('nike');        // @brand == "nike"
+AField('hidden').ne(1);            // @hidden != 1
+AField('revenue').gt(AField('cost')); // @revenue > @cost  (field-to-field)
+
+// Logical composition
+AField('total').gt(10).and(AField('revenue').lt(1000));
+// (@total > 10 && @revenue < 1000)
+
+AField('total').gt(10).or(AField('priority').eq('high'));
+// (@total > 10 || @priority == "high")
+
+AField('hidden').eq(1).not();
+// !(@hidden == 1)
+```
+
+Use anywhere the FT.AGGREGATE expression dialect is expected:
+
+```typescript
+new AggregationQuery({
+    groupBy: { fields: ['brand'], reducers: [Count().as('total')] },
+    apply: [{ expression: AField('total').gt(0), as: 'has_any' }],
+    postFilter: AField('total').ge(3).and(AField('total').lt(1000)),
+});
+```
+
+| Operator | Method | Renders as |
+| -------- | ------ | ---------- |
+| Equal | `.eq(v)` | `@field == v` |
+| Not equal | `.ne(v)` | `@field != v` |
+| Less than | `.lt(v)` | `@field < v` |
+| Less or equal | `.le(v)` | `@field <= v` |
+| Greater than | `.gt(v)` | `@field > v` |
+| Greater or equal | `.ge(v)` | `@field >= v` |
+| AND | `.and(other)` | `(left && right)` |
+| OR | `.or(other)` | `(left || right)` |
+| NOT | `.not()` | `!(expr)` |
+
+:::note v1 limitations
+The DSL covers comparison + logical operators. Arithmetic (`+`, `-`, `*`, `/`), string functions (`startswith`, `contains`, `matches`), and math functions (`log`, `abs`, `min`, `max`, ...) are not yet exposed — pass them as raw strings when you need them. The full expression language is on the roadmap.
 :::
 
 ## Cursored Streaming for Large Result Sets

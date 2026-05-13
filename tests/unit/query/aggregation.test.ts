@@ -13,6 +13,7 @@ import {
     FirstValue,
 } from '../../../src/query/aggregation.js';
 import { Tag, Num } from '../../../src/query/filter.js';
+import { AField } from '../../../src/query/aggregation-expr.js';
 import { QueryValidationError } from '../../../src/errors.js';
 
 const empty = { filter: '*' as const };
@@ -232,6 +233,30 @@ describe('AggregationQuery — toCommand() STEPS canonical order', () => {
         const q = new AggregationQuery({ ...empty, postFilter: '@total > 10' });
         const steps = q.toCommand().options.STEPS!;
         expect(steps).toEqual([{ type: 'FILTER', expression: '@total > 10' }]);
+    });
+
+    it('emits FILTER from an AggregationExpr (typed DSL)', () => {
+        const q = new AggregationQuery({
+            ...empty,
+            postFilter: AField('total').gt(10).and(AField('revenue').lt(1000)),
+        });
+        const steps = q.toCommand().options.STEPS!;
+        expect(steps).toEqual([{ type: 'FILTER', expression: '(@total > 10 && @revenue < 1000)' }]);
+    });
+
+    it('emits APPLY from an AggregationExpr alongside a raw string', () => {
+        const q = new AggregationQuery({
+            ...empty,
+            apply: [
+                { expression: '@a + @b', as: 'sum' },
+                { expression: AField('flag').eq(1), as: 'is_flagged' },
+            ],
+        });
+        const steps = q.toCommand().options.STEPS!;
+        expect(steps).toEqual([
+            { type: 'APPLY', expression: '@a + @b', AS: 'sum' },
+            { type: 'APPLY', expression: '@flag == 1', AS: 'is_flagged' },
+        ]);
     });
 
     it('emits all steps in canonical order: GROUPBY → APPLY → SORTBY → LIMIT → FILTER', () => {

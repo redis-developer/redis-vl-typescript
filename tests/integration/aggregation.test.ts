@@ -18,6 +18,7 @@ import {
     ToList,
 } from '../../src/query/aggregation.js';
 import { Tag } from '../../src/query/filter.js';
+import { AField } from '../../src/query/aggregation-expr.js';
 
 interface Product extends Record<string, unknown> {
     id: string;
@@ -204,6 +205,27 @@ describe('AggregationQuery integration (FT.AGGREGATE)', () => {
             expect(rows.map((r) => r.brand)).toEqual(['acme', 'ergo']);
             expect(Number(rows[0].revenue)).toBe(1625);
             expect(Number(rows[1].revenue)).toBe(800);
+        });
+
+        it('paginates and applies a typed postFilter via the expression DSL', async () => {
+            // Same query as above, but postFilter is built with the typed
+            // AField DSL instead of a raw string. Exercises the round-trip
+            // through renderAggregationExpr().
+            const q = new AggregationQuery({
+                groupBy: {
+                    fields: ['brand'],
+                    reducers: [Count().as('total'), Sum('price').as('revenue')],
+                },
+                sortBy: [{ field: 'revenue', direction: 'DESC' }],
+                postFilter: AField('total').gt(1),
+                limit: 10,
+            });
+
+            const { rows } = await index.aggregate<{
+                brand: string;
+                total: string;
+            }>(q);
+            expect(rows.map((r) => r.brand)).toEqual(['acme', 'ergo']);
         });
     });
 

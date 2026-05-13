@@ -12,6 +12,7 @@
 
 import type { FtAggregateOptions } from '@redis/search/dist/lib/commands/AGGREGATE.js';
 import { renderFilter, type FilterInput } from './base.js';
+import { renderAggregationExpr, type AggregationExprInput } from './aggregation-expr.js';
 import { QueryValidationError } from '../errors.js';
 
 // ---------- Reducer builders -------------------------------------------------
@@ -161,8 +162,15 @@ export interface CursorConfig {
 
 /** A single APPLY pipeline step (computed field). */
 export interface AggregationApply {
-    /** FT.AGGREGATE expression (e.g. `'@revenue / @total'`). */
-    expression: string;
+    /**
+     * FT.AGGREGATE expression — either an {@link AggregationExpr} built with
+     * the typed expression DSL or a raw string (e.g. `'@revenue / @total'`).
+     *
+     * Note: the v1 DSL covers comparison + logical operators only; arithmetic
+     * expressions like `@revenue / @total` still require a raw string until
+     * the DSL grows arithmetic support.
+     */
+    expression: AggregationExprInput;
     /** Alias for the computed field in subsequent steps. */
     as: string;
 }
@@ -211,10 +219,13 @@ export interface AggregationQueryConfig {
     offset?: number;
 
     /**
-     * Post-aggregation FILTER step. Uses the FT.AGGREGATE expression dialect
-     * (e.g. `'@total > 10'`), NOT the FT.SEARCH filter dialect.
+     * Post-aggregation FILTER step. Accepts either an {@link AggregationExpr}
+     * built with the typed expression DSL (`AField('total').gt(10)`) or a
+     * raw string (`'@total > 10'`). Uses the FT.AGGREGATE expression dialect,
+     * NOT the FT.SEARCH filter dialect that {@link AggregationQueryConfig.filter}
+     * accepts.
      */
-    postFilter?: string;
+    postFilter?: AggregationExprInput;
 
     /**
      * Enable cursored streaming via FT.AGGREGATE WITHCURSOR. When set, the
@@ -271,7 +282,7 @@ export class AggregationQuery {
     public readonly sortBy?: AggregationSortField[];
     public readonly limit?: number;
     public readonly offset: number;
-    public readonly postFilter?: string;
+    public readonly postFilter?: AggregationExprInput;
     public readonly cursor?: CursorConfig;
     public readonly params?: Record<string, string | number | Buffer>;
     public readonly timeout?: number;
@@ -337,7 +348,9 @@ export class AggregationQuery {
 
         if (this.apply) {
             for (const a of this.apply) {
-                steps.push({ type: 'APPLY', expression: a.expression, AS: a.as });
+                const expr = renderAggregationExpr(a.expression);
+                if (expr === undefined) continue;
+                steps.push({ type: 'APPLY', expression: expr, AS: a.as });
             }
         }
 
@@ -355,10 +368,11 @@ export class AggregationQuery {
             steps.push({ type: 'LIMIT', from: this.offset, size: this.limit });
         }
 
-        if (this.postFilter !== undefined && this.postFilter !== '') {
+        const postFilterExpr = renderAggregationExpr(this.postFilter);
+        if (postFilterExpr !== undefined) {
             // The FT.AGGREGATE expression dialect (e.g. `@total > 10`),
             // distinct from the FT.SEARCH filter dialect that `filter` uses.
-            steps.push({ type: 'FILTER', expression: this.postFilter });
+            steps.push({ type: 'FILTER', expression: postFilterExpr });
         }
 
         return steps;
