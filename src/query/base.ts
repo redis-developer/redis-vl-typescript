@@ -3,6 +3,23 @@
  * Query builders for Redis search operations.
  */
 
+import type { FilterExpression } from './filter.js';
+
+/**
+ * A filter clause supplied to a query — either a pre-built {@link FilterExpression}
+ * or a raw Redis Search filter string (e.g. `'@category:{electronics}'`).
+ */
+export type FilterInput = string | FilterExpression;
+
+/**
+ * Render a {@link FilterInput} to its Redis Search string form, treating
+ * `undefined` and the wildcard expression as "no filter" (`*`).
+ */
+export function renderFilter(filter: FilterInput | undefined): string {
+    if (filter === undefined) return '*';
+    return typeof filter === 'string' ? filter : filter.toString();
+}
+
 /**
  * Base interface for all query types
  */
@@ -15,6 +32,12 @@ export interface BaseQuery {
 
     /** Offset for pagination */
     offset?: number;
+
+    /** When true, ask Redis to return only document ids/counts (FT.SEARCH NOCONTENT). */
+    noContent?: boolean;
+
+    /** Optional RediSearch scorer to apply when ranking text results. */
+    textScorer?: string;
 
     /** Build the Redis query string */
     buildQuery(): string;

@@ -29,6 +29,14 @@ export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-in
 // Query exports
 export { VectorQuery } from './query/vector.js';
 export type { VectorQueryConfig, HybridPolicy, UseSearchHistory } from './query/vector.js';
+export { VectorRangeQuery } from './query/range.js';
+export type { VectorRangeQueryConfig } from './query/range.js';
+export { FilterQuery } from './query/filter-query.js';
+export type { FilterQueryConfig } from './query/filter-query.js';
+export { CountQuery } from './query/count.js';
+export type { CountQueryConfig } from './query/count.js';
+export { TextQuery } from './query/text.js';
+export type { TextQueryConfig, TextScorer } from './query/text.js';
 export { HybridQuery } from './query/hybrid.js';
 export type {
     HybridQueryConfig,
@@ -37,11 +45,14 @@ export type {
     HybridCommand,
     HybridTextScorer,
 } from './query/hybrid.js';
+export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
+export type { Inclusive, GeoUnit } from './query/filter.js';
 export type {
     BaseQuery,
     SearchResult,
     SearchDocument,
     QueryOptions,
+    FilterInput,
     HybridSearchResult,
 } from './query/base.js';
 

@@ -17,6 +17,7 @@ import type {
     HybridSearchResult,
 } from '../query/base.js';
 import { VectorQuery } from '../query/vector.js';
+import { VectorRangeQuery } from '../query/range.js';
 import { HybridQuery } from '../query/hybrid.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 import type { VectorFieldAttrs } from '../schema/fields.js';
@@ -268,11 +269,17 @@ export class SearchIndex {
     }
 
     private getVectorScoreAlias(query: BaseQuery): string | null {
-        return query instanceof VectorQuery ? query.scoreAlias : null;
+        if (query instanceof VectorQuery || query instanceof VectorRangeQuery) {
+            return query.scoreAlias;
+        }
+        return null;
     }
 
     private getVectorDistanceNormalizer(query: BaseQuery): ((distance: number) => number) | null {
-        if (!(query instanceof VectorQuery) || !query.normalizeDistance) {
+        if (!(query instanceof VectorQuery) && !(query instanceof VectorRangeQuery)) {
+            return null;
+        }
+        if (!query.normalizeDistance) {
             return null;
         }
 
@@ -567,11 +574,16 @@ export class SearchIndex {
             const scoreAlias = this.getVectorScoreAlias(query);
             const normalizer = this.getVectorDistanceNormalizer(query);
 
-            // Build FT.SEARCH options
+            // Build FT.SEARCH options. Only include PARAMS when the query
+            // actually produced parameter pairs — Redis rejects an empty
+            // PARAMS clause with "Parameters must be specified in PARAM VALUE
+            // pairs", which broke filter-only / text / count queries.
             const searchOptions: Record<string, unknown> = {
-                PARAMS: params,
                 DIALECT: options?.dialect ?? 2, // DIALECT 2 required for KNN
             };
+            if (Object.keys(params).length > 0) {
+                searchOptions.PARAMS = params;
+            }
 
             // Add RETURN fields if specified
             // For VectorQuery, always include the score field (vector_distance by default)
@@ -599,6 +611,16 @@ export class SearchIndex {
                         DIRECTION: options.sortOrder,
                     };
                 }
+            }
+
+            // CountQuery (and any other consumer) can opt into NOCONTENT to
+            // skip payload retrieval — Redis only returns the total + ids.
+            if (query.noContent) {
+                searchOptions.NOCONTENT = true;
+            }
+
+            if (query.textScorer) {
+                searchOptions.SCORER = query.textScorer;
             }
 
             // Execute search
