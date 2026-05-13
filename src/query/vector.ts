@@ -1,7 +1,7 @@
-import { renderFilter, type BaseQuery, type FilterInput } from './base.js';
+import { BaseVectorQuery, renderFilter, type FilterInput } from './base.js';
 import { VectorDataType, VectorDistanceMetric } from '../schema/types.js';
-import { QueryValidationError, SchemaValidationError } from '../errors.js';
-import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
+import { QueryValidationError } from '../errors.js';
+import { encodeVectorBuffer } from '../redis/utils.js';
 
 /**
  * Hybrid policy options for vector search with filters
@@ -184,36 +184,20 @@ export interface VectorQueryConfig {
  * const results = await index.search(query);
  * ```
  */
-export class VectorQuery implements BaseQuery {
-    public readonly vector: number[];
-    public readonly vectorField: string;
+export class VectorQuery extends BaseVectorQuery {
     public readonly numResults: number;
-    public readonly filter?: FilterInput;
-    public readonly returnFields?: string[];
     public readonly distanceMetric: VectorDistanceMetric;
-    public readonly datatype: VectorDataType;
-    public readonly offset?: number;
-    public readonly limit?: number;
     public readonly scoreAlias: string;
     public readonly efRuntime?: number;
     public readonly epsilon?: number;
     public readonly hybridPolicy?: HybridPolicy;
     public readonly batchSize?: number;
-    public readonly normalizeDistance: boolean;
     public readonly searchWindowSize?: number;
     public readonly useSearchHistory?: UseSearchHistory;
     public readonly searchBufferCapacity?: number;
 
     constructor(config: VectorQueryConfig) {
-        // Validate vector
-        if (!config.vector || config.vector.length === 0) {
-            throw new QueryValidationError('Vector cannot be empty');
-        }
-
-        // Validate vectorField
-        if (!config.vectorField) {
-            throw new QueryValidationError('vectorField is required');
-        }
+        super(config);
 
         // Validate HNSW parameters
         if (config.efRuntime !== undefined && config.efRuntime <= 0) {
@@ -264,28 +248,13 @@ export class VectorQuery implements BaseQuery {
             throw new QueryValidationError('searchBufferCapacity must be positive');
         }
 
-        this.vector = config.vector;
-        this.vectorField = config.vectorField;
         this.numResults = config.numResults ?? 10;
-        this.filter = config.filter;
-        this.returnFields = config.returnFields;
         this.distanceMetric = config.distanceMetric ?? VectorDistanceMetric.COSINE;
-        try {
-            this.datatype = normalizeVectorDataType(config.datatype);
-        } catch (error) {
-            if (error instanceof SchemaValidationError) {
-                throw new QueryValidationError(error.message);
-            }
-            throw error;
-        }
-        this.offset = config.offset;
-        this.limit = config.limit;
         this.scoreAlias = config.scoreAlias ?? 'vector_distance';
         this.efRuntime = config.efRuntime;
         this.epsilon = config.epsilon;
         this.hybridPolicy = config.hybridPolicy;
         this.batchSize = config.batchSize;
-        this.normalizeDistance = config.normalizeDistance ?? false;
         this.searchWindowSize = config.searchWindowSize;
         this.useSearchHistory = config.useSearchHistory;
         this.searchBufferCapacity = config.searchBufferCapacity;

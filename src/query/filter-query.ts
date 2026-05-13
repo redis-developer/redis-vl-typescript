@@ -1,4 +1,4 @@
-import { renderFilter, type BaseQuery, type FilterInput } from './base.js';
+import { BaseQuery, renderFilter, type FilterInput } from './base.js';
 
 /**
  * Configuration for {@link FilterQuery}.
@@ -35,26 +35,21 @@ export interface FilterQueryConfig {
  * const results = await index.search(q);
  * ```
  */
-export class FilterQuery implements BaseQuery {
-    public readonly filter?: FilterInput;
-    public readonly returnFields?: string[];
+export class FilterQuery extends BaseQuery {
     public readonly numResults: number;
-    public readonly offset?: number;
-    public readonly limit?: number;
 
     constructor(config: FilterQueryConfig = {}) {
-        this.filter = config.filter;
-        this.returnFields = config.returnFields;
-        this.numResults = config.numResults ?? 10;
-        this.offset = config.offset;
-        this.limit = config.limit ?? this.numResults;
+        const numResults = config.numResults ?? 10;
+        super({
+            filter: config.filter,
+            returnFields: config.returnFields,
+            offset: config.offset,
+            limit: config.limit ?? numResults,
+        });
+        this.numResults = numResults;
     }
 
     buildQuery(): string {
         return renderFilter(this.filter);
-    }
-
-    buildParams(): Record<string, unknown> {
-        return {};
     }
 }

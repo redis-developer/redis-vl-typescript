@@ -1,4 +1,4 @@
-import { renderFilter, type BaseQuery, type FilterInput } from './base.js';
+import { BaseQuery, renderFilter, type FilterInput } from './base.js';
 import { TokenEscaper } from '../utils/token-escaper.js';
 import { QueryValidationError } from '../errors.js';
 
@@ -66,15 +66,11 @@ export interface TextQueryConfig {
  * const results = await index.search(q);
  * ```
  */
-export class TextQuery implements BaseQuery {
+export class TextQuery extends BaseQuery {
     public readonly text: string;
     public readonly textFieldName: string;
     public readonly textScorer: TextScorer;
-    public readonly filter?: FilterInput;
-    public readonly returnFields?: string[];
     public readonly numResults: number;
-    public readonly offset?: number;
-    public readonly limit?: number;
 
     constructor(config: TextQueryConfig) {
         if (!config.text || config.text.trim() === '') {
@@ -85,14 +81,17 @@ export class TextQuery implements BaseQuery {
             throw new QueryValidationError('textFieldName is required');
         }
 
+        const numResults = config.numResults ?? 10;
+        super({
+            filter: config.filter,
+            returnFields: config.returnFields,
+            offset: config.offset,
+            limit: config.limit ?? numResults,
+        });
         this.text = config.text;
         this.textFieldName = config.textFieldName;
         this.textScorer = config.textScorer ?? 'BM25STD';
-        this.filter = config.filter;
-        this.returnFields = config.returnFields;
-        this.numResults = config.numResults ?? 10;
-        this.offset = config.offset;
-        this.limit = config.limit ?? this.numResults;
+        this.numResults = numResults;
     }
 
     buildQuery(): string {
@@ -112,9 +111,5 @@ export class TextQuery implements BaseQuery {
             return textClause;
         }
         return `(${filterStr} ${textClause})`;
-    }
-
-    buildParams(): Record<string, unknown> {
-        return {};
     }
 }

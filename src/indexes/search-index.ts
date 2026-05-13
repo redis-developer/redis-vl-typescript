@@ -602,7 +602,18 @@ export class SearchIndex {
                 searchOptions.LIMIT = { from: offset, size: limit };
             }
 
-            // Add sorting if specified
+            // Add sorting if specified on the query. FT.SEARCH accepts one
+            // SORTBY clause, so use the first collected sort field.
+            if (query.sortFields.length > 0) {
+                const [sortField] = query.sortFields;
+                searchOptions.SORTBY = {
+                    BY: sortField.field,
+                    DIRECTION: sortField.direction,
+                };
+            }
+
+            // Add sorting if specified in execution options. These options
+            // preserve the historical API and override query-level sorting.
             if (options?.sortBy) {
                 searchOptions.SORTBY = options.sortBy;
                 if (options.sortOrder) {
