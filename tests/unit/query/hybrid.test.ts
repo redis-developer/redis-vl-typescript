@@ -52,6 +52,18 @@ describe('HybridQuery', () => {
             ).toThrow(QueryValidationError);
         });
 
+        it('throws when textFieldName is empty', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        textFieldName: '   ',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
         it('throws when LINEAR alpha is outside [0, 1]', () => {
             expect(
                 () =>
@@ -96,6 +108,78 @@ describe('HybridQuery', () => {
                         vector: VECTOR,
                         vectorField: 'embedding',
                         vectorMethod: { type: 'RANGE', radius: -0.1 },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('throws when numResults is not positive', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                        numResults: 0,
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('throws when offset is negative', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                        offset: -1,
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('throws when timeout is not positive', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                        timeout: 0,
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('throws when returnFields includes an empty field', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                        returnFields: ['title', ''],
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('throws when sortBy includes an empty field', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                        sortBy: [{ field: '   ' }],
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('throws when sortBy direction is invalid at runtime', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                        sortBy: [{ field: 'price', direction: 'DOWN' as any }],
                     })
             ).toThrow(QueryValidationError);
         });
@@ -275,14 +359,17 @@ describe('HybridQuery', () => {
     });
 
     describe('toCommand() — COMBINE clause', () => {
-        it('omits COMBINE when not configured (server default = RRF)', () => {
+        it('emits default RRF COMBINE so the combined score is yielded predictably', () => {
             const q = new HybridQuery({
                 text: 'foo',
                 vector: VECTOR,
                 vectorField: 'embedding',
             });
             const { options } = q.toCommand();
-            expect(options.COMBINE).toBeUndefined();
+            expect(options.COMBINE).toEqual({
+                method: { type: 'RRF' },
+                YIELD_SCORE_AS: 'hybrid_score',
+            });
         });
 
         it('emits RRF with default combinedScoreAlias of hybrid_score', () => {

@@ -29,7 +29,9 @@ const VEC_DESK = [0, 0, 1, 0];
 const VEC_CHAIR = [0, 0, 0.7071, 0.7071];
 const VEC_MONITOR = [0.866, 0.5, 0, 0];
 
-describe('HybridQuery integration (FT.HYBRID)', () => {
+const describeHybrid = process.env.REDISVL_SKIP_HYBRID === 'true' ? describe.skip : describe;
+
+describeHybrid('HybridQuery integration (FT.HYBRID)', () => {
     let client: RedisClientType;
     let index: SearchIndex;
 
@@ -131,6 +133,25 @@ describe('HybridQuery integration (FT.HYBRID)', () => {
     });
 
     describe('default fusion (RRF) with KNN', () => {
+        it('returns scores when COMBINE is omitted from user config', async () => {
+            const q = new HybridQuery({
+                text: 'programming',
+                textFieldName: 'description',
+                vector: VEC_LAPTOP,
+                vectorField: 'embedding',
+                vectorMethod: { type: 'KNN', k: 10 },
+                returnFields: ['title'],
+            });
+
+            const results = await index.hybridSearch(q);
+
+            expect(results.documents.length).toBeGreaterThan(0);
+            results.documents.forEach((doc) => {
+                expect(doc.score).toBeDefined();
+                expect(Number.isFinite(doc.score)).toBe(true);
+            });
+        });
+
         it('returns documents ranked by fused score with id, value, score, executionTime', async () => {
             const q = new HybridQuery({
                 text: 'programming',

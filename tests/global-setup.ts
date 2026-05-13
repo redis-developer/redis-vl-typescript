@@ -6,7 +6,7 @@ import {
     type StartedTestContainer,
 } from 'testcontainers';
 
-const REDIS_IMAGE = 'redis:8.4';
+const REDIS_IMAGE = process.env.REDIS_IMAGE || 'redis:8.4';
 const REDIS_PORT = 6379;
 const CONTAINER_LABELS = { 'com.redis.redisvl.test': 'true' } as const;
 const CONTAINER_LABEL_FILTERS = Object.entries(CONTAINER_LABELS).map(([k, v]) => `${k}=${v}`);

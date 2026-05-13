@@ -23,6 +23,7 @@ import { renderFilter, type FilterInput } from './base.js';
 import type { TextScorer } from './text.js';
 
 const escaper = new TokenEscaper();
+const DEFAULT_COMBINE: HybridCombine = { type: 'RRF' };
 
 /**
  * Vector retrieval method used by FT.HYBRID's VSIM clause.
@@ -150,6 +151,57 @@ function prefixFieldRef(name: string): string {
     return name.startsWith('@') || name.startsWith('$') ? name : `@${name}`;
 }
 
+function assertNonEmptyString(value: string | undefined, label: string): void {
+    if (value !== undefined && (typeof value !== 'string' || value.trim() === '')) {
+        throw new QueryValidationError(`${label} cannot be empty`);
+    }
+}
+
+function assertPositiveInteger(value: number | undefined, label: string): void {
+    if (value !== undefined && (!Number.isInteger(value) || value <= 0)) {
+        throw new QueryValidationError(`${label} must be a positive integer`);
+    }
+}
+
+function assertNonNegativeInteger(value: number | undefined, label: string): void {
+    if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
+        throw new QueryValidationError(`${label} must be a non-negative integer`);
+    }
+}
+
+function assertNonNegativeNumber(value: number | undefined, label: string): void {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+        throw new QueryValidationError(`${label} must be non-negative`);
+    }
+}
+
+function assertUnitInterval(value: number | undefined, label: string): void {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1)) {
+        throw new QueryValidationError(`${label} must be in [0, 1]`);
+    }
+}
+
+function validateFields(fields: string[] | undefined, label: string): string[] | undefined {
+    if (fields === undefined) return undefined;
+    return fields.map((field) => {
+        assertNonEmptyString(field, label);
+        return field;
+    });
+}
+
+function validateSortBy(
+    sortBy: Array<{ field: string; direction?: 'ASC' | 'DESC' }> | undefined
+): Array<{ field: string; direction?: 'ASC' | 'DESC' }> | undefined {
+    if (sortBy === undefined) return undefined;
+    return sortBy.map((sort) => {
+        assertNonEmptyString(sort.field, 'sort field');
+        if (sort.direction !== undefined && sort.direction !== 'ASC' && sort.direction !== 'DESC') {
+            throw new QueryValidationError('sort direction must be either ASC or DESC');
+        }
+        return { ...sort };
+    });
+}
+
 /**
  * Build an FT.HYBRID call from a high-level configuration object.
  *
@@ -200,35 +252,41 @@ export class HybridQuery {
         if (!config.vector || config.vector.length === 0) {
             throw new QueryValidationError('vector cannot be empty');
         }
-        if (!config.vectorField) {
+        if (!config.vectorField || config.vectorField.trim() === '') {
             throw new QueryValidationError('vectorField is required');
         }
+        assertNonEmptyString(config.textFieldName, 'textFieldName');
+        assertNonEmptyString(config.postFilter, 'postFilter');
+        assertNonEmptyString(config.textScoreAlias, 'textScoreAlias');
+        assertNonEmptyString(config.vectorScoreAlias, 'vectorScoreAlias');
+        assertNonEmptyString(config.combinedScoreAlias, 'combinedScoreAlias');
 
         const method = config.vectorMethod ?? { type: 'KNN', k: 10 };
         if (method.type === 'KNN') {
-            if (method.k !== undefined && method.k <= 0) {
-                throw new QueryValidationError('vectorMethod.k must be positive');
-            }
-            if (method.efRuntime !== undefined && method.efRuntime <= 0) {
-                throw new QueryValidationError('vectorMethod.efRuntime must be positive');
-            }
+            assertPositiveInteger(method.k, 'vectorMethod.k');
+            assertPositiveInteger(method.efRuntime, 'vectorMethod.efRuntime');
         } else {
-            if (method.radius < 0) {
-                throw new QueryValidationError('vectorMethod.radius must be non-negative');
-            }
-            if (method.epsilon !== undefined && method.epsilon < 0) {
-                throw new QueryValidationError('vectorMethod.epsilon must be non-negative');
-            }
+            assertNonNegativeNumber(method.radius, 'vectorMethod.radius');
+            assertNonNegativeNumber(method.epsilon, 'vectorMethod.epsilon');
         }
 
         if (config.combine?.type === 'LINEAR') {
             const { alpha, beta } = config.combine;
-            if (alpha !== undefined && (alpha < 0 || alpha > 1)) {
-                throw new QueryValidationError('combine.alpha must be in [0, 1]');
-            }
-            if (beta !== undefined && (beta < 0 || beta > 1)) {
-                throw new QueryValidationError('combine.beta must be in [0, 1]');
-            }
+            assertUnitInterval(alpha, 'combine.alpha');
+            assertUnitInterval(beta, 'combine.beta');
+            assertPositiveInteger(config.combine.window, 'combine.window');
+        } else if (config.combine?.type === 'RRF') {
+            assertPositiveInteger(config.combine.constant, 'combine.constant');
+            assertPositiveInteger(config.combine.window, 'combine.window');
+        }
+
+        assertPositiveInteger(config.numResults ?? 10, 'numResults');
+        assertNonNegativeInteger(config.offset ?? 0, 'offset');
+        assertPositiveInteger(config.timeout, 'timeout');
+        const returnFields = validateFields(config.returnFields, 'returnFields');
+        const sortBy = validateSortBy(config.sortBy);
+        if (config.noSort && sortBy && sortBy.length > 0) {
+            throw new QueryValidationError('noSort cannot be used with sortBy');
         }
 
         // Pre-validate that tokenization will produce something useful when
@@ -254,7 +312,7 @@ export class HybridQuery {
 
         this.text = config.text;
         this.textFieldName = config.textFieldName;
-        this.vector = config.vector;
+        this.vector = [...config.vector];
         this.vectorField = config.vectorField;
         this.vectorMethod =
             method.type === 'KNN'
@@ -267,10 +325,10 @@ export class HybridQuery {
         this.textScoreAlias = config.textScoreAlias;
         this.vectorScoreAlias = config.vectorScoreAlias;
         this.combinedScoreAlias = config.combinedScoreAlias ?? 'hybrid_score';
-        this.returnFields = config.returnFields;
+        this.returnFields = returnFields;
         this.numResults = config.numResults ?? 10;
         this.offset = config.offset ?? 0;
-        this.sortBy = config.sortBy;
+        this.sortBy = sortBy;
         this.noSort = config.noSort;
         this.timeout = config.timeout;
     }
@@ -287,8 +345,9 @@ export class HybridQuery {
             LIMIT: { offset: this.offset, count: this.numResults },
         };
 
-        const combine = this.buildCombineClause();
-        if (combine) options.COMBINE = combine;
+        // Always yield a known combined score alias so result mapping is stable
+        // even when callers rely on Redis' default fusion behavior.
+        options.COMBINE = this.buildCombineClause();
 
         // FT.HYBRID does not include @__key in result rows by default —
         // it has to be in LOAD for the document key to round-trip back as
@@ -375,13 +434,13 @@ export class HybridQuery {
         return out;
     }
 
-    private buildCombineClause(): FtHybridOptions['COMBINE'] | undefined {
-        if (!this.combine) return undefined;
+    private buildCombineClause(): FtHybridOptions['COMBINE'] {
+        const combine = this.combine ?? DEFAULT_COMBINE;
         const yieldAs = this.combinedScoreAlias;
-        if (this.combine.type === 'RRF') {
+        if (combine.type === 'RRF') {
             const method: { type: 'RRF'; CONSTANT?: number; WINDOW?: number } = { type: 'RRF' };
-            if (this.combine.constant !== undefined) method.CONSTANT = this.combine.constant;
-            if (this.combine.window !== undefined) method.WINDOW = this.combine.window;
+            if (combine.constant !== undefined) method.CONSTANT = combine.constant;
+            if (combine.window !== undefined) method.WINDOW = combine.window;
             return { method, YIELD_SCORE_AS: yieldAs };
         }
         const method: {
@@ -390,9 +449,9 @@ export class HybridQuery {
             BETA?: number;
             WINDOW?: number;
         } = { type: 'LINEAR' };
-        if (this.combine.alpha !== undefined) method.ALPHA = this.combine.alpha;
-        if (this.combine.beta !== undefined) method.BETA = this.combine.beta;
-        if (this.combine.window !== undefined) method.WINDOW = this.combine.window;
+        if (combine.alpha !== undefined) method.ALPHA = combine.alpha;
+        if (combine.beta !== undefined) method.BETA = combine.beta;
+        if (combine.window !== undefined) method.WINDOW = combine.window;
         return { method, YIELD_SCORE_AS: yieldAs };
     }
 }

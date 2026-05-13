@@ -741,13 +741,14 @@ export class SearchIndex {
     ): SearchDocument<T> {
         const id = (row['__key'] ?? '') as string;
 
-        const rawScore = row[combinedScoreAlias];
+        const rawScore = row[combinedScoreAlias] ?? row['__combined_score'] ?? row['__score'];
         const score =
             typeof rawScore === 'string' ? parseFloat(rawScore) : (rawScore as number | undefined);
 
         const value: Record<string, unknown> = {};
+        const scoreKeys = new Set(['__key', combinedScoreAlias, '__combined_score', '__score']);
         for (const [key, val] of Object.entries(row)) {
-            if (key === '__key' || key === combinedScoreAlias) continue;
+            if (scoreKeys.has(key)) continue;
             value[key] = val;
         }
 
