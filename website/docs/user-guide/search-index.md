@@ -299,7 +299,7 @@ schema.addFields([
 **Characteristics:**
 - ✅ Fast queries on millions of vectors
 - ✅ Configurable accuracy/speed tradeoff
-- ✅ Supports tuning with `efRuntime` and `epsilon` parameters
+- ✅ Supports query-time tuning with the `efRuntime` parameter
 - ⚠️ Approximate results (>95% recall typically)
 - ⚠️ Higher memory usage
 

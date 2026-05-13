@@ -172,24 +172,6 @@ const query = new VectorQuery({
 - Large indexes (over 1M vectors): `efRuntime = 500-1000`
 - Rule of thumb: Start with 2-5x your `numResults`
 
-### epsilon Parameter
-
-Enables approximate range search with a tolerance factor.
-
-```typescript
-const query = new VectorQuery({
-    vector: embedding,
-    vectorField: 'embedding',
-    epsilon: 0.01, // 1% tolerance
-    numResults: 10,
-});
-```
-
-**Use cases:**
-- Range-based queries where exact ranking isn't critical
-- Trading precision for speed
-- Large-scale approximate nearest neighbor search
-
 ### Combined HNSW Tuning
 
 ```typescript
@@ -197,7 +179,6 @@ const query = new VectorQuery({
     vector: embedding,
     vectorField: 'embedding',
     efRuntime: 300,
-    epsilon: 0.01,
     numResults: 10,
 });
 ```
@@ -457,4 +438,3 @@ Track these metrics:
 - [Schema](./schema) - Define vector fields
 - [Vectorizers](./vectorizers) - Generate embeddings
 - [API Reference](../api/) - Complete API documentation
-

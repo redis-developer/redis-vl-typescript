@@ -65,13 +65,6 @@ export interface VectorQueryConfig {
     efRuntime?: number;
 
     /**
-     * HNSW epsilon parameter - range search approximation factor
-     * Used for range-based vector queries
-     * @default undefined
-     */
-    epsilon?: number;
-
-    /**
      * Hybrid policy for combining vector search with filters
      * - BATCHES: Process filters in batches (better for large result sets)
      * - ADHOC_BF: Ad-hoc brute force (better for small result sets)
@@ -196,7 +189,6 @@ export class VectorQuery implements BaseQuery {
     public readonly limit?: number;
     public readonly scoreAlias: string;
     public readonly efRuntime?: number;
-    public readonly epsilon?: number;
     public readonly hybridPolicy?: HybridPolicy;
     public readonly batchSize?: number;
     public readonly normalizeDistance: boolean;
@@ -218,10 +210,6 @@ export class VectorQuery implements BaseQuery {
         // Validate HNSW parameters
         if (config.efRuntime !== undefined && config.efRuntime <= 0) {
             throw new QueryValidationError('efRuntime must be positive');
-        }
-
-        if (config.epsilon !== undefined && config.epsilon < 0) {
-            throw new QueryValidationError('epsilon must be non-negative');
         }
 
         // Validate hybrid policy parameters
@@ -282,7 +270,6 @@ export class VectorQuery implements BaseQuery {
         this.limit = config.limit;
         this.scoreAlias = config.scoreAlias ?? 'vector_distance';
         this.efRuntime = config.efRuntime;
-        this.epsilon = config.epsilon;
         this.hybridPolicy = config.hybridPolicy;
         this.batchSize = config.batchSize;
         this.normalizeDistance = config.normalizeDistance ?? false;
@@ -294,44 +281,39 @@ export class VectorQuery implements BaseQuery {
     /**
      * Build the Redis KNN query string
      *
-     * Format: (filter)=>[KNN K @vector_field $vector AS score EF_RUNTIME $ef_runtime EPSILON $epsilon]
+     * Format: (filter)=>[KNN K @vector_field $vector <attributes> AS score]
+     * The AS clause is fixed in the return template and must remain the last
+     * token inside the bracket; all runtime attributes appear before it.
      *
      * @returns Redis FT.SEARCH query string
      */
     buildQuery(): string {
         const filterStr = renderFilter(this.filter);
         const filterPart = filterStr === '*' ? '*' : `(${filterStr})`;
-        let knnPart = `=>[KNN ${this.numResults} @${this.vectorField} $vector AS ${this.scoreAlias}`;
 
-        // Add HNSW parameters if provided
-        if (this.efRuntime !== undefined) {
-            knnPart += ' EF_RUNTIME $ef_runtime';
-        }
-        if (this.epsilon !== undefined) {
-            knnPart += ' EPSILON $epsilon';
-        }
+        // Build clauses in canonical Redis order.
+        const parts: string[] = [`KNN ${this.numResults} @${this.vectorField} $vector`];
 
-        // Add hybrid policy parameters if provided
         if (this.hybridPolicy !== undefined) {
-            knnPart += ` HYBRID_POLICY ${this.hybridPolicy}`;
+            parts.push(`HYBRID_POLICY ${this.hybridPolicy}`);
         }
         if (this.batchSize !== undefined && this.hybridPolicy === 'BATCHES') {
-            knnPart += ` BATCH_SIZE ${this.batchSize}`;
+            parts.push(`BATCH_SIZE ${this.batchSize}`);
         }
-
-        // Add SVS-VAMANA parameters if provided
+        if (this.efRuntime !== undefined) {
+            parts.push('EF_RUNTIME $ef_runtime');
+        }
         if (this.searchWindowSize !== undefined) {
-            knnPart += ' SEARCH_WINDOW_SIZE $search_window_size';
+            parts.push('SEARCH_WINDOW_SIZE $search_window_size');
         }
         if (this.useSearchHistory !== undefined) {
-            knnPart += ` USE_SEARCH_HISTORY ${this.useSearchHistory}`;
+            parts.push(`USE_SEARCH_HISTORY ${this.useSearchHistory}`);
         }
         if (this.searchBufferCapacity !== undefined) {
-            knnPart += ' SEARCH_BUFFER_CAPACITY $search_buffer_capacity';
+            parts.push('SEARCH_BUFFER_CAPACITY $search_buffer_capacity');
         }
 
-        knnPart += ']';
-        return `${filterPart}${knnPart}`;
+        return `${filterPart}=>[${parts.join(' ')} AS ${this.scoreAlias}]`;
     }
 
     /**
@@ -352,9 +334,6 @@ export class VectorQuery implements BaseQuery {
         // Add HNSW parameters if provided
         if (this.efRuntime !== undefined) {
             params.ef_runtime = this.efRuntime;
-        }
-        if (this.epsilon !== undefined) {
-            params.epsilon = this.epsilon;
         }
 
         // Add SVS-VAMANA parameters if provided
