@@ -1,4 +1,4 @@
-import { BaseQuery } from './base.js';
+import { renderFilter, type BaseQuery, type FilterInput } from './base.js';
 import { VectorDataType, VectorDistanceMetric } from '../schema/types.js';
 import { QueryValidationError, SchemaValidationError } from '../errors.js';
 import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
@@ -26,8 +26,11 @@ export interface VectorQueryConfig {
     /** Number of results to return */
     numResults?: number;
 
-    /** Filter expression (e.g., '@category:{electronics}') */
-    filter?: string;
+    /**
+     * Filter expression — either a {@link FilterExpression} from the filter
+     * DSL, or a raw Redis Search filter string (e.g. `'@category:{electronics}'`).
+     */
+    filter?: FilterInput;
 
     /** Fields to return in results */
     returnFields?: string[];
@@ -185,7 +188,7 @@ export class VectorQuery implements BaseQuery {
     public readonly vector: number[];
     public readonly vectorField: string;
     public readonly numResults: number;
-    public readonly filter?: string;
+    public readonly filter?: FilterInput;
     public readonly returnFields?: string[];
     public readonly distanceMetric: VectorDistanceMetric;
     public readonly datatype: VectorDataType;
@@ -296,7 +299,8 @@ export class VectorQuery implements BaseQuery {
      * @returns Redis FT.SEARCH query string
      */
     buildQuery(): string {
-        const filterPart = this.filter ? `(${this.filter})` : '*';
+        const filterStr = renderFilter(this.filter);
+        const filterPart = filterStr === '*' ? '*' : `(${filterStr})`;
         let knnPart = `=>[KNN ${this.numResults} @${this.vectorField} $vector AS ${this.scoreAlias}`;
 
         // Add HNSW parameters if provided
