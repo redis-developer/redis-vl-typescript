@@ -24,7 +24,12 @@ export * from './schema/types.js';
 
 // Index exports
 export { SearchIndex } from './indexes/search-index.js';
-export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-index.js';
+export type {
+    CreateIndexOptions,
+    DeleteIndexOptions,
+    AggregationResult,
+    AggregationBatch,
+} from './indexes/search-index.js';
 
 // Query exports
 export { VectorQuery } from './query/vector.js';
@@ -37,6 +42,28 @@ export { CountQuery } from './query/count.js';
 export type { CountQueryConfig } from './query/count.js';
 export { TextQuery } from './query/text.js';
 export type { TextQueryConfig, TextScorer } from './query/text.js';
+export {
+    AggregationQuery,
+    Count,
+    CountDistinct,
+    Sum,
+    Avg,
+    Min,
+    Max,
+    Stddev,
+    Quantile,
+    ToList,
+    FirstValue,
+} from './query/aggregation.js';
+export type {
+    AggregationQueryConfig,
+    AggregationApply,
+    AggregationGroupBy,
+    AggregationSortField,
+    AggregationCommand,
+    CursorConfig,
+    ReducerBuilder,
+} from './query/aggregation.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
 export type { Inclusive, GeoUnit } from './query/filter.js';
 export type {

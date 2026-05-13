@@ -12,8 +12,30 @@ import { RedisVLError, SchemaValidationError } from '../errors.js';
 import type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from '../query/base.js';
 import { VectorQuery } from '../query/vector.js';
 import { VectorRangeQuery } from '../query/range.js';
+import { AggregationQuery } from '../query/aggregation.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 import type { VectorFieldAttrs } from '../schema/fields.js';
+
+/**
+ * Result returned by {@link SearchIndex.aggregate}.
+ */
+export interface AggregationResult<T = Record<string, unknown>> {
+    /** Server-reported total of pre-aggregation matches. */
+    total: number;
+    /** Aggregated result rows. Each row is a flat key/value object. */
+    rows: T[];
+}
+
+/**
+ * One batch yielded by {@link SearchIndex.aggregateStream}. The async iterable
+ * keeps yielding batches until the server signals the cursor is exhausted.
+ */
+export interface AggregationBatch<T = Record<string, unknown>> {
+    /** Rows in this batch. */
+    rows: T[];
+    /** Cursor id for this batch. `0` means the cursor is exhausted. */
+    cursorId: number;
+}
 
 /**
  * Options for creating an index.
@@ -654,5 +676,162 @@ export class SearchIndex {
                 { cause: error instanceof Error ? error : undefined }
             );
         }
+    }
+
+    /**
+     * Execute an aggregation query via `FT.AGGREGATE`. Returns the rows
+     * produced by the configured pipeline (GROUPBY / APPLY / SORTBY /
+     * LIMIT / FILTER) as a flat array.
+     *
+     * For cursored streaming reads, set `cursor` on the {@link AggregationQuery}
+     * and use {@link aggregateStream} instead — this method rejects
+     * cursor-configured queries.
+     *
+     * @example
+     * ```typescript
+     * import { AggregationQuery, Count, Sum, Tag } from 'redisvl';
+     *
+     * const q = new AggregationQuery({
+     *   filter: Tag('category').eq('electronics'),
+     *   groupBy: {
+     *     fields: ['brand'],
+     *     reducers: [Count().as('total'), Sum('price').as('revenue')],
+     *   },
+     *   sortBy: [{ field: 'revenue', direction: 'DESC' }],
+     *   limit: 10,
+     * });
+     *
+     * const { total, rows } = await index.aggregate(q);
+     * ```
+     */
+    async aggregate<T = Record<string, unknown>>(
+        query: AggregationQuery
+    ): Promise<AggregationResult<T>> {
+        if (query.cursor) {
+            throw new RedisVLError(
+                'AggregationQuery has a cursor configured; use aggregateStream() instead of aggregate().'
+            );
+        }
+        try {
+            const { query: queryString, options } = query.toCommand();
+            const reply = await this.client.ft.aggregate(this.name, queryString, options);
+            return {
+                total: reply.total,
+                rows: this.normaliseAggregateRows<T>(reply.results),
+            };
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to execute aggregation query: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Cursored variant of {@link aggregate}. Yields batches until the server
+     * signals the cursor is exhausted (cursor id `0`), then issues
+     * `FT.CURSOR DEL` for cleanup if the consumer breaks out early.
+     *
+     * Requires `cursor` to be set on the {@link AggregationQuery}; throws
+     * otherwise.
+     *
+     * @example
+     * ```typescript
+     * const q = new AggregationQuery({
+     *   filter: '*',
+     *   groupBy: { fields: ['brand'], reducers: [Count().as('total')] },
+     *   cursor: { count: 100, maxIdle: 60_000 },
+     * });
+     *
+     * for await (const batch of index.aggregateStream(q)) {
+     *   for (const row of batch.rows) console.log(row);
+     * }
+     * ```
+     */
+    async *aggregateStream<T = Record<string, unknown>>(
+        query: AggregationQuery
+    ): AsyncIterableIterator<AggregationBatch<T>> {
+        if (!query.cursor) {
+            throw new RedisVLError(
+                'AggregationQuery has no cursor configured; use aggregate() instead of aggregateStream().'
+            );
+        }
+
+        const { query: queryString, options } = query.toCommand();
+        const cursorOptions = {
+            ...options,
+            ...(query.cursor.count !== undefined && { COUNT: query.cursor.count }),
+            ...(query.cursor.maxIdle !== undefined && { MAXIDLE: query.cursor.maxIdle }),
+        };
+
+        let cursorId = 0;
+        let cleanedUp = false;
+        try {
+            const first = await this.client.ft.aggregateWithCursor(
+                this.name,
+                queryString,
+                cursorOptions
+            );
+            cursorId = Number(first.cursor);
+            yield {
+                rows: this.normaliseAggregateRows<T>(first.results),
+                cursorId,
+            };
+
+            while (cursorId !== 0) {
+                const next = await this.client.ft.cursorRead(this.name, cursorId);
+                cursorId = Number(next.cursor);
+                yield {
+                    rows: this.normaliseAggregateRows<T>(next.results),
+                    cursorId,
+                };
+            }
+            cleanedUp = true;
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to execute aggregation cursor stream: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        } finally {
+            // If we exit before the cursor is naturally exhausted (consumer
+            // broke out of the for-await, or an error was thrown mid-stream),
+            // tell Redis to release the server-side cursor state.
+            if (!cleanedUp && cursorId !== 0) {
+                try {
+                    await this.client.ft.cursorDel(this.name, cursorId);
+                } catch {
+                    // Best-effort cleanup — swallow to avoid masking the
+                    // original error.
+                }
+            }
+        }
+    }
+
+    /**
+     * Convert FT.AGGREGATE / FT.CURSOR result rows into plain objects.
+     *
+     * The reply is `Array<MapReply<BlobStringReply, BlobStringReply>>` —
+     * each row is a key/value map but encoded as a `Map<string, string>` in
+     * RESP3 and a flat array (`['k1', 'v1', 'k2', 'v2', ...]`) in RESP2 with
+     * node-redis's default transform. Normalise both forms to
+     * `Record<string, unknown>` for the caller.
+     */
+    private normaliseAggregateRows<T>(rows: ReadonlyArray<unknown>): T[] {
+        return rows.map((row) => {
+            if (row instanceof Map) {
+                return Object.fromEntries(row) as T;
+            }
+            if (Array.isArray(row)) {
+                const obj: Record<string, unknown> = {};
+                for (let i = 0; i + 1 < row.length; i += 2) {
+                    obj[String(row[i])] = row[i + 1];
+                }
+                return obj as T;
+            }
+            if (row !== null && typeof row === 'object') {
+                return row as T;
+            }
+            return {} as T;
+        });
     }
 }
