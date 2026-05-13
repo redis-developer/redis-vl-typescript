@@ -7,6 +7,7 @@ import type { RedisClientType } from 'redis';
 import { RedisVLError, SchemaValidationError } from '../../../src/errors.js';
 import { VectorQuery } from '../../../src/query/vector.js';
 import { TextQuery } from '../../../src/query/text.js';
+import { FilterQuery } from '../../../src/query/filter-query.js';
 
 describe('SearchIndex', () => {
     let schema: IndexSchema;
@@ -1359,6 +1360,28 @@ describe('SearchIndex', () => {
                 '@title:(hello)',
                 expect.objectContaining({
                     SCORER: 'TFIDF',
+                })
+            );
+        });
+
+        it('should pass chainable query sort fields to FT.SEARCH', async () => {
+            const ftSearch = mockClient.ft.search as MockedFunction<SearchFunction>;
+            ftSearch.mockResolvedValue({
+                total: 0,
+                documents: [],
+            } as Awaited<ReturnType<SearchFunction>>);
+
+            const index = new SearchIndex(schema, mockClient);
+            await index.search(new FilterQuery().sortBy('title', { direction: 'DESC' }));
+
+            expect(ftSearch).toHaveBeenCalledWith(
+                'redisvl-test-index',
+                '*',
+                expect.objectContaining({
+                    SORTBY: {
+                        BY: 'title',
+                        DIRECTION: 'DESC',
+                    },
                 })
             );
         });
