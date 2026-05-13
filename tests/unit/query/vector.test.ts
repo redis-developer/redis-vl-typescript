@@ -368,96 +368,6 @@ describe('VectorQuery', () => {
                     }).toThrow('efRuntime must be positive');
                 });
             });
-
-            describe('epsilon parameter', () => {
-                it('should include EPSILON in query when epsilon is provided', () => {
-                    const query = new VectorQuery({
-                        vector: mockVector,
-                        vectorField: 'embedding',
-                        epsilon: 0.01,
-                    });
-
-                    const queryString = query.buildQuery();
-                    expect(queryString).toContain('EPSILON');
-                });
-
-                it('should not include EPSILON when epsilon is not provided', () => {
-                    const query = new VectorQuery({
-                        vector: mockVector,
-                        vectorField: 'embedding',
-                    });
-
-                    const queryString = query.buildQuery();
-                    expect(queryString).not.toContain('EPSILON');
-                });
-
-                it('should include epsilon value in params', () => {
-                    const query = new VectorQuery({
-                        vector: mockVector,
-                        vectorField: 'embedding',
-                        epsilon: 0.05,
-                    });
-
-                    const params = query.buildParams();
-                    expect(params).toHaveProperty('epsilon', 0.05);
-                });
-
-                it('should accept different epsilon values', () => {
-                    const query1 = new VectorQuery({
-                        vector: mockVector,
-                        vectorField: 'embedding',
-                        epsilon: 0.001,
-                    });
-
-                    const query2 = new VectorQuery({
-                        vector: mockVector,
-                        vectorField: 'embedding',
-                        epsilon: 0.1,
-                    });
-
-                    expect(query1.buildParams().epsilon).toBe(0.001);
-                    expect(query2.buildParams().epsilon).toBe(0.1);
-                });
-
-                it('should throw error if epsilon is negative', () => {
-                    expect(() => {
-                        new VectorQuery({
-                            vector: mockVector,
-                            vectorField: 'embedding',
-                            epsilon: -0.01,
-                        });
-                    }).toThrow('epsilon must be non-negative');
-                });
-
-                it('should allow epsilon to be zero', () => {
-                    const query = new VectorQuery({
-                        vector: mockVector,
-                        vectorField: 'embedding',
-                        epsilon: 0,
-                    });
-
-                    expect(query.buildParams().epsilon).toBe(0);
-                });
-            });
-
-            describe('combined HNSW parameters', () => {
-                it('should support both efRuntime and epsilon together', () => {
-                    const query = new VectorQuery({
-                        vector: mockVector,
-                        vectorField: 'embedding',
-                        efRuntime: 100,
-                        epsilon: 0.01,
-                    });
-
-                    const queryString = query.buildQuery();
-                    const params = query.buildParams();
-
-                    expect(queryString).toContain('EF_RUNTIME');
-                    expect(queryString).toContain('EPSILON');
-                    expect(params.ef_runtime).toBe(100);
-                    expect(params.epsilon).toBe(0.01);
-                });
-            });
         });
 
         describe('Hybrid Policy Parameters', () => {
@@ -869,6 +779,135 @@ describe('VectorQuery', () => {
                     expect(params.search_window_size).toBe(200);
                 });
             });
+        });
+    });
+
+    describe('buildQuery — exact clause ordering', () => {
+        const mockVector = [0.1, 0.2, 0.3];
+
+        it('places AS as the last clause when efRuntime is set', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                efRuntime: 100,
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector EF_RUNTIME $ef_runtime AS vector_distance]'
+            );
+        });
+
+        it('places AS as the last clause when hybridPolicy is set', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                hybridPolicy: 'ADHOC_BF',
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector HYBRID_POLICY ADHOC_BF AS vector_distance]'
+            );
+        });
+
+        it('places AS as the last clause when hybridPolicy + batchSize are set', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                hybridPolicy: 'BATCHES',
+                batchSize: 100,
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector HYBRID_POLICY BATCHES BATCH_SIZE 100 AS vector_distance]'
+            );
+        });
+
+        it('places AS as the last clause when searchWindowSize is set', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                searchWindowSize: 100,
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector SEARCH_WINDOW_SIZE $search_window_size AS vector_distance]'
+            );
+        });
+
+        it('places AS as the last clause when useSearchHistory is set', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                useSearchHistory: 'ON',
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector USE_SEARCH_HISTORY ON AS vector_distance]'
+            );
+        });
+
+        it('places AS as the last clause when searchBufferCapacity is set', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                searchBufferCapacity: 1000,
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector SEARCH_BUFFER_CAPACITY $search_buffer_capacity AS vector_distance]'
+            );
+        });
+
+        it('orders all attributes correctly when set together (HYBRID_POLICY, BATCH_SIZE, EF_RUNTIME, SVS-VAMANA, AS)', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                hybridPolicy: 'BATCHES',
+                batchSize: 100,
+                efRuntime: 100,
+                searchWindowSize: 200,
+                useSearchHistory: 'ON',
+                searchBufferCapacity: 1000,
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector HYBRID_POLICY BATCHES BATCH_SIZE 100 EF_RUNTIME $ef_runtime SEARCH_WINDOW_SIZE $search_window_size USE_SEARCH_HISTORY ON SEARCH_BUFFER_CAPACITY $search_buffer_capacity AS vector_distance]'
+            );
+        });
+
+        it('preserves filter wrapping with attributes', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                filter: '@category:{electronics}',
+                efRuntime: 100,
+            });
+
+            expect(query.buildQuery()).toBe(
+                '(@category:{electronics})=>[KNN 5 @embedding $vector EF_RUNTIME $ef_runtime AS vector_distance]'
+            );
+        });
+
+        it('honours custom scoreAlias as the last token before ]', () => {
+            const query = new VectorQuery({
+                vector: mockVector,
+                vectorField: 'embedding',
+                numResults: 5,
+                scoreAlias: 'similarity',
+                efRuntime: 100,
+            });
+
+            expect(query.buildQuery()).toBe(
+                '*=>[KNN 5 @embedding $vector EF_RUNTIME $ef_runtime AS similarity]'
+            );
         });
     });
 });

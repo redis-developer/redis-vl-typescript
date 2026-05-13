@@ -429,6 +429,44 @@ describe('Vector Search Integration', () => {
             });
         }); // End Combined Features
     }); // End Distance Normalization
+
+    describe('HNSW tuning attributes (end-to-end)', () => {
+        it('accepts efRuntime against Redis without syntax error', async () => {
+            const queryEmbedding = await vectorizer.embed('laptop computer');
+
+            const query = new VectorQuery({
+                vector: queryEmbedding,
+                vectorField: 'embedding',
+                numResults: 3,
+                efRuntime: 200,
+            });
+
+            const results = await index.search(query);
+
+            expect(results.total).toBeGreaterThan(0);
+            expect(results.documents.length).toBeGreaterThan(0);
+            expect(results.documents[0].score).toBeDefined();
+        });
+
+        it('accepts hybridPolicy ADHOC_BF with a filter against Redis', async () => {
+            const queryEmbedding = await vectorizer.embed('desk');
+
+            const query = new VectorQuery({
+                vector: queryEmbedding,
+                vectorField: 'embedding',
+                numResults: 3,
+                filter: '@category:{furniture}',
+                hybridPolicy: 'ADHOC_BF',
+            });
+
+            const results = await index.search(query);
+
+            expect(results.total).toBeGreaterThan(0);
+            results.documents.forEach((doc) => {
+                expect(doc.value.category).toBe('furniture');
+            });
+        });
+    });
 });
 
 describe('Vector Search with JSON Storage Integration', () => {
