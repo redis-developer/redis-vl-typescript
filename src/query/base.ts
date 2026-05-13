@@ -36,6 +36,9 @@ export interface BaseQuery {
     /** When true, ask Redis to return only document ids/counts (FT.SEARCH NOCONTENT). */
     noContent?: boolean;
 
+    /** Optional RediSearch scorer to apply when ranking text results. */
+    textScorer?: string;
+
     /** Build the Redis query string */
     buildQuery(): string;
 

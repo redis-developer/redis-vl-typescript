@@ -3,6 +3,8 @@ import { TextQuery } from '../../../src/query/text.js';
 import { Tag } from '../../../src/query/filter.js';
 import { QueryValidationError } from '../../../src/errors.js';
 
+const textScorers = ['BM25', 'BM25STD', 'TFIDF', 'TFIDF.DOCNORM', 'DISMAX', 'DOCSCORE'] as const;
+
 describe('TextQuery', () => {
     describe('constructor', () => {
         it('throws if text is empty', () => {
@@ -23,6 +25,11 @@ describe('TextQuery', () => {
         it('defaults textScorer to BM25STD', () => {
             const q = new TextQuery({ text: 'hello', textFieldName: 'description' });
             expect(q.textScorer).toBe('BM25STD');
+        });
+
+        it.each(textScorers)('accepts textScorer %s', (textScorer) => {
+            const q = new TextQuery({ text: 'hello', textFieldName: 'description', textScorer });
+            expect(q.textScorer).toBe(textScorer);
         });
     });
 

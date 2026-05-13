@@ -6,6 +6,7 @@ import { StorageType, VectorDataType } from '../../../src/schema/types.js';
 import type { RedisClientType } from 'redis';
 import { RedisVLError, SchemaValidationError } from '../../../src/errors.js';
 import { VectorQuery } from '../../../src/query/vector.js';
+import { TextQuery } from '../../../src/query/text.js';
 
 describe('SearchIndex', () => {
     let schema: IndexSchema;
@@ -1335,6 +1336,31 @@ describe('SearchIndex', () => {
             expect(vector.readDoubleLE(0)).toBeCloseTo(0.1, 12);
             expect(vector.readDoubleLE(8)).toBeCloseTo(0.2, 12);
             expect(vector.readDoubleLE(16)).toBeCloseTo(0.3, 12);
+        });
+
+        it('should pass text query scorer to FT.SEARCH', async () => {
+            const ftSearch = mockClient.ft.search as MockedFunction<SearchFunction>;
+            ftSearch.mockResolvedValue({
+                total: 0,
+                documents: [],
+            } as Awaited<ReturnType<SearchFunction>>);
+
+            const index = new SearchIndex(schema, mockClient);
+            await index.search(
+                new TextQuery({
+                    text: 'hello',
+                    textFieldName: 'title',
+                    textScorer: 'TFIDF',
+                })
+            );
+
+            expect(ftSearch).toHaveBeenCalledWith(
+                'redisvl-test-index',
+                '@title:(hello)',
+                expect.objectContaining({
+                    SCORER: 'TFIDF',
+                })
+            );
         });
     });
 });

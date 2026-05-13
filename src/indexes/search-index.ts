@@ -612,6 +612,10 @@ export class SearchIndex {
                 searchOptions.NOCONTENT = true;
             }
 
+            if (query.textScorer) {
+                searchOptions.SCORER = query.textScorer;
+            }
+
             // Execute search
             const response = await this.client.ft.search(
                 this.schema.index.name,

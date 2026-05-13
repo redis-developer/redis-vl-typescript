@@ -352,7 +352,7 @@ class TimestampFilter extends NumFilter {
     private fullDayRange(date: string): [number, number] {
         const [y, m, d] = date.split('-').map(Number);
         const start = Math.floor(Date.UTC(y, m - 1, d, 0, 0, 0) / 1000);
-        const end = Math.floor(Date.UTC(y, m - 1, d, 23, 59, 59, 999_999) / 1000);
+        const end = Math.floor(Date.UTC(y, m - 1, d, 23, 59, 59, 999) / 1000);
         return [start, end];
     }
 }

@@ -145,7 +145,7 @@ describe('Filter DSL', () => {
         it('accepts an ISO date-only string and treats it as a full-day between', () => {
             // 2024-01-01 -> [start_of_day_utc, end_of_day_utc]
             const start = Math.floor(Date.UTC(2024, 0, 1, 0, 0, 0) / 1000);
-            const end = Math.floor(Date.UTC(2024, 0, 1, 23, 59, 59, 999999) / 1000);
+            const end = Math.floor(Date.UTC(2024, 0, 1, 23, 59, 59, 999) / 1000);
             expect(Timestamp('created_at').eq('2024-01-01').toString()).toBe(
                 `@created_at:[${start} ${end}]`
             );
