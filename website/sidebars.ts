@@ -258,6 +258,13 @@ const sidebars: SidebarsConfig = {
         },
         'faq',
     ],
+    contributingSidebar: [
+        'contributing/getting-started',
+        'contributing/code-standards',
+        'contributing/testing',
+        'contributing/git-workflow',
+        'contributing/documentation',
+    ],
 };
 
 export default sidebars;
