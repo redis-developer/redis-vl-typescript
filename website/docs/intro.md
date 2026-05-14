@@ -19,8 +19,20 @@ sidebar_position: 1
 
 ## Installation
 
-:::warning Not yet released
-`redisvl` has not been published to npm yet. To try it out, clone the repo and link it locally:
+:::warning Pre-1.0 release
+`redis-vl` is in beta. APIs, defaults, and the package itself may change
+between minor versions.
+:::
+
+### Option A: Install from npm
+
+```bash
+npm install redis-vl@beta
+```
+
+### Option B: Install from source
+
+Clone the repo and link it locally:
 
 ```bash
 git clone https://github.com/redis-developer/redis-vl-typescript.git
@@ -29,12 +41,8 @@ npm install
 npm run build
 npm link
 # then in your project:
-npm link redisvl
-npm install redis
+npm link redis-vl
 ```
-
-A published release will follow once the API stabilizes.
-:::
 
 ## Prerequisites
 
@@ -51,7 +59,7 @@ Or use [Redis Cloud](https://redis.com/try-free/) for a managed solution.
 ## Quick Start
 
 ```typescript
-import { SearchIndex, IndexSchema } from 'redisvl';
+import { SearchIndex, IndexSchema } from 'redis-vl';
 import { createClient } from 'redis';
 
 const client = createClient();
@@ -86,7 +94,7 @@ await index.load([
 ]);
 
 // Vector search with filters
-import { VectorQuery } from 'redisvl';
+import { VectorQuery } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: queryEmbedding,

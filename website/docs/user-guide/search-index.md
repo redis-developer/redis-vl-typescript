@@ -9,7 +9,7 @@ The `SearchIndex` class is the main interface for managing Redis search indexes.
 ## Creating an Index
 
 ```typescript
-import { SearchIndex, IndexSchema } from 'redisvl';
+import { SearchIndex, IndexSchema } from 'redis-vl';
 import { createClient } from 'redis';
 
 const client = createClient();
@@ -42,7 +42,7 @@ RedisVL reconstructs the schema using `FT.INFO` so you can use RedisVL APIs like
 `fetch()`, `load()`, and `delete()`.
 
 ```typescript
-import { SearchIndex } from 'redisvl';
+import { SearchIndex } from 'redis-vl';
 import { createClient } from 'redis';
 
 const client = createClient();
@@ -191,7 +191,7 @@ Perform semantic similarity search using vector embeddings.
 ### Basic Vector Search
 
 ```typescript
-import { VectorQuery, HuggingFaceVectorizer } from 'redisvl';
+import { VectorQuery, HuggingFaceVectorizer } from 'redis-vl';
 
 // Create vectorizer
 const vectorizer = new HuggingFaceVectorizer({
@@ -282,7 +282,7 @@ import TabItem from '@theme/TabItem';
 HNSW (Hierarchical Navigable Small World) provides fast approximate nearest neighbor search.
 
 ```typescript
-import { HNSWVectorField } from 'redisvl';
+import { HNSWVectorField } from 'redis-vl';
 
 const schema = new IndexSchema('products');
 schema.addFields([
@@ -299,7 +299,7 @@ schema.addFields([
 **Characteristics:**
 - ✅ Fast queries on millions of vectors
 - ✅ Configurable accuracy/speed tradeoff
-- ✅ Supports tuning with `efRuntime` and `epsilon` parameters
+- ✅ Supports query-time tuning with the `efRuntime` parameter
 - ⚠️ Approximate results (>95% recall typically)
 - ⚠️ Higher memory usage
 
@@ -317,7 +317,7 @@ schema.addFields([
 FLAT performs brute-force search computing distance to every vector.
 
 ```typescript
-import { FlatVectorField } from 'redisvl';
+import { FlatVectorField } from 'redis-vl';
 
 const schema = new IndexSchema('products');
 schema.addFields([
@@ -352,7 +352,7 @@ schema.addFields([
 Specify the distance metric (must match schema):
 
 ```typescript
-import { VectorDistanceMetric } from 'redisvl';
+import { VectorDistanceMetric } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: queryEmbedding,
@@ -412,7 +412,7 @@ results.documents.forEach((doc) => {
 ## Error Handling
 
 ```typescript
-import { RedisSearchError, SchemaValidationError } from 'redisvl';
+import { RedisSearchError, SchemaValidationError } from 'redis-vl';
 
 try {
     await index.create();

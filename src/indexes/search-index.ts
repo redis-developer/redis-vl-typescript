@@ -526,7 +526,7 @@ export class SearchIndex {
      *
      * @example
      * ```typescript
-     * import { VectorQuery } from 'redisvl';
+     * import { VectorQuery } from 'redis-vl';
      *
      * // Vector similarity search
      * const query = new VectorQuery({
