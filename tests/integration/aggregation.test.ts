@@ -101,9 +101,10 @@ describe('AggregationQuery integration', () => {
 
         const { results } = await index.aggregate(q);
         expect(results).toHaveLength(1);
-        // acme: revenue=1625 / units=17 ≈ 95.6 — highest avg unit price.
-        expect(results[0].brand).toBe('acme');
-        expect(Number(results[0].avg_unit_price)).toBeGreaterThan(0);
+        // ergo: revenue=800 / units=4 = 200 — highest avg unit price.
+        // (acme is 1625/17 ≈ 95.6, omega is 150/4 = 37.5.)
+        expect(results[0].brand).toBe('ergo');
+        expect(Number(results[0].avg_unit_price)).toBe(200);
     });
 
     it('applies post-aggregation FILTER (FT.AGGREGATE expression dialect)', async () => {
