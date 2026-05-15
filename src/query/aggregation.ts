@@ -343,7 +343,11 @@ export class AggregationQuery {
         if (this._addScores) options.ADDSCORES = true;
         if (this._timeout !== undefined) options.TIMEOUT = this._timeout;
         if (this._dialect !== undefined) options.DIALECT = this._dialect;
-        if (this._params !== undefined) options.PARAMS = this._params;
+        // Only set PARAMS when non-empty — node-redis serializes `{}` as
+        // `PARAMS 0`, which Redis rejects.
+        if (this._params !== undefined && Object.keys(this._params).length > 0) {
+            options.PARAMS = this._params;
+        }
 
         if (this._load && this._load.length > 0) {
             // The Redis client types LOAD entries with template-literal types

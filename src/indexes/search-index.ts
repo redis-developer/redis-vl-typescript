@@ -684,12 +684,18 @@ export class SearchIndex {
             const { query: queryString, options } = query.toCommand();
             const reply = await this.client.ft.aggregate(this.name, queryString, options);
 
-            // node-redis returns each row as a MapReply that, on RESP2, decodes
-            // into a plain object. Normalize to Record<string, string> so the
-            // public shape doesn't leak the client's internal types.
+            // node-redis returns each row as a MapReply — on RESP2 that's a
+            // plain object, but when the client is configured with the MAP
+            // type-mapping (or on RESP3) it's an actual Map. Handle both, and
+            // coerce non-string values via String() so the public shape stays
+            // Record<string, string> regardless of the client's wire mode.
             const results: Array<Record<string, string>> = reply.results.map((row) => {
                 const out: Record<string, string> = {};
-                for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
+                const entries: Iterable<[string, unknown]> =
+                    row instanceof Map
+                        ? (row.entries() as Iterable<[string, unknown]>)
+                        : Object.entries(row as Record<string, unknown>);
+                for (const [k, v] of entries) {
                     out[k] = typeof v === 'string' ? v : String(v);
                 }
                 return out;
