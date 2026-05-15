@@ -12,6 +12,7 @@ import { RedisVLError, SchemaValidationError } from '../errors.js';
 import type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from '../query/base.js';
 import { VectorQuery } from '../query/vector.js';
 import { VectorRangeQuery } from '../query/range.js';
+import type { AggregationQuery } from '../query/aggregation.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 import type { VectorFieldAttrs } from '../schema/fields.js';
 
@@ -651,6 +652,53 @@ export class SearchIndex {
         } catch (error) {
             throw new RedisVLError(
                 `Failed to execute search query: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Execute an {@link AggregationQuery} (`FT.AGGREGATE`) against this index.
+     *
+     * Returns the raw aggregate result: a `total` row count and a list of
+     * rows, where each row is a `Record<string, string>` of field name to
+     * value. GROUPBY/REDUCE/APPLY aliases appear as keys on each row.
+     *
+     * @example
+     * ```typescript
+     * import { AggregationQuery, Reducers } from 'redisvl';
+     *
+     * const q = new AggregationQuery('@category:{electronics}')
+     *   .groupBy('@brand', Reducers.sum('price', 'revenue'))
+     *   .sortBy([{ field: 'revenue', direction: 'DESC' }])
+     *   .limit(0, 5);
+     *
+     * const { total, results } = await index.aggregate(q);
+     * for (const row of results) console.log(row.brand, row.revenue);
+     * ```
+     */
+    async aggregate(
+        query: AggregationQuery
+    ): Promise<{ total: number; results: Array<Record<string, string>> }> {
+        try {
+            const { query: queryString, options } = query.toCommand();
+            const reply = await this.client.ft.aggregate(this.name, queryString, options);
+
+            // node-redis returns each row as a MapReply that, on RESP2, decodes
+            // into a plain object. Normalize to Record<string, string> so the
+            // public shape doesn't leak the client's internal types.
+            const results: Array<Record<string, string>> = reply.results.map((row) => {
+                const out: Record<string, string> = {};
+                for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
+                    out[k] = typeof v === 'string' ? v : String(v);
+                }
+                return out;
+            });
+
+            return { total: reply.total, results };
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to execute aggregate query: ${error instanceof Error ? error.message : String(error)}`,
                 { cause: error instanceof Error ? error : undefined }
             );
         }
