@@ -10,7 +10,7 @@ Together, they cover the cases where pure KNN vector search isn't what you want 
 
 ## Filter Expression DSL
 
-The DSL builds typed, escaped Redis Search filter expressions through method chaining. Every operator returns a `FilterExpression`, which can be passed directly to a query or composed further with `.and()` / `.or()`.
+The DSL builds typed, escaped Redis Search filter expressions through method chaining. Every operator returns a `FilterExpression`, which can be passed directly to a query or composed further with `.and()` / `.or()` / `.not()`.
 
 ```typescript
 import { Tag, Num, Text, Geo, GeoRadius, Timestamp } from 'redisvl';
@@ -109,7 +109,7 @@ Timestamp('created_at').between(new Date('2024-01-01'), new Date('2024-12-31'));
 
 ### Composition
 
-Every operator returns a `FilterExpression`. Combine expressions with `.and()` and `.or()` — they're regular methods, evaluated in chain order:
+Every operator returns a `FilterExpression`. Combine expressions with `.and()`, `.or()`, and `.not()` — they're regular methods, evaluated in chain order:
 
 ```typescript
 import { Tag, Num } from 'redisvl';
@@ -124,9 +124,18 @@ Tag('brand')
     .or(Tag('brand').eq('adidas'));
 // (@brand:{nike} | @brand:{adidas})
 
-// Wildcards collapse: '*' AND x  →  x
+// Negate an expression with .not() — equivalent to Python redisvl's ~filter:
+Tag('brand').eq('nike').not();
+// (-@brand:{nike})
+
+Tag('brand').eq('nike').and(Num('price').lt(100)).not();
+// (-(@brand:{nike} @price:[-inf (100]))
+
+// Wildcards collapse: '*' AND x  →  x, and negating '*' is a no-op
 new FilterExpression('*').and(Tag('brand').eq('nike'));
 // @brand:{nike}
+new FilterExpression('*').not();
+// *
 ```
 
 When you need a raw filter string instead (for example, when porting existing query code), every query accepts `string | FilterExpression` for its `filter` argument — pass either form interchangeably.

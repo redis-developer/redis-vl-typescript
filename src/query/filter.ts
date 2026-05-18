@@ -58,11 +58,11 @@ export class FilterExpression {
     private readonly _filter: string | undefined;
     private readonly _left?: FilterExpression;
     private readonly _right?: FilterExpression;
-    private readonly _operator?: 'AND' | 'OR';
+    private readonly _operator?: 'AND' | 'OR' | 'NOT';
 
     constructor(
         filter?: string,
-        operator?: 'AND' | 'OR',
+        operator?: 'AND' | 'OR' | 'NOT',
         left?: FilterExpression,
         right?: FilterExpression
     ) {
@@ -82,7 +82,25 @@ export class FilterExpression {
         return new FilterExpression(undefined, 'OR', this, other);
     }
 
+    /**
+     * Negate this expression, wrapping it in `-(...)`. Negating the wildcard
+     * `*` (match everything) is a no-op and renders as `*`.
+     */
+    not(): FilterExpression {
+        return new FilterExpression(undefined, 'NOT', this);
+    }
+
     toString(): string {
+        if (this._operator === 'NOT') {
+            if (!this._left) {
+                throw new QueryValidationError(
+                    'FilterExpression with NOT operator must have a child expression'
+                );
+            }
+            const inner = this._left.toString();
+            if (inner === '*') return '*';
+            return `(-${inner})`;
+        }
         if (this._operator) {
             if (!this._left || !this._right) {
                 throw new QueryValidationError(

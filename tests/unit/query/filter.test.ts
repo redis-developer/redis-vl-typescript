@@ -205,4 +205,46 @@ describe('Filter DSL', () => {
             expect(expr.toString()).toBe('(@brand:{nike} ismissing(@price))');
         });
     });
+
+    describe('FilterExpression.not()', () => {
+        it('negates a simple expression', () => {
+            expect(Tag('brand').eq('nike').not().toString()).toBe('(-@brand:{nike})');
+        });
+
+        it('negates a numeric range expression', () => {
+            expect(Num('price').between(10, 20).not().toString()).toBe('(-@price:[10 20])');
+        });
+
+        it('collapses negation of the wildcard to wildcard', () => {
+            expect(new FilterExpression('*').not().toString()).toBe('*');
+        });
+
+        it('double negation wraps twice', () => {
+            // Redis Search has no algebraic simplification — we just wrap.
+            expect(Tag('brand').eq('nike').not().not().toString()).toBe('(-(-@brand:{nike}))');
+        });
+
+        it('combines with and()', () => {
+            const expr = Tag('brand').eq('nike').not().and(Num('price').lt(100));
+            expect(expr.toString()).toBe('((-@brand:{nike}) @price:[-inf (100])');
+        });
+
+        it('combines with or()', () => {
+            const expr = Tag('brand').eq('nike').not().or(Tag('brand').eq('adidas'));
+            expect(expr.toString()).toBe('((-@brand:{nike}) | @brand:{adidas})');
+        });
+
+        it('negates a composed expression', () => {
+            const expr = Tag('brand').eq('nike').and(Num('price').lt(100)).not();
+            expect(expr.toString()).toBe('(-(@brand:{nike} @price:[-inf (100]))');
+        });
+
+        it('nests inside another expression', () => {
+            const inner = Tag('brand').eq('nike').or(Tag('brand').eq('adidas')).not();
+            const expr = Num('price').lt(100).and(inner);
+            expect(expr.toString()).toBe(
+                '(@price:[-inf (100] (-(@brand:{nike} | @brand:{adidas})))'
+            );
+        });
+    });
 });
