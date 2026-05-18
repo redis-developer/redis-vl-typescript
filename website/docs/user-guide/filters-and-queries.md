@@ -112,7 +112,7 @@ Timestamp('created_at').between(new Date('2024-01-01'), new Date('2024-12-31'));
 Every operator returns a `FilterExpression`. Combine expressions with `.and()`, `.or()`, and `.not()` — they're regular methods, evaluated in chain order:
 
 ```typescript
-import { Tag, Num } from 'redisvl';
+import { Tag, Num, FilterExpression } from 'redisvl';
 
 Tag('brand')
     .eq('nike')
