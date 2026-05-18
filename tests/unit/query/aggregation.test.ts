@@ -97,7 +97,19 @@ describe('AggregationQuery', () => {
             });
         });
 
-        it('rejects an empty property list', () => {
+        it('renders GROUPBY 0 (omitted properties) for global reducers', () => {
+            const q = new AggregationQuery().groupBy([], Reducers.avg('price', 'avg_price'));
+            const step = q.toCommand().options.STEPS![0] as unknown as Record<string, unknown>;
+            // node-redis renders `GROUPBY 0` when `properties` is falsy/missing,
+            // so the omission of `properties` is what we're asserting here.
+            expect(step).toEqual({
+                type: 'GROUPBY',
+                REDUCE: [{ type: 'AVG', AS: 'avg_price', property: '@price' }],
+            });
+            expect('properties' in step).toBe(false);
+        });
+
+        it('rejects groupBy([]) with no reducers', () => {
             expect(() => new AggregationQuery().groupBy([])).toThrow(QueryValidationError);
         });
 

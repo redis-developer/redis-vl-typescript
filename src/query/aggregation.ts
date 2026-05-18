@@ -213,14 +213,22 @@ export class AggregationQuery {
         this._query = renderFilter(query);
     }
 
-    /** GROUPBY with one or more reducers. Properties are auto-prefixed with `@`. */
+    /**
+     * GROUPBY with one or more reducers. Properties are auto-prefixed with `@`.
+     *
+     * Pass an empty array to render `GROUPBY 0` for global reducers that
+     * aggregate across the whole result set (e.g. average price over every
+     * matching document, with no grouping field).
+     */
     groupBy(properties: string | string[], reducers: Reducer | Reducer[] = []): this {
         const props = Array.isArray(properties) ? properties : [properties];
-        if (props.length === 0) {
-            throw new QueryValidationError('groupBy requires at least one property');
-        }
         for (const p of props) assertNonEmpty(p, 'groupBy property');
         const reducerList = Array.isArray(reducers) ? reducers : [reducers];
+        if (props.length === 0 && reducerList.length === 0) {
+            throw new QueryValidationError(
+                'groupBy with no properties requires at least one reducer'
+            );
+        }
         this.steps.push({
             kind: 'GROUPBY',
             properties: props.map(prefixFieldRef),
@@ -374,12 +382,16 @@ export class AggregationQuery {
 
     private renderStep(step: Step): unknown {
         switch (step.kind) {
-            case 'GROUPBY':
-                return {
+            case 'GROUPBY': {
+                // node-redis renders `GROUPBY 0` when `properties` is falsy.
+                // Omit it entirely for empty groups so global reducers work.
+                const out: { type: 'GROUPBY'; properties?: string[]; REDUCE: unknown[] } = {
                     type: 'GROUPBY',
-                    properties: step.properties,
                     REDUCE: step.reducers.map((r) => this.renderReducer(r)),
                 };
+                if (step.properties.length > 0) out.properties = step.properties;
+                return out;
+            }
             case 'APPLY':
                 return { type: 'APPLY', expression: step.expression, AS: step.as };
             case 'SORTBY': {

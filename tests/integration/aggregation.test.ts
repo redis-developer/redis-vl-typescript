@@ -130,4 +130,35 @@ describe('AggregationQuery integration', () => {
         expect(results).toHaveLength(1);
         expect(results[0]).toMatchObject({ brand: 'omega', total: '1' });
     });
+
+    it('preserves TOLIST array values', async () => {
+        const q = new AggregationQuery()
+            .groupBy('category', Reducers.toList('brand', 'brands'))
+            .sortBy([{ field: 'category', direction: 'ASC' }]);
+
+        const { results } = await index.aggregate(q);
+        const byCategory = Object.fromEntries(results.map((r) => [r.category as string, r]));
+
+        const electronicsBrands = byCategory['electronics'].brands;
+        expect(Array.isArray(electronicsBrands)).toBe(true);
+        // Order isn't guaranteed by Redis — assert as a set.
+        expect(new Set(electronicsBrands as string[])).toEqual(new Set(['acme', 'omega']));
+
+        const furnitureBrands = byCategory['furniture'].brands;
+        expect(Array.isArray(furnitureBrands)).toBe(true);
+        expect(new Set(furnitureBrands as string[])).toEqual(new Set(['ergo']));
+    });
+
+    it('supports GROUPBY 0 for global reducers (whole-result aggregation)', async () => {
+        const q = new AggregationQuery().groupBy(
+            [],
+            [Reducers.sum('price', 'total_revenue'), Reducers.count('order_count')]
+        );
+
+        const { results } = await index.aggregate(q);
+        expect(results).toHaveLength(1);
+        // 1200 + 25 + 150 + 300 + 500 + 400 = 2575 across all 6 rows.
+        expect(Number(results[0].total_revenue)).toBe(2575);
+        expect(results[0].order_count).toBe('6');
+    });
 });

@@ -661,8 +661,12 @@ export class SearchIndex {
      * Execute an {@link AggregationQuery} (`FT.AGGREGATE`) against this index.
      *
      * Returns the raw aggregate result: a `total` row count and a list of
-     * rows, where each row is a `Record<string, string>` of field name to
-     * value. GROUPBY/REDUCE/APPLY aliases appear as keys on each row.
+     * rows, where each row is a `Record<string, AggregateValue>` of field
+     * name to value. GROUPBY/REDUCE/APPLY aliases appear as keys on each row.
+     *
+     * Scalar reducers (`COUNT`, `SUM`, `AVG`, …) yield strings — numeric
+     * casting is the caller's job. List reducers (`TOLIST`) yield
+     * `string[]`, preserving the array structure Redis returns on the wire.
      *
      * @example
      * ```typescript
@@ -679,24 +683,29 @@ export class SearchIndex {
      */
     async aggregate(
         query: AggregationQuery
-    ): Promise<{ total: number; results: Array<Record<string, string>> }> {
+    ): Promise<{ total: number; results: Array<Record<string, string | string[]>> }> {
         try {
             const { query: queryString, options } = query.toCommand();
             const reply = await this.client.ft.aggregate(this.name, queryString, options);
 
             // node-redis returns each row as a MapReply — on RESP2 that's a
             // plain object, but when the client is configured with the MAP
-            // type-mapping (or on RESP3) it's an actual Map. Handle both, and
-            // coerce non-string values via String() so the public shape stays
-            // Record<string, string> regardless of the client's wire mode.
-            const results: Array<Record<string, string>> = reply.results.map((row) => {
-                const out: Record<string, string> = {};
+            // type-mapping (or on RESP3) it's an actual Map. Handle both.
+            // Preserve array values verbatim (TOLIST returns string[]); coerce
+            // scalar non-strings via String() so numeric reducers come back
+            // as strings consistent with the FT.AGGREGATE wire format.
+            const results: Array<Record<string, string | string[]>> = reply.results.map((row) => {
+                const out: Record<string, string | string[]> = {};
                 const entries: Iterable<[string, unknown]> =
                     row instanceof Map
                         ? (row.entries() as Iterable<[string, unknown]>)
                         : Object.entries(row as Record<string, unknown>);
                 for (const [k, v] of entries) {
-                    out[k] = typeof v === 'string' ? v : String(v);
+                    if (Array.isArray(v)) {
+                        out[k] = v.map((item) => (typeof item === 'string' ? item : String(item)));
+                    } else {
+                        out[k] = typeof v === 'string' ? v : String(v);
+                    }
                 }
                 return out;
             });
