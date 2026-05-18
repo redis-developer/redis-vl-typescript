@@ -32,8 +32,16 @@ export type SortSpec = string | { field: string; direction?: 'ASC' | 'DESC' };
 /**
  * Field reference used with {@link AggregationQuery.load}.
  *
- * Strings are passed through (`@field` / `$.path` conventions apply); the
- * object form supports `AS` aliasing.
+ * Accepted shapes for string identifiers (and any other field reference the
+ * builder takes):
+ * - bare name (e.g. `'brand'`) — auto-prefixed to `@brand`
+ * - `@name` — passed through as an index field reference
+ * - `$.path` — passed through as a JSONPath reference
+ *
+ * A bare `$name` (no dot) is rejected as a likely typo or stray PARAMS-style
+ * reference; use `@name` or `$.name` explicitly.
+ *
+ * The object form additionally supports `AS` aliasing via `{ identifier, as }`.
  */
 export type LoadField = string | { identifier: string; as?: string };
 
@@ -152,8 +160,29 @@ interface FilterStep {
 }
 type Step = GroupByStep | ApplyStep | SortByStep | LimitStep | FilterStep;
 
+/**
+ * Normalize a field reference for FT.AGGREGATE pipelines.
+ *
+ * Accepted shapes:
+ * - bare name (`'brand'`) → `@brand`
+ * - `@name` → as-is (index field reference)
+ * - `$.path` → as-is (JSONPath reference)
+ *
+ * A bare `$name` (no dot) is rejected: it's either a PARAMS-style reference
+ * that doesn't belong in a field slot or a typo of `@name`/`$.name`.
+ */
 function prefixFieldRef(name: string): string {
-    return name.startsWith('@') || name.startsWith('$') ? name : `@${name}`;
+    if (name.startsWith('@')) return name;
+    if (name.startsWith('$')) {
+        if (!name.startsWith('$.')) {
+            throw new QueryValidationError(
+                `Field reference '${name}' looks like a parameter ref or typo; ` +
+                    `use '@${name.slice(1)}' for an index field or '$.${name.slice(1)}' for a JSONPath`
+            );
+        }
+        return name;
+    }
+    return `@${name}`;
 }
 
 function assertNonEmpty(value: string | undefined, label: string): void {
@@ -264,7 +293,7 @@ export class AggregationQuery {
                 }
             }
         }
-        assertPositiveInteger(max, 'sortBy max');
+        assertNonNegativeInteger(max, 'sortBy max');
         this.steps.push({ kind: 'SORTBY', by: list, max });
         return this;
     }

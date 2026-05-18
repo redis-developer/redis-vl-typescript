@@ -61,6 +61,20 @@ describe('AggregationQuery', () => {
             ]);
         });
 
+        it('accepts $.path JSONPath references on groupBy properties', () => {
+            const q = new AggregationQuery().groupBy('$.category', Reducers.count());
+            const { options } = q.toCommand();
+            expect((options.STEPS![0] as { properties: string[] }).properties).toEqual([
+                '$.category',
+            ]);
+        });
+
+        it('rejects bare $name field references as likely typos', () => {
+            expect(() => new AggregationQuery().groupBy('$brand', Reducers.count())).toThrow(
+                QueryValidationError
+            );
+        });
+
         it('renders QUANTILE with its quantile arg', () => {
             const q = new AggregationQuery().groupBy(
                 'brand',
@@ -177,6 +191,13 @@ describe('AggregationQuery', () => {
         it('allows LIMIT 0 0 for count-only queries', () => {
             const q = new AggregationQuery().limit(0, 0);
             expect(q.toCommand().options.STEPS).toEqual([{ type: 'LIMIT', from: 0, size: 0 }]);
+        });
+
+        it('allows sortBy max=0 (no row cap)', () => {
+            const q = new AggregationQuery().sortBy('revenue', 0);
+            expect(q.toCommand().options.STEPS).toEqual([
+                { type: 'SORTBY', BY: ['@revenue'], MAX: 0 },
+            ]);
         });
 
         it('rejects non-ASC/DESC sort directions', () => {

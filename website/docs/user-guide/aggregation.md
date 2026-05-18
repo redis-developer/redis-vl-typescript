@@ -69,7 +69,7 @@ for (const row of results) {
 }
 ```
 
-Each row is a `Record<string, string>` keyed by the reducer/apply alias (or the GROUPBY field). All values come back as strings — cast to numbers in user code if you need them.
+Each row is a `Record<string, string | string[]>` keyed by the reducer/apply alias (or the GROUPBY field). Most reducers return strings — cast to numbers in user code (`Number(row.revenue)`) when you need numeric types. `Reducers.toList` is the exception: it returns `string[]` for that column.
 
 ## Filtering rows into the pipeline
 
@@ -158,10 +158,10 @@ const q = new AggregationQuery('@brand:{$brandName}')
 ```typescript
 const { total, results } = await index.aggregate(q);
 // total:   number — the row count Redis reports after aggregation
-// results: Array<Record<string, string>> — one entry per emitted row
+// results: Array<Record<string, string | string[]>> — one entry per emitted row
 ```
 
-If you need numeric types, cast at the call site (`Number(row.revenue)`). Aggregation reducers preserve numeric precision on the server side; the wire format simply hands them back as strings.
+Most reducer columns are strings. `Reducers.toList` (TOLIST) is the exception — it returns `string[]` for that column. If you need numeric types, cast at the call site (`Number(row.revenue)`). Aggregation reducers preserve numeric precision on the server side; the wire format simply hands them back as strings.
 
 ## See also
 
