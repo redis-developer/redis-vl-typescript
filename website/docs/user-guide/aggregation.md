@@ -6,7 +6,7 @@ sidebar_position: 6
 
 `AggregationQuery` builds an [`FT.AGGREGATE`](https://redis.io/docs/latest/commands/ft.aggregate/) call against an index. Unlike `FT.SEARCH` (which retrieves documents), `FT.AGGREGATE` runs a pipeline — group rows, reduce them, derive new fields, sort, page — and returns computed rows rather than source documents.
 
-If you've used Python `redisvl`, this mirrors `AggregationQuery` over `AggregateRequest`. The hybrid (text + vector) flavour lives in a separate class, [`HybridQuery`](./hybrid-search.md).
+If you've used Python `redisvl`, this mirrors `AggregationQuery` over `AggregateRequest`. Hybrid (text + vector) aggregation is out of scope for this class.
 
 ## When to use it
 
@@ -38,7 +38,7 @@ import {
     IndexSchema,
     AggregationQuery,
     Reducers,
-} from 'redisvl';
+} from 'redis-vl';
 import { createClient } from 'redis';
 
 const client = createClient();
@@ -76,7 +76,7 @@ Each row is a `Record<string, string>` keyed by the reducer/apply alias (or the 
 The constructor takes the same `FilterInput` the rest of the query DSL uses — either a raw string or a `FilterExpression`:
 
 ```typescript
-import { AggregationQuery, Reducers, Tag, Num } from 'redisvl';
+import { AggregationQuery, Reducers, Tag, Num } from 'redis-vl';
 
 const q = new AggregationQuery(
     Tag('category').eq('electronics').and(Num('price').gt(0))
@@ -101,17 +101,20 @@ This is the FT.SEARCH filter dialect. It's distinct from the post-aggregation `.
 | `Reducers.stddev(p, as?)`          | `STDDEV`          |                                    |
 | `Reducers.quantile(p, q, as?)`     | `QUANTILE`        | `q` is a number in `[0, 1]`.       |
 | `Reducers.toList(p, as?)`          | `TOLIST`          | All unique values in the group.    |
-| `Reducers.firstValue(p, by?, as?)` | `FIRST_VALUE`     | Optional ordering expression.      |
+| `Reducers.firstValue(p, options?)` | `FIRST_VALUE`     | `options.by` orders ties; `options.as` aliases output. |
 | `Reducers.randomSample(p, n, as?)` | `RANDOM_SAMPLE`   | `n` is a positive integer.         |
 
 ```typescript
-import { Reducers } from 'redisvl';
+import { Reducers } from 'redis-vl';
 
 new AggregationQuery().groupBy('brand', [
     Reducers.count('orders'),
     Reducers.avg('price', 'avg_price'),
     Reducers.quantile('price', 0.95, 'p95_price'),
-    Reducers.firstValue('name', { property: 'price', direction: 'DESC' }, 'top_product'),
+    Reducers.firstValue('name', {
+        by: { property: 'price', direction: 'DESC' },
+        as: 'top_product',
+    }),
 ]);
 ```
 
@@ -163,5 +166,4 @@ If you need numeric types, cast at the call site (`Number(row.revenue)`). Aggreg
 ## See also
 
 - [Filters and queries](./filters-and-queries.md) — building the filter passed to the constructor.
-- [Hybrid search](./hybrid-search.md) — text + vector fusion via `FT.HYBRID`.
 - [`FT.AGGREGATE` reference](https://redis.io/docs/latest/commands/ft.aggregate/) — full command syntax.

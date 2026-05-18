@@ -53,7 +53,7 @@ describe('AggregationQuery', () => {
         });
 
         it('preserves explicit @ and $ prefixes on properties', () => {
-            const q = new AggregationQuery().groupBy(['@brand', '$.category'], []);
+            const q = new AggregationQuery().groupBy(['@brand', '$.category'], Reducers.count());
             const { options } = q.toCommand();
             expect((options.STEPS![0] as { properties: string[] }).properties).toEqual([
                 '@brand',
@@ -82,7 +82,10 @@ describe('AggregationQuery', () => {
         it('renders FIRST_VALUE with BY direction', () => {
             const q = new AggregationQuery().groupBy(
                 'brand',
-                Reducers.firstValue('name', { property: 'price', direction: 'DESC' }, 'top')
+                Reducers.firstValue('name', {
+                    by: { property: 'price', direction: 'DESC' },
+                    as: 'top',
+                })
             );
             const reducer = (
                 q.toCommand().options.STEPS![0] as unknown as {
@@ -111,6 +114,10 @@ describe('AggregationQuery', () => {
 
         it('rejects groupBy([]) with no reducers', () => {
             expect(() => new AggregationQuery().groupBy([])).toThrow(QueryValidationError);
+        });
+
+        it('rejects groupBy(prop) with no reducers', () => {
+            expect(() => new AggregationQuery().groupBy('brand')).toThrow(QueryValidationError);
         });
 
         it('rejects QUANTILE outside [0, 1]', () => {
@@ -167,8 +174,9 @@ describe('AggregationQuery', () => {
             expect(() => new AggregationQuery().limit(-1, 10)).toThrow(QueryValidationError);
         });
 
-        it('rejects zero LIMIT count', () => {
-            expect(() => new AggregationQuery().limit(0, 0)).toThrow(QueryValidationError);
+        it('allows LIMIT 0 0 for count-only queries', () => {
+            const q = new AggregationQuery().limit(0, 0);
+            expect(q.toCommand().options.STEPS).toEqual([{ type: 'LIMIT', from: 0, size: 0 }]);
         });
 
         it('rejects non-ASC/DESC sort directions', () => {
@@ -226,9 +234,19 @@ describe('AggregationQuery', () => {
             expect(options.ADDSCORES).toBe(true);
         });
 
-        it('omits unset options', () => {
+        it('applies only DIALECT default when no options are set', () => {
             const { options } = new AggregationQuery().toCommand();
-            expect(options).toEqual({});
+            expect(options).toEqual({ DIALECT: 2 });
+        });
+
+        it('defaults DIALECT to 2 when not set', () => {
+            const { options } = new AggregationQuery().toCommand();
+            expect(options.DIALECT).toBe(2);
+        });
+
+        it('lets an explicit .dialect() override the default', () => {
+            const { options } = new AggregationQuery().dialect(3).toCommand();
+            expect(options.DIALECT).toBe(3);
         });
     });
 });

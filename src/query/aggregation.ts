@@ -3,9 +3,8 @@
  *
  * Mirrors Python redisvl's `AggregationQuery` — a thin, fluent builder over
  * the FT.AGGREGATE pipeline (GROUPBY → REDUCE → APPLY → SORTBY → LIMIT →
- * FILTER). The hybrid (text + vector) aggregation variant is intentionally
- * out of scope here; that surface is already covered by {@link HybridQuery}
- * via `FT.HYBRID`.
+ * FILTER). Hybrid (text + vector) aggregation is out of scope for this
+ * class.
  *
  * @see https://redis.io/docs/latest/commands/ft.aggregate/
  */
@@ -67,7 +66,7 @@ export type Reducer =
  *
  * @example
  * ```typescript
- * import { AggregationQuery, Reducers } from 'redisvl';
+ * import { AggregationQuery, Reducers } from 'redis-vl';
  *
  * const q = new AggregationQuery('@category:{electronics}')
  *   .groupBy('@brand', [
@@ -112,10 +111,12 @@ export const Reducers = {
     },
     firstValue(
         property: string,
-        by?: string | { property: string; direction?: 'ASC' | 'DESC' },
-        as?: string
+        options?: {
+            by?: string | { property: string; direction?: 'ASC' | 'DESC' };
+            as?: string;
+        }
     ): Reducer {
-        return { type: 'FIRST_VALUE', property, by, as };
+        return { type: 'FIRST_VALUE', property, by: options?.by, as: options?.as };
     },
     randomSample(property: string, sampleSize: number, as?: string): Reducer {
         if (!Number.isInteger(sampleSize) || sampleSize <= 0) {
@@ -183,7 +184,7 @@ function assertPositiveInteger(value: number | undefined, label: string): void {
  *
  * @example
  * ```typescript
- * import { AggregationQuery, Reducers, Tag } from 'redisvl';
+ * import { AggregationQuery, Reducers, Tag } from 'redis-vl';
  *
  * const q = new AggregationQuery(Tag('category').eq('electronics'))
  *   .groupBy('@brand', [Reducers.sum('price', 'revenue'), Reducers.count('orders')])
@@ -229,6 +230,9 @@ export class AggregationQuery {
                 'groupBy with no properties requires at least one reducer'
             );
         }
+        if (props.length > 0 && reducerList.length === 0) {
+            throw new QueryValidationError('groupBy with properties requires at least one reducer');
+        }
         this.steps.push({
             kind: 'GROUPBY',
             properties: props.map(prefixFieldRef),
@@ -265,10 +269,15 @@ export class AggregationQuery {
         return this;
     }
 
-    /** LIMIT offset, count. */
+    /**
+     * LIMIT offset, count.
+     *
+     * `count = 0` is a valid Redis form that returns only the count/metadata
+     * with no rows.
+     */
     limit(offset: number, count: number): this {
         assertNonNegativeInteger(offset, 'limit offset');
-        assertPositiveInteger(count, 'limit count');
+        assertNonNegativeInteger(count, 'limit count');
         this.steps.push({ kind: 'LIMIT', offset, count });
         return this;
     }
@@ -310,7 +319,7 @@ export class AggregationQuery {
         return this;
     }
 
-    /** Set the DIALECT. Defaults to the server's current default when omitted. */
+    /** Set the DIALECT. Defaults to 2 (required for parameterized `$param` references). */
     dialect(dialect: number): this {
         if (!Number.isInteger(dialect) || dialect <= 0) {
             throw new QueryValidationError('dialect must be a positive integer');
@@ -350,7 +359,7 @@ export class AggregationQuery {
         if (this._verbatim) options.VERBATIM = true;
         if (this._addScores) options.ADDSCORES = true;
         if (this._timeout !== undefined) options.TIMEOUT = this._timeout;
-        if (this._dialect !== undefined) options.DIALECT = this._dialect;
+        options.DIALECT = this._dialect ?? 2;
         // Only set PARAMS when non-empty — node-redis serializes `{}` as
         // `PARAMS 0`, which Redis rejects.
         if (this._params !== undefined && Object.keys(this._params).length > 0) {

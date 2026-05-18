@@ -661,7 +661,7 @@ export class SearchIndex {
      * Execute an {@link AggregationQuery} (`FT.AGGREGATE`) against this index.
      *
      * Returns the raw aggregate result: a `total` row count and a list of
-     * rows, where each row is a `Record<string, AggregateValue>` of field
+     * rows, where each row is a `Record<string, string | string[]>` of field
      * name to value. GROUPBY/REDUCE/APPLY aliases appear as keys on each row.
      *
      * Scalar reducers (`COUNT`, `SUM`, `AVG`, …) yield strings — numeric
@@ -670,7 +670,7 @@ export class SearchIndex {
      *
      * @example
      * ```typescript
-     * import { AggregationQuery, Reducers } from 'redisvl';
+     * import { AggregationQuery, Reducers } from 'redis-vl';
      *
      * const q = new AggregationQuery('@category:{electronics}')
      *   .groupBy('@brand', Reducers.sum('price', 'revenue'))

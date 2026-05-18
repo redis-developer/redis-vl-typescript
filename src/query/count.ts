@@ -17,7 +17,7 @@ export interface CountQueryConfig {
  *
  * @example
  * ```typescript
- * import { CountQuery, Tag } from 'redisvl';
+ * import { CountQuery, Tag } from 'redis-vl';
  *
  * const total = (await index.search(new CountQuery({ filter: Tag('brand').eq('nike') }))).total;
  * ```

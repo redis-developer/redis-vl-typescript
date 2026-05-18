@@ -123,7 +123,6 @@ describe('AggregationQuery integration', () => {
     it('binds PARAMS for parameterized filter strings', async () => {
         const q = new AggregationQuery('@brand:{$brandName}')
             .params({ brandName: 'omega' })
-            .dialect(2)
             .groupBy('brand', Reducers.count('total'));
 
         const { results } = await index.aggregate(q);

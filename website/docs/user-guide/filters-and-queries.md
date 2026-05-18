@@ -13,7 +13,7 @@ Together, they cover the cases where pure KNN vector search isn't what you want 
 The DSL builds typed, escaped Redis Search filter expressions through method chaining. Every operator returns a `FilterExpression`, which can be passed directly to a query or composed further with `.and()` / `.or()`.
 
 ```typescript
-import { Tag, Num, Text, Geo, GeoRadius, Timestamp } from 'redisvl';
+import { Tag, Num, Text, Geo, GeoRadius, Timestamp } from 'redis-vl';
 
 const filter = Tag('brand')
     .eq('nike')
@@ -75,7 +75,7 @@ Text('description').isMissing();
 <TabItem value="geo" label="Geo">
 
 ```typescript
-import { Geo, GeoRadius } from 'redisvl';
+import { Geo, GeoRadius } from 'redis-vl';
 
 const sf = new GeoRadius(-122.4194, 37.7749, 5, 'km'); // lon, lat, radius, unit
 
@@ -89,7 +89,7 @@ Units: `'m'`, `'km'`, `'mi'`, `'ft'`.
 <TabItem value="timestamp" label="Timestamp">
 
 ```typescript
-import { Timestamp } from 'redisvl';
+import { Timestamp } from 'redis-vl';
 
 // Accepts Date, ISO string, or Unix seconds (number)
 Timestamp('created_at').eq(new Date('2024-01-15T12:00:00Z'));
@@ -112,7 +112,7 @@ Timestamp('created_at').between(new Date('2024-01-01'), new Date('2024-12-31'));
 Every operator returns a `FilterExpression`. Combine expressions with `.and()` and `.or()` — they're regular methods, evaluated in chain order:
 
 ```typescript
-import { Tag, Num } from 'redisvl';
+import { Tag, Num } from 'redis-vl';
 
 Tag('brand')
     .eq('nike')
@@ -140,7 +140,7 @@ All four query types are passed to `index.search()` and return a `SearchResult<T
 Returns documents matching a filter, with no vector or text scoring.
 
 ```typescript
-import { FilterQuery, Tag, Num } from 'redisvl';
+import { FilterQuery, Tag, Num } from 'redis-vl';
 
 const query = new FilterQuery({
     filter: Tag('brand').eq('nike').and(Num('price').lt(200)),
@@ -168,7 +168,7 @@ Use for "give me every doc that matches X" — listings, faceted browsing, simpl
 Counts how many documents match a filter, without retrieving any of them. Internally sends `FT.SEARCH ... LIMIT 0 0 NOCONTENT`.
 
 ```typescript
-import { CountQuery, Tag } from 'redisvl';
+import { CountQuery, Tag } from 'redis-vl';
 
 const result = await index.search(
     new CountQuery({ filter: Tag('brand').eq('nike') })
@@ -184,7 +184,7 @@ Cheaper than `FilterQuery` when you only need the total.
 Vector similarity search by **distance threshold** rather than top-K. Returns every document whose vector is within `distanceThreshold` of the query vector.
 
 ```typescript
-import { VectorRangeQuery, Tag } from 'redisvl';
+import { VectorRangeQuery, Tag } from 'redis-vl';
 
 const query = new VectorRangeQuery({
     vector: embedding,
@@ -218,7 +218,7 @@ Use when you care about **all docs above a similarity bar**, not the top-K — e
 Full-text search against a TEXT field, with an optional filter.
 
 ```typescript
-import { TextQuery, Tag } from 'redisvl';
+import { TextQuery, Tag } from 'redis-vl';
 
 const query = new TextQuery({
     text: 'machine learning tutorial',
@@ -248,7 +248,7 @@ This is a deliberately minimal first cut. Stopword filtering and per-token/per-f
 `VectorQuery` accepts the same `FilterExpression` (or raw string) on its `filter` field, so the DSL composes naturally with KNN vector search:
 
 ```typescript
-import { VectorQuery, Tag, Num } from 'redisvl';
+import { VectorQuery, Tag, Num } from 'redis-vl';
 
 const query = new VectorQuery({
     vector: embedding,
@@ -263,7 +263,7 @@ This was previously possible only with hand-crafted filter strings.
 ## Complete Example
 
 ```typescript
-import { SearchIndex, IndexSchema, FilterQuery, Tag, Num, Timestamp } from 'redisvl';
+import { SearchIndex, IndexSchema, FilterQuery, Tag, Num, Timestamp } from 'redis-vl';
 import { createClient } from 'redis';
 
 const client = createClient();
