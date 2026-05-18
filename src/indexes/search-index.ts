@@ -688,12 +688,13 @@ export class SearchIndex {
             const { query: queryString, options } = query.toCommand();
             const reply = await this.client.ft.aggregate(this.name, queryString, options);
 
-            // node-redis returns each row as a MapReply — on RESP2 that's a
-            // plain object, but when the client is configured with the MAP
-            // type-mapping (or on RESP3) it's an actual Map. Handle both.
-            // Preserve array values verbatim (TOLIST returns string[]); coerce
-            // scalar non-strings via String() so numeric reducers come back
-            // as strings consistent with the FT.AGGREGATE wire format.
+            // node-redis returns each row as a MapReply, which resolves to a
+            // plain object by default or to a real `Map` when the caller has
+            // opted into Map type-mapping via `client.withTypeMapping(...)`.
+            // Handle both shapes. Preserve array values verbatim (TOLIST
+            // returns string[]); coerce scalar non-strings via String() so
+            // numeric reducers come back as strings consistent with the
+            // FT.AGGREGATE wire format.
             const results: Array<Record<string, string | string[]>> = reply.results.map((row) => {
                 const out: Record<string, string | string[]> = {};
                 const entries: Iterable<[string, unknown]> =
