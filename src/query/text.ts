@@ -80,6 +80,9 @@ export interface TextQueryConfig {
 }
 
 function parseFieldWeights(spec: string | Record<string, number>): Record<string, number> {
+    if (spec === undefined || spec === null) {
+        throw new QueryValidationError('textFieldName is required');
+    }
     if (typeof spec === 'string') {
         if (spec.length === 0) {
             throw new QueryValidationError('textFieldName is required');
@@ -88,7 +91,7 @@ function parseFieldWeights(spec: string | Record<string, number>): Record<string
         single[spec] = 1.0;
         return Object.freeze(single);
     }
-    if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+    if (typeof spec !== 'object' || Array.isArray(spec)) {
         throw new QueryValidationError(
             'textFieldName must be a string or a record of field:weight mappings'
         );
@@ -177,7 +180,19 @@ function parseTextWeights(weights: Record<string, number> | undefined): Record<s
  */
 export class TextQuery implements BaseQuery {
     public readonly text: string;
+    /**
+     * Per-field weights. Frozen at construction. Iteration follows insertion
+     * order, which determines the order of field clauses in the rendered
+     * query. A single field with weight 1.0 renders identically to passing a
+     * bare string for `textFieldName`.
+     */
     public readonly fieldWeights: Readonly<Record<string, number>>;
+    /**
+     * Per-token weights. Keys are normalised to lowercase, whitespace-trimmed
+     * single tokens. Frozen at construction with a null prototype so adversarial
+     * keys (`constructor`, `__proto__`, etc.) cannot resolve via the prototype
+     * chain during render-time lookup.
+     */
     public readonly textWeights: Readonly<Record<string, number>>;
     public readonly textScorer: TextScorer;
     public readonly filter?: FilterInput;
