@@ -29,8 +29,12 @@ export interface TextQueryConfig {
     /** Free-text query. Tokenised on whitespace, normalized (lowercase, comma + curly-quote strip), stopword-filtered, then OR-joined. */
     text: string;
 
-    /** Indexed text field to search against. */
-    textFieldName: string;
+    /**
+     * Indexed text field to search against. Pass a string to search a single
+     * field, or a `Record<field, weight>` to search multiple fields with
+     * per-field weighting. Weights must be finite numbers > 0.
+     */
+    textFieldName: string | Record<string, number>;
 
     /**
      * Scorer to apply when ranking results. Defaults to `BM25STD`.
@@ -67,6 +71,37 @@ export interface TextQueryConfig {
     stopwords?: StopwordsInput;
 }
 
+function parseFieldWeights(spec: string | Record<string, number>): Record<string, number> {
+    if (typeof spec === 'string') {
+        if (spec.length === 0) {
+            throw new QueryValidationError('textFieldName is required');
+        }
+        return Object.freeze({ [spec]: 1.0 }) as Record<string, number>;
+    }
+    if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+        throw new QueryValidationError(
+            'textFieldName must be a string or a record of field:weight mappings'
+        );
+    }
+    const entries = Object.entries(spec);
+    if (entries.length === 0) {
+        throw new QueryValidationError('textFieldName record must contain at least one field');
+    }
+    const normalized: Record<string, number> = {};
+    for (const [field, weight] of entries) {
+        if (typeof field !== 'string' || field.length === 0) {
+            throw new QueryValidationError('textFieldName keys must be non-empty strings');
+        }
+        if (typeof weight !== 'number' || !Number.isFinite(weight) || weight <= 0) {
+            throw new QueryValidationError(
+                `textFieldName weight for '${field}' must be a finite number > 0, got ${String(weight)}`
+            );
+        }
+        normalized[field] = weight;
+    }
+    return Object.freeze(normalized);
+}
+
 /**
  * Full-text search query with optional filter.
  *
@@ -93,6 +128,8 @@ export interface TextQueryConfig {
  */
 export class TextQuery implements BaseQuery {
     public readonly text: string;
+    public readonly fieldWeights: Readonly<Record<string, number>>;
+    /** @internal — replaced in Task 5 with Python-compat getter */
     public readonly textFieldName: string;
     public readonly textScorer: TextScorer;
     public readonly filter?: FilterInput;
@@ -107,12 +144,10 @@ export class TextQuery implements BaseQuery {
             throw new QueryValidationError('text cannot be empty');
         }
 
-        if (!config.textFieldName) {
-            throw new QueryValidationError('textFieldName is required');
-        }
-
         this.text = config.text;
-        this.textFieldName = config.textFieldName;
+        this.fieldWeights = parseFieldWeights(config.textFieldName);
+        const firstField = Object.keys(this.fieldWeights)[0];
+        this.textFieldName = firstField;
         this.textScorer = config.textScorer ?? 'BM25STD';
         this.filter = config.filter;
         this.returnFields = config.returnFields;
