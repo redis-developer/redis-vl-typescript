@@ -4,16 +4,20 @@ import { english } from '../../../../src/utils/stopwords/english.js';
 import { QueryValidationError } from '../../../../src/errors.js';
 
 describe('resolveStopwords', () => {
-    it('returns the english set when input is undefined', () => {
-        expect(resolveStopwords(undefined)).toBe(english);
+    it('returns a defensive copy of the english set when input is undefined', () => {
+        const result = resolveStopwords(undefined) as ReadonlySet<string>;
+        expect(result).toEqual(english);
+        expect(result).not.toBe(english);
     });
 
     it('returns null when input is null', () => {
         expect(resolveStopwords(null)).toBeNull();
     });
 
-    it('returns the english set when input is "english"', () => {
-        expect(resolveStopwords('english')).toBe(english);
+    it('returns a defensive copy of the english set when input is "english"', () => {
+        const result = resolveStopwords('english') as ReadonlySet<string>;
+        expect(result).toEqual(english);
+        expect(result).not.toBe(english);
     });
 
     it('throws on unknown language identifier', () => {
@@ -24,6 +28,14 @@ describe('resolveStopwords', () => {
     it('throws on non-lowercase language identifier (Python parity)', () => {
         expect(() => resolveStopwords('English')).toThrow(QueryValidationError);
     });
+
+    it.each(['__proto__', 'constructor', 'toString', 'hasOwnProperty'])(
+        'throws on Object.prototype key %s instead of returning prototype member',
+        (key) => {
+            expect(() => resolveStopwords(key)).toThrow(QueryValidationError);
+            expect(() => resolveStopwords(key)).toThrow(/unknown stopwords language/);
+        }
+    );
 
     it('converts arrays to a Set verbatim (no case fold)', () => {
         const set = resolveStopwords(['Foo', 'bar']) as ReadonlySet<string>;
