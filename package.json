@@ -43,12 +43,17 @@
     "files": [
         "dist",
         "README.md",
-        "LICENSE"
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.md"
     ],
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js"
+        },
+        "./stopwords": {
+            "types": "./dist/utils/stopwords/index.d.ts",
+            "import": "./dist/utils/stopwords/index.js"
         }
     },
     "engines": {
