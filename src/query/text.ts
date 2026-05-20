@@ -173,7 +173,20 @@ export class TextQuery implements BaseQuery {
             );
         }
 
-        const textClause = `@${this.textFieldName}:(${tokens.join(' | ')})`;
+        const orList = tokens.join(' | ');
+
+        const fieldClauses: string[] = [];
+        for (const [field, weight] of Object.entries(this.fieldWeights)) {
+            if (weight === 1.0) {
+                fieldClauses.push(`@${field}:(${orList})`);
+            } else {
+                fieldClauses.push(`@${field}:(${orList}) => { $weight: ${weight} }`);
+            }
+        }
+
+        const textClause =
+            fieldClauses.length === 1 ? fieldClauses[0] : `(${fieldClauses.join(' | ')})`;
+
         const filterStr = renderFilter(this.filter);
         if (filterStr === '*') {
             return textClause;
