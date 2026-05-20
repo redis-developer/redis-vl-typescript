@@ -353,5 +353,21 @@ describe('Query types integration (FilterQuery / CountQuery / VectorRangeQuery /
             expect(results.total).toBe(1);
             expect(results.documents[0].value.title).toBe('Monitor screen 27 inch');
         });
+
+        it('default stopwords let stopword-bearing queries still match documents', async () => {
+            // "for" is in the default English stopword list and gets stripped
+            // before the query reaches Redis, leaving just "programming".
+            // The rendered query is @title:(programming), which is valid Redis
+            // Search syntax and matches exactly one document.
+            const q = new TextQuery({
+                text: 'for programming',
+                textFieldName: 'title',
+                returnFields: ['title'],
+            });
+            const results = await index.search(q);
+
+            const titles = results.documents.map((d) => d.value.title);
+            expect(titles).toContain('Laptop computer for programming');
+        });
     });
 });
