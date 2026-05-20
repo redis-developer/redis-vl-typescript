@@ -42,13 +42,16 @@ describe('TextQuery', () => {
             expect(q.buildQuery()).toBe('@description:(quick | brown | fox)');
         });
 
-        it('escapes special characters in tokens but allows readable wildcards', () => {
-            // Comma and parens get escaped; spaces become token separators.
+        it('strips leading/trailing commas during normalization (Python parity)', () => {
+            // The comma is stripped from the token before escape, so no escaped comma
+            // appears in the rendered query. Mirrors Python's
+            // _tokenize_and_escape_query (query.py:1445).
             const q = new TextQuery({
                 text: 'hello, world',
                 textFieldName: 'description',
+                stopwords: null,
             });
-            expect(q.buildQuery()).toBe('@description:(hello\\, | world)');
+            expect(q.buildQuery()).toBe('@description:(hello | world)');
         });
 
         it('combines a string filter with the text clause via AND', () => {
@@ -82,6 +85,130 @@ describe('TextQuery', () => {
         it('returns an empty params object', () => {
             const q = new TextQuery({ text: 'hello', textFieldName: 'description' });
             expect(q.buildParams()).toEqual({});
+        });
+    });
+
+    describe('stopwords', () => {
+        it('default "english" drops common stopwords', () => {
+            const q = new TextQuery({ text: 'the quick brown fox', textFieldName: 'description' });
+            expect(q.buildQuery()).toBe('@description:(quick | brown | fox)');
+        });
+
+        it('default drops contractions like "don\'t"', () => {
+            const q = new TextQuery({ text: "don't run", textFieldName: 'description' });
+            // "don't" is in the NLTK list; only "run" survives.
+            expect(q.buildQuery()).toBe('@description:(run)');
+        });
+
+        it('lowercases tokens before comparison', () => {
+            const q = new TextQuery({ text: 'The Quick', textFieldName: 'description' });
+            // "The" → "the" → dropped; "Quick" → "quick" → kept.
+            expect(q.buildQuery()).toBe('@description:(quick)');
+        });
+
+        it('strips typographic quotes (U+201C / U+201D)', () => {
+            const q = new TextQuery({
+                text: '“smart” quotes',
+                textFieldName: 'description',
+                stopwords: null,
+            });
+            expect(q.buildQuery()).toBe('@description:(smart | quotes)');
+        });
+
+        it('skips filtering entirely when stopwords is null', () => {
+            const q = new TextQuery({
+                text: 'the quick',
+                textFieldName: 'description',
+                stopwords: null,
+            });
+            expect(q.buildQuery()).toBe('@description:(the | quick)');
+        });
+
+        it('explicit array overrides (does NOT extend) the default', () => {
+            const q = new TextQuery({
+                text: 'the quick fox',
+                textFieldName: 'description',
+                stopwords: ['quick'],
+            });
+            // 'the' is kept because the explicit list is ['quick'] only.
+            expect(q.buildQuery()).toBe('@description:(the | fox)');
+        });
+
+        it('matches lowercase entries against normalized tokens', () => {
+            const q = new TextQuery({
+                text: 'Quick fox',
+                textFieldName: 'description',
+                stopwords: new Set(['quick']),
+            });
+            // "Quick" normalizes to "quick", which is in the set.
+            expect(q.buildQuery()).toBe('@description:(fox)');
+        });
+
+        it('Python-parity foot-gun: uppercase entries do NOT match lowercased tokens', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: 'description',
+                stopwords: new Set(['Quick']),
+            });
+            // Set holds "Quick"; token is "quick". No match — mirrors query.py:1426/:1450.
+            expect(q.buildQuery()).toBe('@description:(quick | fox)');
+        });
+
+        it('"english" explicit matches default behavior', () => {
+            const a = new TextQuery({ text: 'the quick fox', textFieldName: 'd' });
+            const b = new TextQuery({
+                text: 'the quick fox',
+                textFieldName: 'd',
+                stopwords: 'english',
+            });
+            expect(a.buildQuery()).toBe(b.buildQuery());
+        });
+
+        it('rejects non-lowercase language identifier at construction', () => {
+            expect(
+                () => new TextQuery({ text: 'x', textFieldName: 'd', stopwords: 'English' })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('rejects unknown language at construction', () => {
+            expect(
+                () => new TextQuery({ text: 'x', textFieldName: 'd', stopwords: 'spanish' })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('rejects non-string iterable members at construction', () => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'x',
+                        textFieldName: 'd',
+                        stopwords: ['ok', 42 as unknown as string],
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('empty array is a no-op (not an error)', () => {
+            const q = new TextQuery({
+                text: 'the quick',
+                textFieldName: 'description',
+                stopwords: [],
+            });
+            expect(q.buildQuery()).toBe('@description:(the | quick)');
+        });
+
+        it('throws at buildQuery() (not constructor) when all tokens are filtered', () => {
+            const q = new TextQuery({ text: 'the and is', textFieldName: 'd' });
+            expect(() => q.buildQuery()).toThrow(QueryValidationError);
+            expect(() => q.buildQuery()).toThrow(/text yielded no tokens after stopword removal/);
+        });
+
+        it('filter clause still composes correctly when stopwords drop tokens', () => {
+            const q = new TextQuery({
+                text: 'the engineer',
+                textFieldName: 'description',
+                filter: Tag('active').eq('true'),
+            });
+            expect(q.buildQuery()).toBe('(@active:{true} @description:(engineer))');
         });
     });
 });
