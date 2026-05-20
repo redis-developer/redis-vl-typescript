@@ -133,7 +133,9 @@ export class TextQuery implements BaseQuery {
         }
 
         if (tokens.length === 0) {
-            throw new QueryValidationError('text yielded no tokens after stopword removal');
+            throw new QueryValidationError(
+                'text yielded no tokens after normalization and stopword filtering'
+            );
         }
 
         const textClause = `@${this.textFieldName}:(${tokens.join(' | ')})`;

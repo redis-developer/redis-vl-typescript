@@ -199,7 +199,9 @@ describe('TextQuery', () => {
         it('throws at buildQuery() (not constructor) when all tokens are filtered', () => {
             const q = new TextQuery({ text: 'the and is', textFieldName: 'd' });
             expect(() => q.buildQuery()).toThrow(QueryValidationError);
-            expect(() => q.buildQuery()).toThrow(/text yielded no tokens after stopword removal/);
+            expect(() => q.buildQuery()).toThrow(
+                /text yielded no tokens after normalization and stopword filtering/
+            );
         });
 
         it('filter clause still composes correctly when stopwords drop tokens', () => {
