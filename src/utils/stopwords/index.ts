@@ -1,7 +1,7 @@
 import { english } from './english.js';
 
 export { english };
-export { resolveStopwords, type StopwordsInput } from './resolve.js';
+export type { StopwordsInput } from './resolve.js';
 
 /**
  * Namespace object grouping every shipped stopword list. Consumers can
