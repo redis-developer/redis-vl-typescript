@@ -239,7 +239,7 @@ Per-token and per-field weights from Python redisvl's `TextQuery` are not yet im
 #### Stopword filtering
 
 ```typescript
-import { TextQuery, stopwords } from 'redisvl';
+import { TextQuery, stopwords } from 'redis-vl';
 
 // Default: the embedded NLTK English list (198 words) strips common stopwords.
 new TextQuery({ text: 'the quick brown fox', textFieldName: 'description' }).buildQuery();
@@ -265,7 +265,7 @@ new TextQuery({
 The `stopwords` namespace is also available via the subpath import:
 
 ```typescript
-import { english } from 'redisvl/stopwords';
+import { english } from 'redis-vl/stopwords';
 ```
 
 | Option | Notes |
