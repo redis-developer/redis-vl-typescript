@@ -232,8 +232,49 @@ const results = await index.search(query);
 
 Tokens are split on whitespace, normalized (lowercased, with leading/trailing commas and typographic quotes stripped), filtered against an English stopword list by default, escaped, and OR-joined — so `'The quick fox'` becomes `@description:(quick | fox)`. The optional `filter` is combined with the text clause via AND.
 
-:::note Parity gap
-Per-token and per-field weights from Python redisvl's `TextQuery` are not yet implemented. Stopword filtering matches Python (English by default).
+#### Weighting tokens and fields
+
+`TextQuery` supports two ways to bias scoring:
+
+**Per-field weights.** Pass a `Record<field, weight>` to `textFieldName` to
+search multiple fields with different importance. Weights must be finite
+numbers greater than 0.
+
+```typescript
+import { TextQuery } from 'redis-vl';
+
+const q = new TextQuery({
+    text: 'machine learning',
+    textFieldName: { title: 5.0, body: 1.0 },
+});
+// Renders: (@title:(machine | learning) => { $weight: 5 } | @body:(machine | learning))
+```
+
+A field with weight `1.0` is rendered without the `$weight` clause. If
+exactly one field is provided with weight 1.0, the output is identical to
+passing a string for `textFieldName`.
+
+**Per-token weights.** Pass a `textWeights` record to bias specific tokens
+within the query. Keys are matched case-insensitively against the
+normalised query tokens; values must be finite numbers `>= 0` (zero is
+allowed and suppresses that token's scoring contribution).
+
+```typescript
+const q = new TextQuery({
+    text: 'apple orange pear',
+    textFieldName: 'description',
+    textWeights: { apple: 2.0, orange: 0.5 },
+});
+// Renders: @description:(apple=>{$weight:2} | orange=>{$weight:0.5} | pear)
+```
+
+Per-token and per-field weights can be combined; per-token weights are
+applied inside every field clause.
+
+:::note Divergence from Python redisvl
+Python exposes `set_field_weights()` and `set_text_weights()` mutators. The
+TypeScript port keeps `TextQuery` fully immutable — construct a new query
+instead.
 :::
 
 #### Stopword filtering

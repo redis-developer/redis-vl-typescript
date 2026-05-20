@@ -146,19 +146,35 @@ function parseTextWeights(weights: Record<string, number> | undefined): Record<s
  * survivors inside the target field. Use `filter` to scope the search to
  * a subset of documents (e.g. by tag or numeric range).
  *
- * **Note:** per-field and per-token weights from Python's
- * `redisvl.query.TextQuery` are not yet ported.
+ * Supports per-token weighting via `textWeights` and per-field weighting by
+ * passing a `Record<field, weight>` to `textFieldName`. Both render using
+ * Redis Search's `=> { $weight: N }` syntax (dialect 2).
  *
- * @example
+ * @example Single-field, default weights
  * ```typescript
  * import { TextQuery, Tag } from 'redis-vl';
  *
  * const q = new TextQuery({
  *   text: 'machine learning',
  *   textFieldName: 'description',
- *   filter: Tag('category').eq('tech'),
  * });
- * const results = await index.search(q);
+ * ```
+ *
+ * @example Multi-field weighted
+ * ```typescript
+ * new TextQuery({
+ *   text: 'machine learning',
+ *   textFieldName: { title: 5.0, body: 1.0 },
+ * });
+ * ```
+ *
+ * @example Per-token weighted
+ * ```typescript
+ * new TextQuery({
+ *   text: 'apple orange pear',
+ *   textFieldName: 'description',
+ *   textWeights: { apple: 2.0, orange: 0.5 },
+ * });
  * ```
  */
 export class TextQuery implements BaseQuery {
