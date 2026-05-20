@@ -81,6 +81,51 @@ describe('TextQuery', () => {
             });
             expect(q.buildQuery()).toBe('@description:(quick | fox)');
         });
+
+        it('renders a single field with weight 1.0 without a $weight clause', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { description: 1.0 },
+            });
+            expect(q.buildQuery()).toBe('@description:(quick | fox)');
+        });
+
+        it('renders a single field with non-default weight using $weight syntax', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { description: 5 },
+            });
+            expect(q.buildQuery()).toBe('@description:(quick | fox) => { $weight: 5 }');
+        });
+
+        it('renders multiple fields OR-joined with mixed weights', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { title: 3, body: 1.0 },
+            });
+            expect(q.buildQuery()).toBe(
+                '(@title:(quick | fox) => { $weight: 3 } | @body:(quick | fox))'
+            );
+        });
+
+        it('renders multiple fields with all weights 1.0 wrapped in outer parens', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { title: 1.0, body: 1.0 },
+            });
+            expect(q.buildQuery()).toBe('(@title:(quick | fox) | @body:(quick | fox))');
+        });
+
+        it('combines multi-field weighted text clause with a filter via AND', () => {
+            const q = new TextQuery({
+                text: 'engineer',
+                textFieldName: { title: 2, summary: 1.0 },
+                filter: Tag('active').eq('true'),
+            });
+            expect(q.buildQuery()).toBe(
+                '(@active:{true} (@title:(engineer) => { $weight: 2 } | @summary:(engineer)))'
+            );
+        });
     });
 
     describe('buildParams', () => {
