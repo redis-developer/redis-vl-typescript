@@ -374,4 +374,58 @@ describe('Query types integration (FilterQuery / CountQuery / VectorRangeQuery /
             expect(titles).toContain('Laptop computer for programming');
         });
     });
+
+    describe('TextQuery — per-field weights', () => {
+        it('ranks docs by per-field weight when the same terms appear in different fields', async () => {
+            // Stand up a dedicated two-text-field index so we can place
+            // identical match tokens in different fields and observe the
+            // per-field weight steering the ranking.
+            const indexName = `redisvl-test-text-weights-${Date.now()}`;
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: indexName,
+                    prefix: `rvl-test-tw-${Date.now()}`,
+                    storageType: 'hash',
+                },
+                fields: [
+                    { name: 'title', type: 'text' },
+                    { name: 'body', type: 'text' },
+                ],
+            });
+
+            const weightedIndex = new SearchIndex(schema, client);
+            await weightedIndex.create({ overwrite: true, drop: true });
+
+            try {
+                await weightedIndex.load(
+                    [
+                        { id: 'a', title: 'foo bar', body: 'zzz zzz' },
+                        { id: 'b', title: 'zzz zzz', body: 'foo bar' },
+                    ],
+                    { idField: 'id' }
+                );
+
+                // Let Redis index the two new docs.
+                await new Promise((r) => setTimeout(r, 100));
+
+                // Heavy ratio (10:1) keeps the assertion robust against
+                // BM25 quirks on a 2-doc corpus.
+                const q = new TextQuery({
+                    text: 'foo bar',
+                    textFieldName: { title: 10.0, body: 1.0 },
+                    returnFields: ['id'],
+                    textScorer: 'BM25STD',
+                });
+
+                const results = await weightedIndex.search(q);
+                expect(results.documents.length).toBeGreaterThanOrEqual(2);
+                // Doc A's match is in the higher-weighted `title` field, so
+                // it must rank above Doc B whose match is in `body`.
+                expect(results.documents[0].id).toContain('a');
+                expect(results.documents[1].id).toContain('b');
+            } finally {
+                await weightedIndex.delete({ drop: true }).catch(() => {});
+            }
+        });
+    });
 });
