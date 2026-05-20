@@ -56,7 +56,7 @@ export interface TextQueryConfig {
  *
  * @example
  * ```typescript
- * import { TextQuery, Tag } from 'redisvl';
+ * import { TextQuery, Tag } from 'redis-vl';
  *
  * const q = new TextQuery({
  *   text: 'machine learning',

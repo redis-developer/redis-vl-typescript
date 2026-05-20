@@ -37,6 +37,8 @@ export { CountQuery } from './query/count.js';
 export type { CountQueryConfig } from './query/count.js';
 export { TextQuery } from './query/text.js';
 export type { TextQueryConfig, TextScorer } from './query/text.js';
+export { AggregationQuery, Reducers } from './query/aggregation.js';
+export type { AggregateCommand, SortSpec, LoadField, Reducer } from './query/aggregation.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
 export type { Inclusive, GeoUnit } from './query/filter.js';
 export type {
