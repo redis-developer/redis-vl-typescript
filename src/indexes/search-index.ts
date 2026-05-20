@@ -3,8 +3,10 @@
  * Main search index class for managing Redis search indexes.
  */
 
-import type { RedisClientType, RedisClusterType } from 'redis';
 import type { RediSearchSchema } from '@redis/search';
+import type { RedisClientType, RedisClusterType } from 'redis';
+import type { AnyRedisClient } from '../redis/client-types.js';
+import { assertSupportedProtocol } from '../redis/protocol.js';
 import { IndexSchema } from '../schema/schema.js';
 import { buildRedisVLSchemaFromRedisIndexInfo } from '../redis/index-info-parser.js';
 import { BaseStorage, HashStorage, JsonStorage } from '../storage/index.js';
@@ -157,11 +159,7 @@ export class SearchIndex {
      * @throws {Error} If schema is not a valid IndexSchema instance
      * @throws {Error} If client is not provided
      */
-    constructor(
-        schema: IndexSchema,
-        client: RedisClientType | RedisClusterType,
-        validateOnLoad = false
-    ) {
+    constructor(schema: IndexSchema, client: AnyRedisClient, validateOnLoad = false) {
         if (!(schema instanceof IndexSchema)) {
             throw new RedisVLError('Must provide a valid IndexSchema object');
         }
@@ -170,8 +168,12 @@ export class SearchIndex {
             throw new RedisVLError('Must provide a valid Redis client');
         }
 
+        assertSupportedProtocol(client);
+
         this.schema = schema;
-        this.client = client;
+        // Narrow the publicly-accepted wide client surface to the RESP=2
+        // shape this library is implemented against. See client-types.ts.
+        this.client = client as RedisClientType | RedisClusterType;
         this.validateOnLoad = validateOnLoad;
 
         // Initialize appropriate storage based on storage type
@@ -202,13 +204,14 @@ export class SearchIndex {
      */
     static async fromExisting(
         name: string,
-        client: RedisClientType | RedisClusterType,
+        client: AnyRedisClient,
         validateOnLoad = false
     ): Promise<SearchIndex> {
+        assertSupportedProtocol(client);
+        const ftClient = client as RedisClientType | RedisClusterType;
         let info: Awaited<ReturnType<(RedisClientType | RedisClusterType)['ft']['info']>>;
         try {
-            // Fetch index info from Redis
-            info = await client.ft.info(name);
+            info = await ftClient.ft.info(name);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             throw new RedisVLError(`Failed to load index '${name}' via FT.INFO: ${message}`, {

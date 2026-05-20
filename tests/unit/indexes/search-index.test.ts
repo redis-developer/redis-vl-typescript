@@ -85,6 +85,23 @@ describe('SearchIndex', () => {
                 new SearchIndex(schema, null as unknown as RedisClientType);
             }).toThrow(/Must provide a valid Redis client/);
         });
+
+        it('should throw RedisVLError when the client is configured for RESP=3', () => {
+            const resp3Client = {
+                ...mockClient,
+                options: { RESP: 3 },
+            } as unknown as RedisClientType;
+            expect(() => new SearchIndex(schema, resp3Client)).toThrow(RedisVLError);
+            expect(() => new SearchIndex(schema, resp3Client)).toThrow(/RESP=3/);
+        });
+
+        it('should accept a client whose options omit RESP (default RESP=2)', () => {
+            const defaultClient = {
+                ...mockClient,
+                options: {},
+            } as unknown as RedisClientType;
+            expect(() => new SearchIndex(schema, defaultClient)).not.toThrow();
+        });
     });
 
     describe('create()', () => {
