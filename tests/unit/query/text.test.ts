@@ -212,5 +212,12 @@ describe('TextQuery', () => {
             });
             expect(q.buildQuery()).toBe('(@active:{true} @description:(engineer))');
         });
+
+        it('exposes the english set via the public stopwords namespace', async () => {
+            const { stopwords } = await import('../../../src/index.js');
+            expect(stopwords.english).toBeInstanceOf(Set);
+            expect(stopwords.english.size).toBe(198);
+            expect(stopwords.english.has('the')).toBe(true);
+        });
     });
 });

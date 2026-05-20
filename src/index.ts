@@ -72,3 +72,7 @@ export {
     DISTANCE_NORMALIZERS,
     type DistanceNormalizer,
 } from './utils/distance.js';
+
+// Stopwords exports (also available as the `redis-vl/stopwords` subpath)
+export { stopwords } from './utils/stopwords/index.js';
+export type { StopwordsInput } from './utils/stopwords/index.js';
