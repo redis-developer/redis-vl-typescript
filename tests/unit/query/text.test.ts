@@ -238,4 +238,65 @@ describe('TextQuery', () => {
             expect(stopwords.english.has('the')).toBe(true);
         });
     });
+
+    describe('field weights', () => {
+        it('normalises a string textFieldName to weight 1.0 in fieldWeights', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: 'description' });
+            expect(q.fieldWeights).toEqual({ description: 1.0 });
+        });
+
+        it('accepts a Record<string, number> for textFieldName', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: { title: 5.0, body: 1.0 },
+            });
+            expect(q.fieldWeights).toEqual({ title: 5.0, body: 1.0 });
+        });
+
+        it('freezes fieldWeights to enforce readonly at runtime', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: { title: 2.0 } });
+            expect(Object.isFrozen(q.fieldWeights)).toBe(true);
+        });
+
+        it('rejects an empty fieldWeights record', () => {
+            expect(() => new TextQuery({ text: 'hello', textFieldName: {} })).toThrow(
+                QueryValidationError
+            );
+        });
+
+        it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+            'rejects field weight %p',
+            (weight) => {
+                expect(
+                    () =>
+                        new TextQuery({
+                            text: 'hello',
+                            textFieldName: { title: weight },
+                        })
+                ).toThrow(QueryValidationError);
+            }
+        );
+
+        it('rejects a non-numeric field weight', () => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        textFieldName: { title: 'five' as any },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('rejects an array for textFieldName', () => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        textFieldName: ['title'] as any,
+                    })
+            ).toThrow(QueryValidationError);
+        });
+    });
 });
