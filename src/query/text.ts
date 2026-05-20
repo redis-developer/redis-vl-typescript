@@ -58,6 +58,14 @@ export interface TextQueryConfig {
     limit?: number;
 
     /**
+     * Per-token weight map. Keys are individual words (no inner whitespace) and
+     * are matched case-insensitively against the lowercased query tokens. Values
+     * must be finite numbers >= 0. A weight of 0 effectively suppresses scoring
+     * for that token. When omitted, no per-token weighting is applied.
+     */
+    textWeights?: Record<string, number>;
+
+    /**
      * Stopwords to drop before OR-joining tokens.
      *
      * - `'english'` (default): use the embedded NLTK English list (198 words, BSD-3-Clause Snowball).
@@ -76,7 +84,9 @@ function parseFieldWeights(spec: string | Record<string, number>): Record<string
         if (spec.length === 0) {
             throw new QueryValidationError('textFieldName is required');
         }
-        return Object.freeze({ [spec]: 1.0 }) as Record<string, number>;
+        const single: Record<string, number> = Object.create(null);
+        single[spec] = 1.0;
+        return Object.freeze(single);
     }
     if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
         throw new QueryValidationError(
@@ -87,7 +97,7 @@ function parseFieldWeights(spec: string | Record<string, number>): Record<string
     if (entries.length === 0) {
         throw new QueryValidationError('textFieldName record must contain at least one field');
     }
-    const normalized: Record<string, number> = {};
+    const normalized: Record<string, number> = Object.create(null);
     for (const [field, weight] of entries) {
         if (typeof field !== 'string' || field.length === 0) {
             throw new QueryValidationError('textFieldName keys must be non-empty strings');
@@ -98,6 +108,31 @@ function parseFieldWeights(spec: string | Record<string, number>): Record<string
             );
         }
         normalized[field] = weight;
+    }
+    return Object.freeze(normalized);
+}
+
+function parseTextWeights(weights: Record<string, number> | undefined): Record<string, number> {
+    if (weights === undefined) {
+        return Object.freeze(Object.create(null) as Record<string, number>);
+    }
+    if (weights === null || typeof weights !== 'object' || Array.isArray(weights)) {
+        throw new QueryValidationError('textWeights must be a record of token:weight mappings');
+    }
+    const normalized: Record<string, number> = Object.create(null);
+    for (const [rawKey, weight] of Object.entries(weights)) {
+        const key = rawKey.trim().toLowerCase();
+        if (key.length === 0 || /\s/.test(key)) {
+            throw new QueryValidationError(
+                `textWeights keys must be single tokens with no whitespace, got '${rawKey}'`
+            );
+        }
+        if (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0) {
+            throw new QueryValidationError(
+                `textWeights weight for '${key}' must be a finite number >= 0, got ${String(weight)}`
+            );
+        }
+        normalized[key] = weight;
     }
     return Object.freeze(normalized);
 }
@@ -129,6 +164,7 @@ function parseFieldWeights(spec: string | Record<string, number>): Record<string
 export class TextQuery implements BaseQuery {
     public readonly text: string;
     public readonly fieldWeights: Readonly<Record<string, number>>;
+    public readonly textWeights: Readonly<Record<string, number>>;
     /** @internal — replaced in Task 5 with Python-compat getter */
     public readonly textFieldName: string;
     public readonly textScorer: TextScorer;
@@ -142,6 +178,7 @@ export class TextQuery implements BaseQuery {
     constructor(config: TextQueryConfig) {
         this.text = config.text;
         this.fieldWeights = parseFieldWeights(config.textFieldName);
+        this.textWeights = parseTextWeights(config.textWeights);
         const firstField = Object.keys(this.fieldWeights)[0];
         this.textFieldName = firstField;
         this.textScorer = config.textScorer ?? 'BM25STD';
@@ -155,13 +192,19 @@ export class TextQuery implements BaseQuery {
 
     buildQuery(): string {
         const stopwordSet = this.stopwords;
+        const weights = this.textWeights;
         const tokens: string[] = [];
         for (const raw of this.text.split(/\s+/)) {
             const norm = normalizeToken(raw);
             if (norm.length === 0) continue;
             const escaped = escaper.escape(norm);
             if (stopwordSet && stopwordSet.has(escaped)) continue;
-            tokens.push(escaped);
+            const weight = weights[norm];
+            if (weight !== undefined) {
+                tokens.push(`${escaped}=>{$weight:${weight}}`);
+            } else {
+                tokens.push(escaped);
+            }
         }
 
         const orList = tokens.join(' | ');
