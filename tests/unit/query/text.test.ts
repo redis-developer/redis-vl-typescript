@@ -326,4 +326,103 @@ describe('TextQuery', () => {
             ).toThrow(QueryValidationError);
         });
     });
+
+    describe('text weights (per-token)', () => {
+        it('defaults textWeights to an empty frozen record', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: 'd' });
+            expect(q.textWeights).toEqual({});
+            expect(Object.isFrozen(q.textWeights)).toBe(true);
+        });
+
+        it('lowercases keys when parsing textWeights', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: 'd',
+                textWeights: { Apple: 2, ORANGE: 0.5 },
+            });
+            expect(q.textWeights).toEqual({ apple: 2, orange: 0.5 });
+        });
+
+        it('trims whitespace around textWeights keys', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: 'd',
+                textWeights: { '  apple  ': 2 },
+            });
+            expect(q.textWeights).toEqual({ apple: 2 });
+        });
+
+        it('rejects textWeights keys containing inner whitespace', () => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        textFieldName: 'd',
+                        textWeights: { 'two words': 2 },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('accepts a token weight of 0', () => {
+            const q = new TextQuery({
+                text: 'apple',
+                textFieldName: 'd',
+                textWeights: { apple: 0 },
+            });
+            expect(q.textWeights).toEqual({ apple: 0 });
+            expect(q.buildQuery()).toBe('@d:(apple=>{$weight:0})');
+        });
+
+        it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('rejects token weight %p', (weight) => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'apple',
+                        textFieldName: 'd',
+                        textWeights: { apple: weight },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('renders per-token weights inside the OR list', () => {
+            const q = new TextQuery({
+                text: 'apple orange pear',
+                textFieldName: 'd',
+                textWeights: { apple: 2, orange: 0.5 },
+            });
+            expect(q.buildQuery()).toBe('@d:(apple=>{$weight:2} | orange=>{$weight:0.5} | pear)');
+        });
+
+        it('matches token-weight keys case-insensitively against input text', () => {
+            const q = new TextQuery({
+                text: 'Apple ORANGE pear',
+                textFieldName: 'd',
+                textWeights: { apple: 2, orange: 0.5 },
+            });
+            // Tokens are lowercased before lookup (and before escape).
+            expect(q.buildQuery()).toBe('@d:(apple=>{$weight:2} | orange=>{$weight:0.5} | pear)');
+        });
+
+        it('combines per-token and per-field weights', () => {
+            const q = new TextQuery({
+                text: 'apple pear',
+                textFieldName: { title: 3, body: 1.0 },
+                textWeights: { apple: 2 },
+            });
+            expect(q.buildQuery()).toBe(
+                '(@title:(apple=>{$weight:2} | pear) => { $weight: 3 } | @body:(apple=>{$weight:2} | pear))'
+            );
+        });
+
+        it('does not resolve inherited keys via prototype chain (default textWeights)', () => {
+            const q = new TextQuery({
+                text: 'constructor toString hasOwnProperty',
+                textFieldName: 'd',
+            });
+            // Without prototype-null hardening, 'constructor' would resolve to the
+            // Object constructor and render as garbage. All three tokens must render
+            // bare.
+            expect(q.buildQuery()).toBe('@d:(constructor | tostring | hasownproperty)');
+        });
+    });
 });
