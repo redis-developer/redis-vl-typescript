@@ -443,4 +443,32 @@ describe('TextQuery', () => {
             expect(q.buildQuery()).toBe('@d:(constructor | tostring | hasownproperty)');
         });
     });
+
+    describe('textFieldName property', () => {
+        it('returns a bare string when single field has weight 1.0', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: 'description' });
+            expect(q.textFieldName).toBe('description');
+        });
+
+        it('returns a bare string when a single-field record has weight 1.0 (Python parity)', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: { description: 1.0 } });
+            expect(q.textFieldName).toBe('description');
+        });
+
+        it('returns the record when single field has non-default weight', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: { description: 5 },
+            });
+            expect(q.textFieldName).toEqual({ description: 5 });
+        });
+
+        it('returns the record when multiple fields are configured', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: { title: 1.0, body: 1.0 },
+            });
+            expect(q.textFieldName).toEqual({ title: 1.0, body: 1.0 });
+        });
+    });
 });

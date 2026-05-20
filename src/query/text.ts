@@ -165,8 +165,6 @@ export class TextQuery implements BaseQuery {
     public readonly text: string;
     public readonly fieldWeights: Readonly<Record<string, number>>;
     public readonly textWeights: Readonly<Record<string, number>>;
-    /** @internal — replaced in Task 5 with Python-compat getter */
-    public readonly textFieldName: string;
     public readonly textScorer: TextScorer;
     public readonly filter?: FilterInput;
     public readonly returnFields?: string[];
@@ -179,8 +177,6 @@ export class TextQuery implements BaseQuery {
         this.text = config.text;
         this.fieldWeights = parseFieldWeights(config.textFieldName);
         this.textWeights = parseTextWeights(config.textWeights);
-        const firstField = Object.keys(this.fieldWeights)[0];
-        this.textFieldName = firstField;
         this.textScorer = config.textScorer ?? 'BM25STD';
         this.filter = config.filter;
         this.returnFields = config.returnFields;
@@ -230,5 +226,22 @@ export class TextQuery implements BaseQuery {
 
     buildParams(): Record<string, unknown> {
         return {};
+    }
+
+    /**
+     * Returns the configured text field. A bare string is returned when exactly
+     * one field is configured with weight 1.0. Otherwise returns a copy of the
+     * normalised field-weight record. Mirrors Python's `text_field_name`
+     * property for cross-language compatibility.
+     */
+    get textFieldName(): string | Readonly<Record<string, number>> {
+        const entries = Object.entries(this.fieldWeights);
+        if (entries.length === 1) {
+            const [field, weight] = entries[0];
+            if (weight === 1.0) {
+                return field;
+            }
+        }
+        return { ...this.fieldWeights };
     }
 }
