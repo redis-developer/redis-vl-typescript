@@ -46,3 +46,6 @@ temp/
 # Generated documentation
 website/docs/api/
 
+# Agent planning notes (per AGENTS.md "Files Never Committed")
+.augment/
+
