@@ -11,7 +11,7 @@ Vectorizers convert text into numerical embeddings (vectors) for semantic simila
 Generate embeddings locally using HuggingFace Transformers.js (no API key required):
 
 ```typescript
-import { HuggingFaceVectorizer } from 'redisvl';
+import { HuggingFaceVectorizer } from 'redis-vl';
 
 const vectorizer = new HuggingFaceVectorizer({
     model: 'Xenova/all-MiniLM-L6-v2', // 384 dimensions
@@ -142,7 +142,7 @@ const embedding = await vectorizer.embed('Hello world');
 Handle vectorizer errors when generating embeddings:
 
 ```typescript
-import { VectorizerError } from 'redisvl';
+import { VectorizerError } from 'redis-vl';
 
 try {
     const vectorizer = new HuggingFaceVectorizer({

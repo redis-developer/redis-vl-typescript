@@ -24,6 +24,7 @@ const sidebars: SidebarsConfig = {
                 'user-guide/filters-and-queries',
                 'user-guide/advanced-vector-search',
                 'user-guide/hybrid-search',
+                'user-guide/aggregation',
                 'user-guide/vectorizers',
             ],
         },
@@ -258,6 +259,13 @@ const sidebars: SidebarsConfig = {
             ],
         },
         'faq',
+    ],
+    contributingSidebar: [
+        'contributing/getting-started',
+        'contributing/code-standards',
+        'contributing/testing',
+        'contributing/git-workflow',
+        'contributing/documentation',
     ],
 };
 

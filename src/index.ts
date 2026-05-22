@@ -44,6 +44,8 @@ export type {
     HybridCombine,
     HybridCommand,
 } from './query/hybrid.js';
+export { AggregationQuery, Reducers } from './query/aggregation.js';
+export type { AggregateCommand, SortSpec, LoadField, Reducer } from './query/aggregation.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
 export type { Inclusive, GeoUnit } from './query/filter.js';
 export type {

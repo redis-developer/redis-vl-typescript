@@ -26,7 +26,7 @@ export interface FilterQueryConfig {
  *
  * @example
  * ```typescript
- * import { FilterQuery, Tag, Num } from 'redisvl';
+ * import { FilterQuery, Tag, Num } from 'redis-vl';
  *
  * const q = new FilterQuery({
  *   filter: Tag('brand').eq('nike').and(Num('price').lt(100)),

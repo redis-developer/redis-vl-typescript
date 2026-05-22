@@ -7,7 +7,8 @@ import { randomBytes } from 'crypto';
 import { vectorElementByteLength } from '../redis/utils.js';
 
 /**
- * Redis client type (standalone or cluster)
+ * Redis client type (standalone or cluster) used internally by storage.
+ * Matches the RESP=2 reply shapes this library is implemented against.
  */
 export type RedisClient = RedisClientType | RedisClusterType;
 

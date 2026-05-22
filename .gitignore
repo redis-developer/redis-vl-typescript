@@ -10,6 +10,9 @@ dist/
 build/
 *.tsbuildinfo
 
+# Package tarballs (npm pack output)
+redis-vl-*.tgz
+
 # Coverage
 coverage/
 *.lcov

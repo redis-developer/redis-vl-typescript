@@ -100,6 +100,12 @@ const config: Config = {
                     label: 'Docs',
                 },
                 {
+                    type: 'docSidebar',
+                    sidebarId: 'contributingSidebar',
+                    position: 'left',
+                    label: 'Contributor Guide',
+                },
+                {
                     href: 'https://github.com/redis-developer/redis-vl-typescript',
                     label: 'GitHub',
                     position: 'right',

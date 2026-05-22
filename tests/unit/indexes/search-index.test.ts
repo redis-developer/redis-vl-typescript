@@ -7,6 +7,7 @@ import type { RedisClientType } from 'redis';
 import { RedisVLError, SchemaValidationError } from '../../../src/errors.js';
 import { VectorQuery } from '../../../src/query/vector.js';
 import { TextQuery } from '../../../src/query/text.js';
+import { AggregationQuery, Reducers } from '../../../src/query/aggregation.js';
 
 describe('SearchIndex', () => {
     let schema: IndexSchema;
@@ -43,6 +44,7 @@ describe('SearchIndex', () => {
                 dropIndex: vi.fn(),
                 info: vi.fn(),
                 search: vi.fn(),
+                aggregate: vi.fn(),
             },
             multi: vi.fn().mockReturnValue(mockPipeline),
             withTypeMapping: vi.fn().mockReturnThis(),
@@ -82,6 +84,23 @@ describe('SearchIndex', () => {
             expect(() => {
                 new SearchIndex(schema, null as unknown as RedisClientType);
             }).toThrow(/Must provide a valid Redis client/);
+        });
+
+        it('should throw RedisVLError when the client is configured for RESP=3', () => {
+            const resp3Client = {
+                ...mockClient,
+                options: { RESP: 3 },
+            } as unknown as RedisClientType;
+            expect(() => new SearchIndex(schema, resp3Client)).toThrow(RedisVLError);
+            expect(() => new SearchIndex(schema, resp3Client)).toThrow(/RESP=3/);
+        });
+
+        it('should accept a client whose options omit RESP (default RESP=2)', () => {
+            const defaultClient = {
+                ...mockClient,
+                options: {},
+            } as unknown as RedisClientType;
+            expect(() => new SearchIndex(schema, defaultClient)).not.toThrow();
         });
     });
 
@@ -1361,6 +1380,78 @@ describe('SearchIndex', () => {
                     SCORER: 'TFIDF',
                 })
             );
+        });
+    });
+
+    describe('aggregate', () => {
+        type AggregateFunction = RedisClientType['ft']['aggregate'];
+        type AggregateReply = Awaited<ReturnType<AggregateFunction>>;
+
+        it('preserves array values from TOLIST instead of stringifying them', async () => {
+            const ftAggregate = mockClient.ft.aggregate as MockedFunction<AggregateFunction>;
+            ftAggregate.mockResolvedValue({
+                total: 1,
+                results: [
+                    {
+                        brand: 'acme',
+                        skus: ['a', 'b', 'c'],
+                        revenue: 1625,
+                    },
+                ],
+            } as unknown as AggregateReply);
+
+            const index = new SearchIndex(schema, mockClient);
+            const { results } = await index.aggregate(
+                new AggregationQuery().groupBy('brand', [
+                    Reducers.toList('sku', 'skus'),
+                    Reducers.sum('price', 'revenue'),
+                ])
+            );
+
+            expect(results).toHaveLength(1);
+            expect(results[0].brand).toBe('acme');
+            expect(results[0].skus).toEqual(['a', 'b', 'c']);
+            expect(results[0].revenue).toBe('1625');
+        });
+
+        it('handles Map-shaped rows (RESP3 / MAP type-mapping)', async () => {
+            const ftAggregate = mockClient.ft.aggregate as MockedFunction<AggregateFunction>;
+            const row = new Map<string, unknown>([
+                ['brand', 'omega'],
+                ['skus', ['x', 'y']],
+                ['total', 4],
+            ]);
+            ftAggregate.mockResolvedValue({
+                total: 1,
+                results: [row],
+            } as unknown as AggregateReply);
+
+            const index = new SearchIndex(schema, mockClient);
+            const { results } = await index.aggregate(
+                new AggregationQuery().groupBy('brand', Reducers.toList('sku', 'skus'))
+            );
+
+            expect(results[0].skus).toEqual(['x', 'y']);
+            expect(results[0].total).toBe('4');
+        });
+
+        it('forwards GROUPBY 0 (no properties) to ft.aggregate for global reducers', async () => {
+            const ftAggregate = mockClient.ft.aggregate as MockedFunction<AggregateFunction>;
+            ftAggregate.mockResolvedValue({
+                total: 1,
+                results: [{ avg_price: '275' }],
+            } as unknown as AggregateReply);
+
+            const index = new SearchIndex(schema, mockClient);
+            const { results } = await index.aggregate(
+                new AggregationQuery().groupBy([], Reducers.avg('price', 'avg_price'))
+            );
+
+            expect(results[0].avg_price).toBe('275');
+            const [, , options] = ftAggregate.mock.calls[0];
+            const step = (options!.STEPS as unknown as Array<Record<string, unknown>>)[0];
+            expect('properties' in step).toBe(false);
+            expect(step.type).toBe('GROUPBY');
         });
     });
 });

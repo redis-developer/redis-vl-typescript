@@ -3,8 +3,10 @@
  * Main search index class for managing Redis search indexes.
  */
 
-import type { RedisClientType, RedisClusterType } from 'redis';
 import type { RediSearchSchema } from '@redis/search';
+import type { RedisClientType, RedisClusterType } from 'redis';
+import type { AnyRedisClient } from '../redis/client-types.js';
+import { assertSupportedProtocol } from '../redis/protocol.js';
 import { IndexSchema } from '../schema/schema.js';
 import { buildRedisVLSchemaFromRedisIndexInfo } from '../redis/index-info-parser.js';
 import { BaseStorage, HashStorage, JsonStorage } from '../storage/index.js';
@@ -19,6 +21,7 @@ import type {
 import { VectorQuery } from '../query/vector.js';
 import { VectorRangeQuery } from '../query/range.js';
 import { HybridQuery } from '../query/hybrid.js';
+import type { AggregationQuery } from '../query/aggregation.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 import type { VectorFieldAttrs } from '../schema/fields.js';
 
@@ -163,11 +166,7 @@ export class SearchIndex {
      * @throws {Error} If schema is not a valid IndexSchema instance
      * @throws {Error} If client is not provided
      */
-    constructor(
-        schema: IndexSchema,
-        client: RedisClientType | RedisClusterType,
-        validateOnLoad = false
-    ) {
+    constructor(schema: IndexSchema, client: AnyRedisClient, validateOnLoad = false) {
         if (!(schema instanceof IndexSchema)) {
             throw new RedisVLError('Must provide a valid IndexSchema object');
         }
@@ -176,8 +175,12 @@ export class SearchIndex {
             throw new RedisVLError('Must provide a valid Redis client');
         }
 
+        assertSupportedProtocol(client);
+
         this.schema = schema;
-        this.client = client;
+        // Narrow the publicly-accepted wide client surface to the RESP=2
+        // shape this library is implemented against. See client-types.ts.
+        this.client = client as RedisClientType | RedisClusterType;
         this.validateOnLoad = validateOnLoad;
 
         // Initialize appropriate storage based on storage type
@@ -208,13 +211,14 @@ export class SearchIndex {
      */
     static async fromExisting(
         name: string,
-        client: RedisClientType | RedisClusterType,
+        client: AnyRedisClient,
         validateOnLoad = false
     ): Promise<SearchIndex> {
+        assertSupportedProtocol(client);
+        const ftClient = client as RedisClientType | RedisClusterType;
         let info: Awaited<ReturnType<(RedisClientType | RedisClusterType)['ft']['info']>>;
         try {
-            // Fetch index info from Redis
-            info = await client.ft.info(name);
+            info = await ftClient.ft.info(name);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             throw new RedisVLError(`Failed to load index '${name}' via FT.INFO: ${message}`, {
@@ -533,7 +537,7 @@ export class SearchIndex {
      *
      * @example
      * ```typescript
-     * import { VectorQuery } from 'redisvl';
+     * import { VectorQuery } from 'redis-vl';
      *
      * // Vector similarity search
      * const query = new VectorQuery({
@@ -724,6 +728,69 @@ export class SearchIndex {
         } catch (error) {
             throw new RedisVLError(
                 `Failed to execute hybrid search: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Execute an {@link AggregationQuery} (`FT.AGGREGATE`) against this index.
+     *
+     * Returns the raw aggregate result: a `total` row count and a list of
+     * rows, where each row is a `Record<string, string | string[]>` of field
+     * name to value. GROUPBY/REDUCE/APPLY aliases appear as keys on each row.
+     *
+     * Scalar reducers (`COUNT`, `SUM`, `AVG`, …) yield strings — numeric
+     * casting is the caller's job. List reducers (`TOLIST`) yield
+     * `string[]`, preserving the array structure Redis returns on the wire.
+     *
+     * @example
+     * ```typescript
+     * import { AggregationQuery, Reducers } from 'redis-vl';
+     *
+     * const q = new AggregationQuery('@category:{electronics}')
+     *   .groupBy('@brand', Reducers.sum('price', 'revenue'))
+     *   .sortBy([{ field: 'revenue', direction: 'DESC' }])
+     *   .limit(0, 5);
+     *
+     * const { total, results } = await index.aggregate(q);
+     * for (const row of results) console.log(row.brand, row.revenue);
+     * ```
+     */
+    async aggregate(
+        query: AggregationQuery
+    ): Promise<{ total: number; results: Array<Record<string, string | string[]>> }> {
+        try {
+            const { query: queryString, options } = query.toCommand();
+            const reply = await this.client.ft.aggregate(this.name, queryString, options);
+
+            // node-redis returns each row as a MapReply, which resolves to a
+            // plain object by default or to a real `Map` when the caller has
+            // opted into Map type-mapping via `client.withTypeMapping(...)`.
+            // Handle both shapes. Preserve array values verbatim (TOLIST
+            // returns string[]); coerce scalar non-strings via String() so
+            // numeric reducers come back as strings consistent with the
+            // FT.AGGREGATE wire format.
+            const results: Array<Record<string, string | string[]>> = reply.results.map((row) => {
+                const out: Record<string, string | string[]> = {};
+                const entries: Iterable<[string, unknown]> =
+                    row instanceof Map
+                        ? (row.entries() as Iterable<[string, unknown]>)
+                        : Object.entries(row as Record<string, unknown>);
+                for (const [k, v] of entries) {
+                    if (Array.isArray(v)) {
+                        out[k] = v.map((item) => (typeof item === 'string' ? item : String(item)));
+                    } else {
+                        out[k] = typeof v === 'string' ? v : String(v);
+                    }
+                }
+                return out;
+            });
+
+            return { total: reply.total, results };
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to execute aggregate query: ${error instanceof Error ? error.message : String(error)}`,
                 { cause: error instanceof Error ? error : undefined }
             );
         }

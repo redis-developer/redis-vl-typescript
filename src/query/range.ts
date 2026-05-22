@@ -65,7 +65,7 @@ export interface VectorRangeQueryConfig {
  *
  * @example
  * ```typescript
- * import { VectorRangeQuery, Tag } from 'redisvl';
+ * import { VectorRangeQuery, Tag } from 'redis-vl';
  *
  * const q = new VectorRangeQuery({
  *   vector: embedding,
