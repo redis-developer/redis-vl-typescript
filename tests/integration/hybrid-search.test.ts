@@ -12,6 +12,7 @@ import { createClient, type RedisClientType } from 'redis';
 import { IndexSchema } from '../../src/schema/schema.js';
 import { SearchIndex } from '../../src/indexes/search-index.js';
 import { HybridQuery } from '../../src/query/hybrid.js';
+import { Tag, Num } from '../../src/query/filter.js';
 
 interface Product extends Record<string, unknown> {
     id: string;
@@ -257,6 +258,32 @@ describeHybrid('HybridQuery integration (FT.HYBRID)', () => {
             expect(results.documents.length).toBeGreaterThan(0);
             results.documents.forEach((doc) => {
                 expect(doc.value.category).toBe('furniture');
+            });
+        });
+
+        it('accepts a FilterExpression from the typed filter DSL', async () => {
+            // Same isolation strategy as the string-form test above: a
+            // gibberish text query forces every result through the VSIM
+            // side, so `vsimFilter` becomes the sole gate on the result
+            // set. Among the furniture docs (chair=300, desk=500), only
+            // the chair satisfies price < 400.
+            const q = new HybridQuery({
+                text: 'qqzzgibberishxx',
+                textFieldName: 'description',
+                vector: VEC_DESK,
+                vectorField: 'embedding',
+                vectorMethod: { type: 'KNN', k: 5 },
+                vsimFilter: Tag('category').eq('furniture').and(Num('price').lt(400)),
+                combine: { type: 'RRF' },
+                returnFields: ['title', 'category', 'price'],
+            });
+
+            const results = await index.hybridSearch(q);
+
+            expect(results.documents.length).toBeGreaterThan(0);
+            results.documents.forEach((doc) => {
+                expect(doc.value.category).toBe('furniture');
+                expect(Number(doc.value.price)).toBeLessThan(400);
             });
         });
     });
