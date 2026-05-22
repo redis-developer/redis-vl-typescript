@@ -26,7 +26,7 @@ Combining them, with the right fusion strategy, gives you results that are both 
 ## Quick Start
 
 ```typescript
-import { SearchIndex, IndexSchema, HybridQuery } from 'redisvl';
+import { SearchIndex, IndexSchema, HybridQuery } from 'redis-vl';
 import { createClient } from 'redis';
 
 const client = createClient();
