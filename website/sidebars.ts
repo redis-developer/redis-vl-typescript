@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
                 'user-guide/search-index',
                 'user-guide/filters-and-queries',
                 'user-guide/advanced-vector-search',
+                'user-guide/hybrid-search',
                 'user-guide/aggregation',
                 'user-guide/vectorizers',
             ],

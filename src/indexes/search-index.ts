@@ -11,9 +11,16 @@ import { IndexSchema } from '../schema/schema.js';
 import { buildRedisVLSchemaFromRedisIndexInfo } from '../redis/index-info-parser.js';
 import { BaseStorage, HashStorage, JsonStorage } from '../storage/index.js';
 import { RedisVLError, SchemaValidationError } from '../errors.js';
-import type { BaseQuery, SearchResult, SearchDocument, QueryOptions } from '../query/base.js';
+import type {
+    BaseQuery,
+    SearchResult,
+    SearchDocument,
+    QueryOptions,
+    HybridSearchResult,
+} from '../query/base.js';
 import { VectorQuery } from '../query/vector.js';
 import { VectorRangeQuery } from '../query/range.js';
+import { HybridQuery } from '../query/hybrid.js';
 import type { AggregationQuery } from '../query/aggregation.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 import type { VectorFieldAttrs } from '../schema/fields.js';
@@ -661,6 +668,72 @@ export class SearchIndex {
     }
 
     /**
+     * Execute a hybrid (text + vector) search via Redis' built-in `FT.HYBRID`
+     * command. Score fusion happens server-side — no client-side fusion.
+     *
+     * Requires Redis Open Source 8.4.0+ on the server (FT.HYBRID was
+     * introduced in that release).
+     *
+     * @experimental Built on `client.ft.hybrid()` which `@redis/search` flags
+     * experimental. The reply shape may shift between minor releases.
+     *
+     * @example
+     * ```typescript
+     * import { HybridQuery } from 'redis-vl';
+     *
+     * const q = new HybridQuery({
+     *   text: 'machine learning',
+     *   textFieldName: 'description',
+     *   vector: embedding,
+     *   vectorField: 'embedding',
+     *   combine: { type: 'RRF' },
+     *   vsimFilter: '@brand:{nike}',
+     * });
+     *
+     * const { total, documents, executionTime } = await index.hybridSearch(q);
+     * ```
+     */
+    async hybridSearch<T = Record<string, unknown>>(
+        query: HybridQuery
+    ): Promise<HybridSearchResult<T>> {
+        try {
+            const { options } = query.toCommand();
+
+            // `client.ft.hybrid` is exposed by @redis/search but the type
+            // bundle on RedisClientType doesn't surface it directly.
+            const ft = this.client.ft as unknown as {
+                hybrid: (
+                    name: string,
+                    opts: typeof options
+                ) => Promise<{
+                    totalResults: number;
+                    executionTime: number;
+                    warnings: string[];
+                    results: Array<Record<string, unknown>>;
+                }>;
+            };
+
+            const reply = await ft.hybrid(this.name, options);
+
+            const documents: SearchDocument<T>[] = reply.results.map((row) =>
+                this.mapHybridRow<T>(row, query.combinedScoreAlias)
+            );
+
+            return {
+                total: reply.totalResults,
+                documents,
+                executionTime: reply.executionTime,
+                warnings: reply.warnings,
+            };
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to execute hybrid search: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
      * Execute an {@link AggregationQuery} (`FT.AGGREGATE`) against this index.
      *
      * Returns the raw aggregate result: a `total` row count and a list of
@@ -721,5 +794,31 @@ export class SearchIndex {
                 { cause: error instanceof Error ? error : undefined }
             );
         }
+    }
+
+    /**
+     * Convert a single FT.HYBRID result row into our public SearchDocument
+     * shape. The server returns each row as a flat key/value object that
+     * includes `__key` (the document key), any user-loaded fields, and the
+     * score aliases configured on the query.
+     */
+    private mapHybridRow<T>(
+        row: Record<string, unknown>,
+        combinedScoreAlias: string
+    ): SearchDocument<T> {
+        const id = (row['__key'] ?? '') as string;
+
+        const rawScore = row[combinedScoreAlias] ?? row['__combined_score'] ?? row['__score'];
+        const score =
+            typeof rawScore === 'string' ? parseFloat(rawScore) : (rawScore as number | undefined);
+
+        const value: Record<string, unknown> = {};
+        const scoreKeys = new Set(['__key', combinedScoreAlias, '__combined_score', '__score']);
+        for (const [key, val] of Object.entries(row)) {
+            if (scoreKeys.has(key)) continue;
+            value[key] = val;
+        }
+
+        return { id, value: value as T, score };
     }
 }

@@ -37,6 +37,13 @@ export { CountQuery } from './query/count.js';
 export type { CountQueryConfig } from './query/count.js';
 export { TextQuery } from './query/text.js';
 export type { TextQueryConfig, TextScorer } from './query/text.js';
+export { HybridQuery } from './query/hybrid.js';
+export type {
+    HybridQueryConfig,
+    HybridVectorMethod,
+    HybridCombine,
+    HybridCommand,
+} from './query/hybrid.js';
 export { AggregationQuery, Reducers } from './query/aggregation.js';
 export type { AggregateCommand, SortSpec, LoadField, Reducer } from './query/aggregation.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
@@ -47,6 +54,7 @@ export type {
     SearchDocument,
     QueryOptions,
     FilterInput,
+    HybridSearchResult,
 } from './query/base.js';
 
 // Error exports
