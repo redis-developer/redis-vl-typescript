@@ -229,7 +229,9 @@ export class HybridQuery {
     public readonly textFieldName?: string;
     public readonly vector: number[];
     public readonly vectorField: string;
-    public readonly vectorMethod: HybridVectorMethod;
+    public readonly vectorMethod:
+        | { type: 'KNN'; k: number; efRuntime?: number }
+        | { type: 'RANGE'; radius: number; epsilon?: number };
     public readonly vsimFilter?: FilterInput;
     public readonly postFilter?: string;
     public readonly textScorer?: TextScorer;
@@ -373,7 +375,7 @@ export class HybridQuery {
 
         if (this.noSort) options.NOSORT = true;
 
-        if (this.postFilter !== undefined && this.postFilter !== '') {
+        if (this.postFilter !== undefined) {
             // FT.HYBRID's top-level FILTER uses FT.AGGREGATE expression
             // syntax (`@price < 200`), distinct from the FT.SEARCH filter
             // syntax used by vsimFilter. We pass the user's string through.
@@ -421,7 +423,7 @@ export class HybridQuery {
         if (m.type === 'KNN') {
             const out: { type: 'KNN'; K: number; EF_RUNTIME?: number } = {
                 type: 'KNN',
-                K: m.k ?? 10,
+                K: m.k,
             };
             if (m.efRuntime !== undefined) out.EF_RUNTIME = m.efRuntime;
             return out;
