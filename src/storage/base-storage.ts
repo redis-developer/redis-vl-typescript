@@ -184,10 +184,43 @@ export abstract class BaseStorage {
                 }
                 break;
 
-            case FieldType.GEO:
-                // TODO: Implement geo validation
-                // Geo fields should be in format "longitude,latitude"
+            case FieldType.GEO: {
+                if (typeof value !== 'string') {
+                    throw new SchemaValidationError(
+                        `Field '${fieldName}' should be a string in "longitude,latitude" format but got: ${typeof value}`
+                    );
+                }
+
+                const parts = value.trim().split(',');
+
+                if (parts.length !== 2) {
+                    throw new SchemaValidationError(
+                        `Field '${fieldName}' should be in "longitude,latitude" format but got: "${value}"`
+                    );
+                }
+
+                const longitude = parseFloat(parts[0].trim());
+                const latitude = parseFloat(parts[1].trim());
+
+                if (isNaN(longitude) || isNaN(latitude)) {
+                    throw new SchemaValidationError(
+                        `Field '${fieldName}' contains invalid coordinates. Both longitude and latitude must be valid numbers. Got: "${value}"`
+                    );
+                }
+
+                if (longitude < -180 || longitude > 180) {
+                    throw new SchemaValidationError(
+                        `Field '${fieldName}' longitude must be between -180 and 180, got: ${longitude}`
+                    );
+                }
+
+                if (latitude < -90 || latitude > 90) {
+                    throw new SchemaValidationError(
+                        `Field '${fieldName}' latitude must be between -90 and 90, got: ${latitude}`
+                    );
+                }
                 break;
+            }
         }
     }
 
