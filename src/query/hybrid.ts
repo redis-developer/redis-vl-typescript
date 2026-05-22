@@ -96,7 +96,12 @@ export interface HybridQueryConfig {
     /** Text scorer (defaults to server default `BM25STD`). */
     textScorer?: TextScorer;
 
-    /** Score fusion configuration. When omitted, the server default is used. */
+    /**
+     * Score fusion configuration. Defaults to `{ type: 'RRF' }` (Reciprocal
+     * Rank Fusion) — the library always emits a COMBINE clause so the
+     * combined score is yielded under a stable alias regardless of any
+     * server-side default changes.
+     */
     combine?: HybridCombine;
 
     /** Alias for the SEARCH-side score (`SEARCH ... YIELD_SCORE_AS`). */
@@ -144,11 +149,22 @@ const VECTOR_PARAM_NAME = 'vector';
 
 /**
  * Prefix a bare field name with `@` for the Redis Search field-reference
- * convention. Anything that already starts with `@` or `$` is returned
- * verbatim — the user is presumed to have supplied an explicit reference.
+ * convention. `@field` and `$.json.path` are returned verbatim. A bare
+ * `$name` (no dot) is rejected: it's either a PARAMS-style reference that
+ * doesn't belong in a LOAD/SORTBY slot or a typo of `@name`/`$.name`.
  */
 function prefixFieldRef(name: string): string {
-    return name.startsWith('@') || name.startsWith('$') ? name : `@${name}`;
+    if (name.startsWith('@')) return name;
+    if (name.startsWith('$')) {
+        if (!name.startsWith('$.')) {
+            throw new QueryValidationError(
+                `Field reference '${name}' looks like a parameter ref or typo; ` +
+                    `use '@${name.slice(1)}' for an index field or '$.${name.slice(1)}' for a JSONPath`
+            );
+        }
+        return name;
+    }
+    return `@${name}`;
 }
 
 function assertNonEmptyString(value: string | undefined, label: string): void {
@@ -185,7 +201,9 @@ function validateFields(fields: string[] | undefined, label: string): string[] |
     if (fields === undefined) return undefined;
     return fields.map((field) => {
         assertNonEmptyString(field, label);
-        return field;
+        // Trim during normalization so padded inputs like `' price '` don't
+        // leak into LOAD/SORTBY clauses as `@ price `, which Redis rejects.
+        return field.trim();
     });
 }
 
@@ -198,7 +216,7 @@ function validateSortBy(
         if (sort.direction !== undefined && sort.direction !== 'ASC' && sort.direction !== 'DESC') {
             throw new QueryValidationError('sort direction must be either ASC or DESC');
         }
-        return { ...sort };
+        return { ...sort, field: sort.field.trim() };
     });
 }
 
@@ -207,7 +225,7 @@ function validateSortBy(
  *
  * @example
  * ```typescript
- * import { HybridQuery } from 'redisvl';
+ * import { HybridQuery } from 'redis-vl';
  *
  * const q = new HybridQuery({
  *   text: 'machine learning',

@@ -188,7 +188,7 @@ new HybridQuery({
 `vsimFilter` accepts the same [filter expression DSL](./filters-and-queries#filter-expression-dsl) used by `VectorQuery`, `FilterQuery`, and the other query types. `postFilter` uses a different Redis dialect — pass it as a raw string.
 
 ```typescript
-import { HybridQuery, Tag, Num } from 'redisvl';
+import { HybridQuery, Tag, Num } from 'redis-vl';
 
 new HybridQuery({
     text: 'ergonomic',
@@ -268,7 +268,7 @@ new HybridQuery({
 ## Complete Example
 
 ```typescript
-import { HybridQuery, HuggingFaceVectorizer } from 'redisvl';
+import { HybridQuery, HuggingFaceVectorizer } from 'redis-vl';
 
 const vectorizer = new HuggingFaceVectorizer({
     model: 'Xenova/all-MiniLM-L6-v2',

@@ -183,6 +183,26 @@ describe('HybridQuery', () => {
                     })
             ).toThrow(QueryValidationError);
         });
+
+        it('rejects a bare $name reference (parameter ref or typo) in returnFields', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                returnFields: ['$price'],
+            });
+            expect(() => q.toCommand()).toThrow(/parameter ref or typo/);
+        });
+
+        it('rejects a bare $name reference in sortBy', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                sortBy: [{ field: '$price' }],
+            });
+            expect(() => q.toCommand()).toThrow(/parameter ref or typo/);
+        });
     });
 
     describe('toCommand() — SEARCH clause', () => {
@@ -466,6 +486,21 @@ describe('HybridQuery', () => {
             });
             const { options } = q.toCommand();
             expect(options.LOAD).toEqual(['@__key', '@already_prefixed', '$.json.path']);
+        });
+
+        it('trims whitespace from returnFields and sortBy entries during normalization', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                returnFields: ['  price  '],
+                sortBy: [{ field: '  price  ', direction: 'ASC' }],
+            });
+            const { options } = q.toCommand();
+            expect(options.LOAD).toEqual(['@__key', '@price']);
+            expect(options.SORTBY).toEqual({
+                fields: [{ field: '@price', direction: 'ASC' }],
+            });
         });
 
         it('emits LIMIT with the configured offset and num', () => {

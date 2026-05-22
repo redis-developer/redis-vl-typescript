@@ -679,7 +679,7 @@ export class SearchIndex {
      *
      * @example
      * ```typescript
-     * import { HybridQuery } from 'redisvl';
+     * import { HybridQuery } from 'redis-vl';
      *
      * const q = new HybridQuery({
      *   text: 'machine learning',
