@@ -5,15 +5,11 @@ import { resolveStopwords, type StopwordsInput } from '../utils/stopwords/resolv
 
 const escaper = new TokenEscaper();
 
-const STRIP_LEADING_TRAILING_COMMAS = /^,+|,+$/g;
-const TYPOGRAPHIC_QUOTES = /[“”]/g;
-
 function normalizeToken(token: string): string {
-    return token
-        .trim()
-        .replace(STRIP_LEADING_TRAILING_COMMAS, '')
-        .replace(TYPOGRAPHIC_QUOTES, '')
-        .toLowerCase();
+    let t = token.trim();
+    while (t.startsWith(',')) t = t.slice(1);
+    while (t.endsWith(',')) t = t.slice(0, -1);
+    return t.replaceAll('“', '').replaceAll('”', '').toLowerCase();
 }
 
 /**
@@ -80,64 +76,40 @@ export interface TextQueryConfig {
 }
 
 function parseFieldWeights(spec: string | Record<string, number>): Record<string, number> {
-    if (spec === undefined || spec === null) {
+    if (spec == null || spec === '') {
         throw new QueryValidationError('textFieldName is required');
     }
     if (typeof spec === 'string') {
-        if (spec.length === 0) {
-            throw new QueryValidationError('textFieldName is required');
-        }
-        const single: Record<string, number> = Object.create(null);
-        single[spec] = 1.0;
-        return Object.freeze(single);
+        return { [spec]: 1.0 };
     }
-    if (typeof spec !== 'object' || Array.isArray(spec)) {
-        throw new QueryValidationError(
-            'textFieldName must be a string or a record of field:weight mappings'
-        );
-    }
-    const entries = Object.entries(spec);
-    if (entries.length === 0) {
-        throw new QueryValidationError('textFieldName record must contain at least one field');
-    }
-    const normalized: Record<string, number> = Object.create(null);
-    for (const [field, weight] of entries) {
-        if (typeof field !== 'string' || field.length === 0) {
-            throw new QueryValidationError('textFieldName keys must be non-empty strings');
-        }
-        if (typeof weight !== 'number' || !Number.isFinite(weight) || weight <= 0) {
+    for (const [field, weight] of Object.entries(spec)) {
+        if (!Number.isFinite(weight) || weight <= 0) {
             throw new QueryValidationError(
-                `textFieldName weight for '${field}' must be a finite number > 0, got ${String(weight)}`
+                `textFieldName weight for '${field}' must be a finite number > 0, got ${weight}`
             );
         }
-        normalized[field] = weight;
     }
-    return Object.freeze(normalized);
+    return spec;
 }
 
 function parseTextWeights(weights: Record<string, number> | undefined): Record<string, number> {
-    if (weights === undefined) {
-        return Object.freeze(Object.create(null) as Record<string, number>);
-    }
-    if (weights === null || typeof weights !== 'object' || Array.isArray(weights)) {
-        throw new QueryValidationError('textWeights must be a record of token:weight mappings');
-    }
-    const normalized: Record<string, number> = Object.create(null);
+    const parsed: Record<string, number> = {};
+    if (!weights) return parsed;
     for (const [rawKey, weight] of Object.entries(weights)) {
         const key = rawKey.trim().toLowerCase();
-        if (key.length === 0 || /\s/.test(key)) {
+        if (!key || key.includes(' ')) {
             throw new QueryValidationError(
-                `textWeights keys must be single tokens with no whitespace, got '${rawKey}'`
+                `Only individual words may be weighted. Got { ${rawKey}:${weight} }`
             );
         }
-        if (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0) {
+        if (!Number.isFinite(weight) || weight < 0) {
             throw new QueryValidationError(
-                `textWeights weight for '${key}' must be a finite number >= 0, got ${String(weight)}`
+                `Weights must be a positive number. Got { ${key}:${weight} }`
             );
         }
-        normalized[key] = weight;
+        parsed[key] = weight;
     }
-    return Object.freeze(normalized);
+    return parsed;
 }
 
 /**
@@ -183,18 +155,12 @@ function parseTextWeights(weights: Record<string, number> | undefined): Record<s
 export class TextQuery implements BaseQuery {
     public readonly text: string;
     /**
-     * Per-field weights. Frozen at construction. Iteration follows insertion
-     * order, which determines the order of field clauses in the rendered
-     * query. A single field with weight 1.0 renders identically to passing a
-     * bare string for `textFieldName`.
+     * Per-field weights. Iteration follows insertion order, which determines
+     * the order of field clauses in the rendered query. A single field with
+     * weight 1.0 renders identically to passing a bare string for `textFieldName`.
      */
     public readonly fieldWeights: Readonly<Record<string, number>>;
-    /**
-     * Per-token weights. Keys are normalised to lowercase, whitespace-trimmed
-     * single tokens. Frozen at construction with a null prototype so adversarial
-     * keys (`constructor`, `__proto__`, etc.) cannot resolve via the prototype
-     * chain during render-time lookup.
-     */
+    /** Per-token weights. Keys are normalised to lowercase, whitespace-trimmed single tokens. */
     public readonly textWeights: Readonly<Record<string, number>>;
     public readonly textScorer: TextScorer;
     public readonly filter?: FilterInput;
@@ -226,9 +192,8 @@ export class TextQuery implements BaseQuery {
             if (norm.length === 0) continue;
             const escaped = escaper.escape(norm);
             if (stopwordSet && stopwordSet.has(escaped)) continue;
-            const weight = weights[norm];
-            if (weight !== undefined) {
-                tokens.push(`${escaped}=>{$weight:${weight}}`);
+            if (Object.hasOwn(weights, norm)) {
+                tokens.push(`${escaped}=>{$weight:${weights[norm]}}`);
             } else {
                 tokens.push(escaped);
             }

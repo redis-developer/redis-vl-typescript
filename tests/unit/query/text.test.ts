@@ -300,17 +300,6 @@ describe('TextQuery', () => {
             expect(q.fieldWeights).toEqual({ title: 5.0, body: 1.0 });
         });
 
-        it('freezes fieldWeights to enforce readonly at runtime', () => {
-            const q = new TextQuery({ text: 'hello', textFieldName: { title: 2.0 } });
-            expect(Object.isFrozen(q.fieldWeights)).toBe(true);
-        });
-
-        it('rejects an empty fieldWeights record', () => {
-            expect(() => new TextQuery({ text: 'hello', textFieldName: {} })).toThrow(
-                QueryValidationError
-            );
-        });
-
         it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
             'rejects field weight %p',
             (weight) => {
@@ -348,10 +337,9 @@ describe('TextQuery', () => {
     });
 
     describe('text weights (per-token)', () => {
-        it('defaults textWeights to an empty frozen record', () => {
+        it('defaults textWeights to an empty record', () => {
             const q = new TextQuery({ text: 'hello', textFieldName: 'd' });
             expect(q.textWeights).toEqual({});
-            expect(Object.isFrozen(q.textWeights)).toBe(true);
         });
 
         it('lowercases keys when parsing textWeights', () => {
