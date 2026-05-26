@@ -71,8 +71,8 @@ export interface TextQueryConfig {
  * Full-text search query with optional filter.
  *
  * Tokenises the input on whitespace, normalizes each token (trim, strip
- * leading/trailing commas, strip typographic quotes, lowercase), drops
- * stopwords, escapes Redis Search special characters, and OR-joins the
+ * leading/trailing commas, strip typographic quotes, lowercase), escapes
+ * Redis Search special characters, drops stopwords, and OR-joins the
  * survivors inside the target field. Use `filter` to scope the search to
  * a subset of documents (e.g. by tag or numeric range).
  *
@@ -103,10 +103,6 @@ export class TextQuery implements BaseQuery {
     public readonly stopwords: ReadonlySet<string> | null;
 
     constructor(config: TextQueryConfig) {
-        if (!config.text || config.text.trim() === '') {
-            throw new QueryValidationError('text cannot be empty');
-        }
-
         if (!config.textFieldName) {
             throw new QueryValidationError('textFieldName is required');
         }
@@ -128,14 +124,9 @@ export class TextQuery implements BaseQuery {
         for (const raw of this.text.split(/\s+/)) {
             const norm = normalizeToken(raw);
             if (norm.length === 0) continue;
-            if (stopwordSet && stopwordSet.has(norm)) continue;
-            tokens.push(escaper.escape(norm));
-        }
-
-        if (tokens.length === 0) {
-            throw new QueryValidationError(
-                'text yielded no tokens after normalization and stopword filtering'
-            );
+            const escaped = escaper.escape(norm);
+            if (stopwordSet && stopwordSet.has(escaped)) continue;
+            tokens.push(escaped);
         }
 
         const textClause = `@${this.textFieldName}:(${tokens.join(' | ')})`;

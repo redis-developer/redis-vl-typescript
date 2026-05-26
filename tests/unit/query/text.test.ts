@@ -7,10 +7,12 @@ const textScorers = ['BM25', 'BM25STD', 'TFIDF', 'TFIDF.DOCNORM', 'DISMAX', 'DOC
 
 describe('TextQuery', () => {
     describe('constructor', () => {
-        it('throws if text is empty', () => {
-            expect(() => new TextQuery({ text: '', textFieldName: 'description' })).toThrow(
-                QueryValidationError
-            );
+        it('accepts empty text (Python parity — emits @field:() at buildQuery)', () => {
+            // redis-vl-python does not validate text at construction; empty
+            // or whitespace-only input renders as @field:() and surfaces at
+            // index.search() time as a ResponseError from Redis.
+            const q = new TextQuery({ text: '', textFieldName: 'description' });
+            expect(q.buildQuery()).toBe('@description:()');
         });
 
         it('throws if textFieldName is missing', () => {
@@ -94,10 +96,16 @@ describe('TextQuery', () => {
             expect(q.buildQuery()).toBe('@description:(quick | brown | fox)');
         });
 
-        it('default drops contractions like "don\'t"', () => {
+        it('keeps escaped contractions in the rendered query (Python parity)', () => {
             const q = new TextQuery({ text: "don't run", textFieldName: 'description' });
-            // "don't" is in the NLTK list; only "run" survives.
-            expect(q.buildQuery()).toBe('@description:(run)');
+            // Python at redisvl/query/query.py:1444-1450 escapes tokens
+            // before checking the stopword set. The escaped form (don\'t)
+            // is not in the unescaped NLTK list, so the contraction
+            // survives into the rendered query. Result sets against Redis
+            // are unchanged because Redis tokenizes "don't" on the
+            // apostrophe at index time, so the escaped term matches zero
+            // documents and the OR collapses to just "run".
+            expect(q.buildQuery()).toBe("@description:(don\\'t | run)");
         });
 
         it('lowercases tokens before comparison', () => {
@@ -196,12 +204,22 @@ describe('TextQuery', () => {
             expect(q.buildQuery()).toBe('@description:(the | quick)');
         });
 
-        it('throws at buildQuery() (not constructor) when all tokens are filtered', () => {
+        it('emits @field:() when all tokens are filtered (Python parity)', () => {
+            // Matches redis-vl-python. Redis rejects @d:() at parse time,
+            // so this string is unsearchable — the failure surfaces as
+            // ResponseError from index.search() rather than locally.
             const q = new TextQuery({ text: 'the and is', textFieldName: 'd' });
-            expect(() => q.buildQuery()).toThrow(QueryValidationError);
-            expect(() => q.buildQuery()).toThrow(
-                /text yielded no tokens after normalization and stopword filtering/
-            );
+            expect(q.buildQuery()).toBe('@d:()');
+        });
+
+        it('emits @field:() for comma-only input (Python parity)', () => {
+            const q = new TextQuery({ text: ',,,', textFieldName: 'd', stopwords: null });
+            expect(q.buildQuery()).toBe('@d:()');
+        });
+
+        it('emits @field:() for whitespace-only input (Python parity)', () => {
+            const q = new TextQuery({ text: '   ', textFieldName: 'd', stopwords: null });
+            expect(q.buildQuery()).toBe('@d:()');
         });
 
         it('filter clause still composes correctly when stopwords drop tokens', () => {
