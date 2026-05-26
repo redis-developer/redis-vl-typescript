@@ -230,17 +230,50 @@ const query = new TextQuery({
 const results = await index.search(query);
 ```
 
-Tokens are split on whitespace, escaped, and OR-joined inside the field — so `'machine learning'` becomes `@description:(machine | learning)`. The optional `filter` is combined with the text clause via AND.
+Tokens are split on whitespace, normalized (lowercased, with leading/trailing commas and typographic quotes stripped), filtered against an English stopword list by default, escaped, and OR-joined — so `'The quick fox'` becomes `@description:(quick | fox)`. The optional `filter` is combined with the text clause via AND.
 
-:::note Minimal port
-This is a deliberately minimal first cut. Stopword filtering and per-token/per-field weights from Python redisvl's `TextQuery` are not yet implemented. Tokens are passed through verbatim after escaping.
+:::note Parity gap
+Per-token and per-field weights from Python redisvl's `TextQuery` are not yet implemented. Stopword filtering matches Python (English by default).
 :::
+
+#### Stopword filtering
+
+```typescript
+import { TextQuery, stopwords } from 'redis-vl';
+
+// Default: the embedded NLTK English list (198 words) strips common stopwords.
+new TextQuery({ text: 'the quick brown fox', textFieldName: 'description' }).buildQuery();
+// → '@description:(quick | brown | fox)'
+
+// Opt out:
+new TextQuery({
+    text: 'the quick',
+    textFieldName: 'description',
+    stopwords: null,
+}).buildQuery();
+// → '@description:(the | quick)'
+
+// Extend the default list:
+new TextQuery({
+    text: 'foo bar quick',
+    textFieldName: 'description',
+    stopwords: new Set([...stopwords.english, 'foo']),
+}).buildQuery();
+// → '@description:(bar | quick)'
+```
+
+The `stopwords` namespace is also available via the subpath import:
+
+```typescript
+import { english } from 'redis-vl/stopwords';
+```
 
 | Option | Notes |
 | ------ | ----- |
 | `text`, `textFieldName` | Required. |
 | `textScorer` | One of `'BM25'`, `'BM25STD'` (default), `'TFIDF'`, `'TFIDF.DOCNORM'`, `'DISMAX'`, `'DOCSCORE'`. |
 | `filter` | Combined with the text clause via AND. |
+| `stopwords` | `'english'` (default), a custom `string[]` / `Set<string>`, or `null` to disable. Custom entries are stored as-is — pass lowercase to match the (already lowercased) normalized tokens. |
 | `returnFields`, `numResults`, `offset`, `limit` | Standard. |
 
 ## Using Filters with VectorQuery
