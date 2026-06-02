@@ -5,11 +5,15 @@ import { resolveStopwords, type StopwordsInput } from '../utils/stopwords/resolv
 
 const escaper = new TokenEscaper();
 
+const STRIP_LEADING_TRAILING_COMMAS = /^,+|,+$/g;
+const TYPOGRAPHIC_QUOTES = /[“”]/g;
+
 function normalizeToken(token: string): string {
-    let t = token.trim();
-    while (t.startsWith(',')) t = t.slice(1);
-    while (t.endsWith(',')) t = t.slice(0, -1);
-    return t.replaceAll('“', '').replaceAll('”', '').toLowerCase();
+    return token
+        .trim()
+        .replace(STRIP_LEADING_TRAILING_COMMAS, '')
+        .replace(TYPOGRAPHIC_QUOTES, '')
+        .toLowerCase();
 }
 
 /**
