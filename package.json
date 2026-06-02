@@ -29,6 +29,10 @@
         "type": "git",
         "url": "git+https://github.com/redis-developer/redis-vl-typescript.git"
     },
+    "homepage": "https://redis-developer.github.io/redis-vl-typescript/",
+    "bugs": {
+        "url": "https://github.com/redis-developer/redis-vl-typescript/issues"
+    },
     "keywords": [
         "redis",
         "redis-vl",

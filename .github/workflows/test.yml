@@ -8,6 +8,7 @@ on:
     schedule:
         - cron: '0 2 * * *' # 2 AM UTC nightly
     workflow_dispatch:
+    workflow_call: # allow other workflows (e.g. release) to require this suite
 
 jobs:
     test:

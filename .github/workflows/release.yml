@@ -1,0 +1,92 @@
+name: Release
+
+on:
+    push:
+        branches:
+            - main
+
+# Default to least privilege; jobs that need more opt in below.
+permissions:
+    contents: read
+
+jobs:
+    release-please:
+        name: Release PR / Release
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write # create release commits/tags
+            pull-requests: write # open/update the release PR
+            issues: write # label the release PR (labels use the issues API)
+        outputs:
+            release_created: ${{ steps.release.outputs.release_created }}
+            version: ${{ steps.release.outputs.version }}
+        steps:
+            # release-please reads release-please-config.json and
+            # .release-please-manifest.json. Prerelease mode (`prerelease: true`,
+            # `prerelease-type: beta`) makes it cut -beta versions. To graduate
+            # to GA later, drop those fields (optionally a one-time
+            # `release-as` to pin the first stable version).
+            - name: Run release-please
+              id: release
+              uses: googleapis/release-please-action@v4
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+    # When a release is cut, run the same CI that guards every other change
+    # before anything is published. These reuse the canonical test/lint
+    # workflows (via workflow_call) instead of duplicating their steps.
+    test:
+        name: Test Suite
+        needs: release-please
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
+        uses: ./.github/workflows/test.yml
+
+    lint:
+        name: Lint
+        needs: release-please
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
+        uses: ./.github/workflows/lint.yml
+
+    publish:
+        name: Publish to npm
+        needs: [release-please, test, lint]
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write # required for npm provenance
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v5
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 24
+                  registry-url: 'https://registry.npmjs.org'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            # Prereleases (version contains a hyphen, e.g. 0.1.0-beta.2) publish
+            # under the `beta` dist-tag so `npm i redis-vl` keeps resolving to
+            # the latest stable; GA versions publish to `latest`.
+            - name: Determine npm dist-tag
+              id: disttag
+              run: |
+                  if [[ "${{ needs.release-please.outputs.version }}" == *-* ]]; then
+                    echo "tag=beta" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "tag=latest" >> "$GITHUB_OUTPUT"
+                  fi
+
+            # Access is public via package.json publishConfig; the package is
+            # unscoped so no --access flag is needed.
+            - name: Publish to npm
+              run: npm publish --provenance --tag ${{ steps.disttag.outputs.tag }}
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -92,7 +92,7 @@ Additionally, check if we are following best-practices by using these repositori
 When the implementation is done and validated:
 
 1. Do a git diff.
-2. Present the proposed commit message (see [contributor guide → Commit Format](./website/docs/contributing/git-workflow.md#commit-format)).
+2. Present the proposed commit message. **Always use [Conventional Commits](https://www.conventionalcommits.org/)** (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, etc.; `feat!:` / `BREAKING CHANGE:` for breaking changes) — see [contributor guide → Commit Format](./website/docs/contributing/git-workflow.md#commit-format). Releases are automated with `release-please`, which derives the version bump and changelog directly from these commit messages, so the prefix and breaking-change markers must be accurate.
 3. Create the message strictly from `git diff` and choose verbs that match what the diff actually does to the repo. Describe only what's actually about to land. If something was tried during the session and then reverted or replaced, it never happened as far as the commit message is concerned. Intra-session backtracking prior to making a commit is irrelevant to the commit message - only the net delta against HEAD matters.
 
 Agents must **NEVER** run any of these commands:
