@@ -353,5 +353,25 @@ describe('Query types integration (FilterQuery / CountQuery / VectorRangeQuery /
             expect(results.total).toBe(1);
             expect(results.documents[0].value.title).toBe('Monitor screen 27 inch');
         });
+
+        it('default stopwords let stopword-bearing queries still match documents', async () => {
+            // "for" is in the default English stopword list and gets stripped
+            // before the query reaches Redis, leaving just "programming".
+            const q = new TextQuery({
+                text: 'for programming',
+                textFieldName: 'title',
+                returnFields: ['title'],
+            });
+
+            // Verify the rendered query: stopword filtering must actually run
+            // here. Without this assertion, the test passes whether or not
+            // filtering happens — Redis would match the document on
+            // 'programming' alone in either case.
+            expect(q.buildQuery()).toBe('@title:(programming)');
+
+            const results = await index.search(q);
+            const titles = results.documents.map((d) => d.value.title);
+            expect(titles).toContain('Laptop computer for programming');
+        });
     });
 });
