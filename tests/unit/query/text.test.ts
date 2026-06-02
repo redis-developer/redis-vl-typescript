@@ -334,6 +334,34 @@ describe('TextQuery', () => {
                     })
             ).toThrow(QueryValidationError);
         });
+
+        it('rejects an empty record for textFieldName', () => {
+            expect(() => new TextQuery({ text: 'hello', textFieldName: {} })).toThrow(
+                /at least one field/
+            );
+        });
+
+        it('rejects an empty-string field name', () => {
+            expect(() => new TextQuery({ text: 'hello', textFieldName: { '': 5 } })).toThrow(
+                /non-empty strings/
+            );
+        });
+
+        it('defensively copies the field-weight record so post-construction mutation cannot leak', () => {
+            const source = { title: 5, body: 1.0 };
+            const q = new TextQuery({ text: 'quick fox', textFieldName: source });
+            source.title = 999;
+            // The query is unaffected by the later mutation of the source object.
+            expect(q.fieldWeights).toEqual({ title: 5, body: 1.0 });
+            expect(q.buildQuery()).toBe(
+                '(@title:(quick | fox) => { $weight: 5 } | @body:(quick | fox))'
+            );
+        });
+
+        it('freezes the stored field-weight record', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: { title: 5 } });
+            expect(Object.isFrozen(q.fieldWeights)).toBe(true);
+        });
     });
 
     describe('text weights (per-token)', () => {
@@ -369,6 +397,36 @@ describe('TextQuery', () => {
                         textWeights: { 'two words': 2 },
                     })
             ).toThrow(QueryValidationError);
+        });
+
+        it.each([
+            ['tab', 'two\twords'],
+            ['newline', 'two\nwords'],
+        ])('rejects textWeights keys containing a %s', (_label, key) => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        textFieldName: 'd',
+                        textWeights: { [key]: 2 },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('stores a __proto__ weight key as own data without polluting the prototype', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: 'd',
+                // Computed key creates an own '__proto__' property rather than
+                // invoking the special object-literal prototype setter.
+                textWeights: { ['__proto__']: 5 } as Record<string, number>,
+            });
+            // The record has no prototype, so the key lands as own data and
+            // Object.prototype is never touched.
+            expect(Object.getPrototypeOf(q.textWeights)).toBeNull();
+            expect(Object.hasOwn(q.textWeights, '__proto__')).toBe(true);
+            expect(Object.isFrozen(q.textWeights)).toBe(true);
+            expect(q.buildQuery()).toBe('@d:(hello)');
         });
 
         it('accepts a token weight of 0', () => {

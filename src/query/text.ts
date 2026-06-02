@@ -79,41 +79,60 @@ export interface TextQueryConfig {
     stopwords?: StopwordsInput;
 }
 
-function parseFieldWeights(spec: string | Record<string, number>): Record<string, number> {
+function parseFieldWeights(
+    spec: string | Record<string, number>
+): Readonly<Record<string, number>> {
     if (spec == null || spec === '') {
         throw new QueryValidationError('textFieldName is required');
     }
+    // Defensively copy into a null-prototype record so a caller mutating their
+    // config object after construction cannot alter this query, and so a field
+    // named `__proto__` cannot pollute Object.prototype.
+    const normalized: Record<string, number> = Object.create(null);
     if (typeof spec === 'string') {
-        return { [spec]: 1.0 };
+        normalized[spec] = 1.0;
+        return Object.freeze(normalized);
     }
-    for (const [field, weight] of Object.entries(spec)) {
+    const entries = Object.entries(spec);
+    if (entries.length === 0) {
+        throw new QueryValidationError('textFieldName record must contain at least one field');
+    }
+    for (const [field, weight] of entries) {
+        if (field.length === 0) {
+            throw new QueryValidationError('textFieldName keys must be non-empty strings');
+        }
         if (!Number.isFinite(weight) || weight <= 0) {
             throw new QueryValidationError(
                 `textFieldName weight for '${field}' must be a finite number > 0, got ${weight}`
             );
         }
+        normalized[field] = weight;
     }
-    return spec;
+    return Object.freeze(normalized);
 }
 
-function parseTextWeights(weights: Record<string, number> | undefined): Record<string, number> {
-    const parsed: Record<string, number> = {};
-    if (!weights) return parsed;
+function parseTextWeights(
+    weights: Record<string, number> | undefined
+): Readonly<Record<string, number>> {
+    // null-prototype record: assigning a key like `__proto__` stores an own
+    // property instead of invoking the prototype setter (prototype pollution).
+    const parsed: Record<string, number> = Object.create(null);
+    if (!weights) return Object.freeze(parsed);
     for (const [rawKey, weight] of Object.entries(weights)) {
         const key = rawKey.trim().toLowerCase();
-        if (!key || key.includes(' ')) {
+        if (!key || /\s/.test(key)) {
             throw new QueryValidationError(
                 `Only individual words may be weighted. Got { ${rawKey}:${weight} }`
             );
         }
         if (!Number.isFinite(weight) || weight < 0) {
             throw new QueryValidationError(
-                `Weights must be a positive number. Got { ${key}:${weight} }`
+                `Weights must be a non-negative number. Got { ${key}:${weight} }`
             );
         }
         parsed[key] = weight;
     }
-    return parsed;
+    return Object.freeze(parsed);
 }
 
 /**
