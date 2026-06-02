@@ -93,6 +93,11 @@ function parseFieldWeights(
         normalized[spec] = 1.0;
         return Object.freeze(normalized);
     }
+    if (Array.isArray(spec)) {
+        throw new QueryValidationError(
+            'textFieldName must be a string or a record of field:weight mappings'
+        );
+    }
     const entries = Object.entries(spec);
     if (entries.length === 0) {
         throw new QueryValidationError('textFieldName record must contain at least one field');

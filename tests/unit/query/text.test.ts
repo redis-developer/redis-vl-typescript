@@ -324,15 +324,18 @@ describe('TextQuery', () => {
             ).toThrow(QueryValidationError);
         });
 
-        it('rejects an array for textFieldName', () => {
+        it('rejects an array for textFieldName via the explicit array guard', () => {
+            // A numeric array would otherwise slip past weight validation
+            // (Object.entries([1]) -> [['0', 1]]), so this asserts the
+            // Array.isArray guard, not the weight-type path.
             expect(
                 () =>
                     new TextQuery({
                         text: 'hello',
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        textFieldName: ['title'] as any,
+                        textFieldName: [1] as any,
                     })
-            ).toThrow(QueryValidationError);
+            ).toThrow(/string or a record/);
         });
 
         it('rejects an empty record for textFieldName', () => {
