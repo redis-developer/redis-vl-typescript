@@ -26,11 +26,13 @@ jobs:
             # `prerelease-type: beta`) makes it cut -beta versions. To graduate
             # to GA later, drop those fields (optionally a one-time
             # `release-as` to pin the first stable version).
+            # PAT so the release PR triggers required CI; GITHUB_TOKEN-created
+            # PRs don't. Falls back to GITHUB_TOKEN when the secret is unset.
             - name: Run release-please
               id: release
               uses: googleapis/release-please-action@v4
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
+                  token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
     # When a release is cut, run the same CI that guards every other change
     # before anything is published. These reuse the canonical test/lint
