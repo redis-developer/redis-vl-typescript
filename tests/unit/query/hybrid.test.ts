@@ -527,6 +527,17 @@ describe('HybridQuery', () => {
             expect(options.LIMIT).toEqual({ offset: 5, count: 25 });
         });
 
+        it('lets chainable paging override the emitted LIMIT count', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                numResults: 25,
+            }).paging(10, 5);
+            const { options } = q.toCommand();
+            expect(options.LIMIT).toEqual({ offset: 10, count: 5 });
+        });
+
         it('defaults LIMIT to offset=0, count=10', () => {
             const q = new HybridQuery({
                 text: 'foo',

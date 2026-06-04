@@ -335,7 +335,7 @@ export class HybridQuery extends BaseVectorQuery {
             SEARCH: this.buildSearchClause(),
             VSIM: this.buildVsimClause(),
             PARAMS: { [VECTOR_PARAM_NAME]: encodeVectorBuffer(this.vector, this.datatype) },
-            LIMIT: { offset: this.offset ?? 0, count: this.numResults },
+            LIMIT: { offset: this.offset ?? 0, count: this.limit ?? this.numResults },
         };
 
         // Always yield a known combined score alias so result mapping is stable

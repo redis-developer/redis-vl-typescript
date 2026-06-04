@@ -192,12 +192,12 @@ export abstract class BaseQuery {
 
     /** Add a sort field. */
     sortBy(field: string, options: SortByOptions = {}): this {
-        validateNonEmptyString(field, 'sort field');
+        const normalizedField = validateNonEmptyString(field, 'sort field');
         const direction = options.direction ?? 'ASC';
         if (direction !== 'ASC' && direction !== 'DESC') {
             throw new QueryValidationError('sort direction must be either ASC or DESC');
         }
-        this._sortFields.push({ field, direction });
+        this._sortFields.push({ field: normalizedField, direction });
         return this;
     }
 
@@ -254,12 +254,13 @@ export abstract class BaseVectorQuery extends BaseQuery {
             throw new QueryValidationError('Vector cannot be empty');
         }
 
-        if (!config.vectorField || config.vectorField.trim() === '') {
+        const vectorField = typeof config.vectorField === 'string' ? config.vectorField.trim() : '';
+        if (!vectorField) {
             throw new QueryValidationError('vectorField is required');
         }
 
         this._vector = [...config.vector];
-        this._vectorField = config.vectorField;
+        this._vectorField = vectorField;
         this._normalizeDistance = config.normalizeDistance ?? false;
 
         try {
@@ -310,15 +311,15 @@ export abstract class BaseVectorQuery extends BaseQuery {
 
 function validateStringList(values: string[], label: string): string[] {
     return values.map((value) => {
-        validateNonEmptyString(value, label);
-        return value;
+        return validateNonEmptyString(value, label);
     });
 }
 
-function validateNonEmptyString(value: string, label: string): void {
+function validateNonEmptyString(value: string, label: string): string {
     if (typeof value !== 'string' || value.trim() === '') {
         throw new QueryValidationError(`${label} cannot be empty`);
     }
+    return value.trim();
 }
 
 function validateOffset(offset: number): void {

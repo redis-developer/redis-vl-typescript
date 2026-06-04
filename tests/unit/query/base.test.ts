@@ -113,6 +113,15 @@ describe('BaseQuery', () => {
         expect(query.skipDecodeFields).toBeUndefined();
     });
 
+    it('should trim return fields and skip-decode fields before storing them', () => {
+        const query = new TestQuery().setReturnFields([' title ', ' $.path '], {
+            skipDecode: [' embedding '],
+        });
+
+        expect(query.returnFields).toEqual(['title', '$.path']);
+        expect(query.skipDecodeFields).toEqual(['embedding']);
+    });
+
     it('should reject invalid return and skip-decode fields', () => {
         expect(() => new TestQuery().setReturnFields(['title', ''])).toThrow(QueryValidationError);
         expect(() =>
@@ -135,7 +144,9 @@ describe('BaseQuery', () => {
     });
 
     it('should collect sort fields', () => {
-        const query = new TestQuery().sortBy('price').sortBy('created_at', { direction: 'DESC' });
+        const query = new TestQuery().sortBy('price').sortBy(' created_at ', {
+            direction: 'DESC',
+        });
 
         expect(query.sortFields).toEqual([
             { field: 'price', direction: 'ASC' },
@@ -155,7 +166,7 @@ describe('BaseVectorQuery', () => {
     it('should initialize vector state and common query state', () => {
         const query = new TestVectorQuery({
             vector: [0.1, 0.2, 0.3],
-            vectorField: 'embedding',
+            vectorField: ' embedding ',
             datatype: VectorDataType.FLOAT64,
             normalizeDistance: true,
             filter: '@category:{books}',
