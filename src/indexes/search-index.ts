@@ -532,7 +532,9 @@ export class SearchIndex {
      * Execute a search query against the index
      *
      * @param query - Query object (VectorQuery, FilterQuery, etc.)
-     * @param options - Optional query execution options
+     * @param options - Optional query execution options. If both query-level
+     *   `query.sortBy(...)` and `options.sortBy` are supplied, `options.sortBy`
+     *   takes precedence to preserve the existing `search()` API.
      * @returns Search results with documents and scores
      *
      * @example
@@ -600,21 +602,31 @@ export class SearchIndex {
             }
 
             // Add pagination
-            if (query.limit !== undefined || query.offset !== undefined) {
-                const offset = query.offset ?? 0;
-                const limit = query.limit ?? 10;
+            const queryLimit = query.getLimit();
+            const queryOffset = query.getOffset();
+            if (queryLimit !== undefined || queryOffset !== undefined) {
+                const offset = queryOffset ?? 0;
+                const limit = queryLimit ?? 10;
                 searchOptions.LIMIT = { from: offset, size: limit };
             }
 
-            // Add sorting if specified
+            // Add sorting if specified on the query. FT.SEARCH accepts one
+            // SORTBY clause, so use the first collected sort field.
+            if (query.sortFields.length > 0) {
+                const [sortField] = query.sortFields;
+                searchOptions.SORTBY = {
+                    BY: sortField.field,
+                    DIRECTION: sortField.direction,
+                };
+            }
+
+            // Add sorting if specified in execution options. These options
+            // preserve the historical API and override query-level sorting.
             if (options?.sortBy) {
-                searchOptions.SORTBY = options.sortBy;
-                if (options.sortOrder) {
-                    searchOptions.SORTBY = {
-                        BY: options.sortBy,
-                        DIRECTION: options.sortOrder,
-                    };
-                }
+                searchOptions.SORTBY = {
+                    BY: options.sortBy,
+                    ...(options.sortOrder ? { DIRECTION: options.sortOrder } : {}),
+                };
             }
 
             // CountQuery (and any other consumer) can opt into NOCONTENT to

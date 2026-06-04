@@ -1,4 +1,4 @@
-import { renderFilter, type BaseQuery, type FilterInput } from './base.js';
+import { BaseQuery, renderFilter, type FilterInput } from './base.js';
 
 /**
  * Configuration for {@link CountQuery}.
@@ -22,21 +22,34 @@ export interface CountQueryConfig {
  * const total = (await index.search(new CountQuery({ filter: Tag('brand').eq('nike') }))).total;
  * ```
  */
-export class CountQuery implements BaseQuery {
-    public readonly filter?: FilterInput;
-    public readonly offset = 0;
-    public readonly limit = 0;
+export class CountQuery extends BaseQuery {
     public readonly noContent = true;
 
     constructor(config: CountQueryConfig = {}) {
-        this.filter = config.filter;
+        super({ filter: config.filter });
+    }
+
+    get filter(): FilterInput | undefined {
+        return this.queryFilter;
+    }
+
+    get offset(): number {
+        return 0;
+    }
+
+    get limit(): number {
+        return 0;
+    }
+
+    getOffset(): number {
+        return 0;
+    }
+
+    getLimit(): number {
+        return 0;
     }
 
     buildQuery(): string {
         return renderFilter(this.filter);
-    }
-
-    buildParams(): Record<string, unknown> {
-        return {};
     }
 }

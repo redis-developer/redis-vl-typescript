@@ -48,13 +48,19 @@ export { AggregationQuery, Reducers } from './query/aggregation.js';
 export type { AggregateCommand, SortSpec, LoadField, Reducer } from './query/aggregation.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
 export type { Inclusive, GeoUnit } from './query/filter.js';
+export { BaseQuery, BaseVectorQuery } from './query/base.js';
 export type {
-    BaseQuery,
+    BaseQueryConfig,
+    BaseVectorQueryConfig,
+    ReturnFieldsOptions,
     SearchResult,
     SearchDocument,
     QueryOptions,
     FilterInput,
     HybridSearchResult,
+    SortByOptions,
+    SortDirection,
+    SortField,
 } from './query/base.js';
 
 // Error exports

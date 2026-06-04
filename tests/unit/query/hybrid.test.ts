@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { BaseQuery, BaseVectorQuery } from '../../../src/query/base.js';
 import { HybridQuery } from '../../../src/query/hybrid.js';
 import { Tag, Num } from '../../../src/query/filter.js';
 import { QueryValidationError } from '../../../src/errors.js';
@@ -17,6 +18,17 @@ describe('HybridQuery', () => {
                         vectorField: 'embedding',
                     })
             ).toThrow(QueryValidationError);
+        });
+
+        it('extends the shared query base classes', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+            });
+
+            expect(q).toBeInstanceOf(BaseVectorQuery);
+            expect(q).toBeInstanceOf(BaseQuery);
         });
 
         it('throws when vectorField is missing', () => {
@@ -513,6 +525,17 @@ describe('HybridQuery', () => {
             });
             const { options } = q.toCommand();
             expect(options.LIMIT).toEqual({ offset: 5, count: 25 });
+        });
+
+        it('lets chainable paging override the emitted LIMIT count', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                numResults: 25,
+            }).paging(10, 5);
+            const { options } = q.toCommand();
+            expect(options.LIMIT).toEqual({ offset: 10, count: 5 });
         });
 
         it('defaults LIMIT to offset=0, count=10', () => {

@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { BaseQuery } from '../../../src/query/base.js';
 import { CountQuery } from '../../../src/query/count.js';
 import { Tag } from '../../../src/query/filter.js';
 
 describe('CountQuery', () => {
     it('renders a wildcard query when no filter is supplied', () => {
         const q = new CountQuery();
+        expect(q).toBeInstanceOf(BaseQuery);
         expect(q.buildQuery()).toBe('*');
     });
 
@@ -25,6 +27,8 @@ describe('CountQuery', () => {
         const q = new CountQuery({ filter: Tag('brand').eq('nike') });
         expect(q.offset).toBe(0);
         expect(q.limit).toBe(0);
+        expect(q.getOffset()).toBe(0);
+        expect(q.getLimit()).toBe(0);
     });
 
     it('exposes a noContent flag so callers can wire up FT.SEARCH NOCONTENT', () => {
