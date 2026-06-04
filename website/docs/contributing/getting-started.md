@@ -20,6 +20,55 @@ cd redis-vl-typescript
 npm install
 ```
 
+## Local Redis for ad-hoc development
+
+If you need a Redis instance for ad-hoc work — running example scripts, recipe smoke tests, or exploring with `redis-cli` — use the bundled Compose stack. This is **not** used by `npm test` (the test suite spawns its own Testcontainers-managed Redis); it is purely a developer convenience.
+
+### Lifecycle
+
+```bash
+docker compose up -d              # start (port 6379)
+docker compose ps                  # confirm Up (healthy)
+docker compose logs -f redis       # tail logs
+docker compose down                # stop and remove
+```
+
+The stack is ephemeral — every `docker compose up` starts with an empty Redis.
+
+### Connection
+
+Host-side code (Node scripts, recipes, an installed `redis-cli`) connects with:
+
+```text
+redis://localhost:6379
+```
+
+Inside-container access uses `docker compose exec redis redis-cli ...` (used in the verification commands below).
+
+### Verifying search is loaded
+
+```bash
+docker compose exec redis redis-cli PING                # PONG
+docker compose exec redis redis-cli MODULE LIST         # entry with name "search"
+docker compose exec redis redis-cli FT._LIST            # (empty array)
+```
+
+### End-to-end search smoke
+
+```bash
+docker compose exec redis redis-cli FT.CREATE idx:smoke ON HASH PREFIX 1 doc: SCHEMA title TEXT
+docker compose exec redis redis-cli HSET doc:1 title "hello world"
+docker compose exec redis redis-cli FT.SEARCH idx:smoke "hello"
+```
+
+### Port conflict
+
+If port `6379` is already in use, change the host-side port in `compose.yml` (e.g. `"16379:6379"`) and connect to the new host port.
+
+### Coexistence with `npm test`
+
+The Testcontainers test container gets a dynamic host port and a different label (`com.redis.redisvl.test=true` vs `com.redis.redisvl.dev=true`), so this stack can run simultaneously with `npm test` without interference.
+
 ## Development
 
 This project follows a **test-driven development (TDD)** workflow. Tests come first; implementation follows.
