@@ -159,7 +159,7 @@ function parseTextWeights(
  *
  * @example Single-field, default weights
  * ```typescript
- * import { TextQuery, Tag } from 'redis-vl';
+ * import { TextQuery } from 'redis-vl';
  *
  * const q = new TextQuery({
  *   text: 'machine learning',

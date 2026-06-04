@@ -255,9 +255,11 @@ exactly one field is provided with weight 1.0, the output is identical to
 passing a string for `textFieldName`.
 
 **Per-token weights.** Pass a `textWeights` record to bias specific tokens
-within the query. Keys are matched case-insensitively against the
-normalised query tokens; values must be finite numbers `>= 0` (zero is
-allowed and suppresses that token's scoring contribution).
+within the query. Keys are matched case-insensitively against the **escaped**
+query token (Python parity), so a key containing Redis special characters
+(e.g. `wi-fi`, `c++`) will not match — its weight is silently dropped, just as
+in Python. Values must be finite numbers `>= 0` (zero is allowed and
+suppresses that token's scoring contribution).
 
 ```typescript
 const q = new TextQuery({

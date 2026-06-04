@@ -16,9 +16,9 @@ describe('TextQuery', () => {
         });
 
         it('throws if textFieldName is missing', () => {
-            expect(() => new TextQuery({ text: 'hello' } as any)).toThrow(
-                /textFieldName is required/
-            );
+            const construct = () => new TextQuery({ text: 'hello' } as any);
+            expect(construct).toThrow(QueryValidationError);
+            expect(construct).toThrow(/textFieldName is required/);
         });
 
         it('defaults numResults to 10', () => {
