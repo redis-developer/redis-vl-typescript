@@ -1,19 +1,18 @@
-import { renderFilter, type BaseQuery, type FilterInput } from './base.js';
+import {
+    BaseVectorQuery,
+    renderFilter,
+    type BaseVectorQueryConfig,
+    type FilterInput,
+} from './base.js';
 import { VectorDataType, VectorDistanceMetric } from '../schema/types.js';
-import { QueryValidationError, SchemaValidationError } from '../errors.js';
-import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
+import { QueryValidationError } from '../errors.js';
+import { encodeVectorBuffer } from '../redis/utils.js';
 import type { HybridPolicy } from './vector.js';
 
 /**
  * Configuration for {@link VectorRangeQuery}.
  */
-export interface VectorRangeQueryConfig {
-    /** Query vector. */
-    vector: number[];
-
-    /** Vector field name to search against. */
-    vectorField: string;
-
+export interface VectorRangeQueryConfig extends BaseVectorQueryConfig {
     /**
      * Maximum allowed vector distance for results.
      *
@@ -76,29 +75,15 @@ export interface VectorRangeQueryConfig {
  * const results = await index.search(q);
  * ```
  */
-export class VectorRangeQuery implements BaseQuery {
-    public readonly vector: number[];
-    public readonly vectorField: string;
+export class VectorRangeQuery extends BaseVectorQuery {
     public readonly distanceThreshold: number;
-    public readonly filter?: FilterInput;
-    public readonly returnFields?: string[];
     public readonly distanceMetric: VectorDistanceMetric;
-    public readonly datatype: VectorDataType;
-    public readonly offset?: number;
-    public readonly limit?: number;
     public readonly scoreAlias: string;
     public readonly hybridPolicy?: HybridPolicy;
     public readonly batchSize?: number;
-    public readonly normalizeDistance: boolean;
 
     constructor(config: VectorRangeQueryConfig) {
-        if (!config.vector || config.vector.length === 0) {
-            throw new QueryValidationError('Vector cannot be empty');
-        }
-
-        if (!config.vectorField) {
-            throw new QueryValidationError('vectorField is required');
-        }
+        super(config);
 
         if (config.distanceThreshold !== undefined && config.distanceThreshold < 0) {
             throw new QueryValidationError('distanceThreshold must be non-negative');
@@ -119,26 +104,11 @@ export class VectorRangeQuery implements BaseQuery {
             }
         }
 
-        this.vector = config.vector;
-        this.vectorField = config.vectorField;
         this.distanceThreshold = config.distanceThreshold ?? 0.2;
-        this.filter = config.filter;
-        this.returnFields = config.returnFields;
         this.distanceMetric = config.distanceMetric ?? VectorDistanceMetric.COSINE;
-        try {
-            this.datatype = normalizeVectorDataType(config.datatype);
-        } catch (error) {
-            if (error instanceof SchemaValidationError) {
-                throw new QueryValidationError(error.message);
-            }
-            throw error;
-        }
-        this.offset = config.offset;
-        this.limit = config.limit;
         this.scoreAlias = config.scoreAlias ?? 'vector_distance';
         this.hybridPolicy = config.hybridPolicy;
         this.batchSize = config.batchSize;
-        this.normalizeDistance = config.normalizeDistance ?? false;
     }
 
     buildQuery(): string {
@@ -153,6 +123,7 @@ export class VectorRangeQuery implements BaseQuery {
 
     buildParams(): Record<string, unknown> {
         const params: Record<string, unknown> = {
+            ...super.buildParams(),
             vector: encodeVectorBuffer(this.vector, this.datatype),
             distance_threshold: this.distanceThreshold,
         };

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { BaseQuery } from '../../../src/query/base.js';
 import { TextQuery } from '../../../src/query/text.js';
 import { Tag } from '../../../src/query/filter.js';
 import { QueryValidationError } from '../../../src/errors.js';
@@ -12,6 +13,7 @@ describe('TextQuery', () => {
             // or whitespace-only input renders as @field:() and surfaces at
             // index.search() time as a ResponseError from Redis.
             const q = new TextQuery({ text: '', textFieldName: 'description' });
+            expect(q).toBeInstanceOf(BaseQuery);
             expect(q.buildQuery()).toBe('@description:()');
         });
 

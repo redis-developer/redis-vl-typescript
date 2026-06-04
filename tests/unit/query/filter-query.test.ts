@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { BaseQuery } from '../../../src/query/base.js';
 import { FilterQuery } from '../../../src/query/filter-query.js';
 import { Tag, Num } from '../../../src/query/filter.js';
 
 describe('FilterQuery', () => {
     it('renders a wildcard query when no filter is supplied', () => {
         const q = new FilterQuery();
+        expect(q).toBeInstanceOf(BaseQuery);
         expect(q.buildQuery()).toBe('*');
     });
 

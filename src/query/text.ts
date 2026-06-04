@@ -1,4 +1,4 @@
-import { renderFilter, type BaseQuery, type FilterInput } from './base.js';
+import { BaseQuery, renderFilter, type FilterInput } from './base.js';
 import { TokenEscaper } from '../utils/token-escaper.js';
 import { QueryValidationError } from '../errors.js';
 import { resolveStopwords, type StopwordsInput } from '../utils/stopwords/resolve.js';
@@ -91,15 +91,11 @@ export interface TextQueryConfig {
  * const results = await index.search(q);
  * ```
  */
-export class TextQuery implements BaseQuery {
+export class TextQuery extends BaseQuery {
     public readonly text: string;
     public readonly textFieldName: string;
     public readonly textScorer: TextScorer;
-    public readonly filter?: FilterInput;
-    public readonly returnFields?: string[];
     public readonly numResults: number;
-    public readonly offset?: number;
-    public readonly limit?: number;
     public readonly stopwords: ReadonlySet<string> | null;
 
     constructor(config: TextQueryConfig) {
@@ -107,15 +103,30 @@ export class TextQuery implements BaseQuery {
             throw new QueryValidationError('textFieldName is required');
         }
 
+        const numResults = config.numResults ?? 10;
+        super({
+            filter: config.filter,
+            returnFields: config.returnFields,
+            offset: config.offset,
+            limit: config.limit ?? numResults,
+        });
         this.text = config.text;
         this.textFieldName = config.textFieldName;
         this.textScorer = config.textScorer ?? 'BM25STD';
-        this.filter = config.filter;
-        this.returnFields = config.returnFields;
-        this.numResults = config.numResults ?? 10;
-        this.offset = config.offset;
-        this.limit = config.limit ?? this.numResults;
+        this.numResults = numResults;
         this.stopwords = resolveStopwords(config.stopwords);
+    }
+
+    get filter(): FilterInput | undefined {
+        return this.queryFilter;
+    }
+
+    get offset(): number | undefined {
+        return this.queryOffset;
+    }
+
+    get limit(): number | undefined {
+        return this.queryLimit;
     }
 
     buildQuery(): string {
