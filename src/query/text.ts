@@ -59,9 +59,13 @@ export interface TextQueryConfig {
 
     /**
      * Per-token weight map. Keys are individual words (no inner whitespace) and
-     * are matched case-insensitively against the lowercased query tokens. Values
-     * must be finite numbers >= 0. A weight of 0 effectively suppresses scoring
-     * for that token. When omitted, no per-token weighting is applied.
+     * are matched case-insensitively against the escaped query token (Python
+     * parity). A key containing Redis special chars (e.g. `wi-fi`, `c++`) will
+     * therefore NOT match — the escaped token differs from the un-escaped key —
+     * so its weight is silently dropped, mirroring Python's
+     * `_tokenize_and_escape_query`. Values must be finite numbers >= 0. A weight
+     * of 0 effectively suppresses scoring for that token. When omitted, no
+     * per-token weighting is applied.
      */
     textWeights?: Record<string, number>;
 
@@ -220,8 +224,8 @@ export class TextQuery implements BaseQuery {
             if (norm.length === 0) continue;
             const escaped = escaper.escape(norm);
             if (stopwordSet && stopwordSet.has(escaped)) continue;
-            if (Object.hasOwn(weights, norm)) {
-                tokens.push(`${escaped}=>{$weight:${weights[norm]}}`);
+            if (Object.hasOwn(weights, escaped)) {
+                tokens.push(`${escaped}=>{$weight:${weights[escaped]}}`);
             } else {
                 tokens.push(escaped);
             }

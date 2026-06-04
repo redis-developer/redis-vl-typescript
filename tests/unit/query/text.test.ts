@@ -462,6 +462,20 @@ describe('TextQuery', () => {
             expect(q.buildQuery()).toBe('@d:(apple=>{$weight:2} | orange=>{$weight:0.5} | pear)');
         });
 
+        it('silently drops the per-token weight for a token with a special char (Python parity)', () => {
+            // Weights are looked up against the ESCAPED token, mirroring Python's
+            // _tokenize_and_escape_query (query.py:1431). The escaped form ('wi\\-fi')
+            // does not match the un-escaped weight key ('wi-fi'), so the weight is
+            // silently dropped and the token renders bare — exactly as in Python.
+            const q = new TextQuery({
+                text: 'wi-fi',
+                textFieldName: 'd',
+                textWeights: { 'wi-fi': 2 },
+                stopwords: null,
+            });
+            expect(q.buildQuery()).toBe('@d:(wi\\-fi)');
+        });
+
         it('matches token-weight keys case-insensitively against input text', () => {
             const q = new TextQuery({
                 text: 'Apple ORANGE pear',
