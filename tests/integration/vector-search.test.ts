@@ -21,6 +21,7 @@ describe('Vector Search Integration', () => {
         // Create vectorizer
         vectorizer = new HuggingFaceVectorizer({
             model: 'Xenova/all-MiniLM-L6-v2',
+            cacheDir: process.env.HF_CACHE_DIR,
         });
 
         // Create schema for product search
@@ -484,6 +485,7 @@ describe('Vector Search with JSON Storage Integration', () => {
         // Create vectorizer
         vectorizer = new HuggingFaceVectorizer({
             model: 'Xenova/all-MiniLM-L6-v2',
+            cacheDir: process.env.HF_CACHE_DIR,
         });
 
         // Create schema for product search with JSON storage

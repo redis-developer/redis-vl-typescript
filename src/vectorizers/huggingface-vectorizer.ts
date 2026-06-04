@@ -42,6 +42,12 @@ export interface HuggingFaceConfig {
      * Default: true
      */
     normalize?: boolean;
+
+    /**
+     * Directory for cached model files. Defaults to a transformers.js path
+     * inside node_modules, which a reinstall wipes.
+     */
+    cacheDir?: string;
 }
 
 /**
@@ -81,7 +87,8 @@ export interface HuggingFaceConfig {
  * ```
  */
 export class HuggingFaceVectorizer extends BaseVectorizer {
-    private readonly config: Required<HuggingFaceConfig>;
+    private readonly config: Required<Omit<HuggingFaceConfig, 'cacheDir'>> &
+        Pick<HuggingFaceConfig, 'cacheDir'>;
     private pipelineInstance: any = null;
     private modelDims: number | null = null;
 
@@ -99,6 +106,7 @@ export class HuggingFaceVectorizer extends BaseVectorizer {
             dtype: config.dtype ?? 'fp32',
             pooling: config.pooling ?? 'mean',
             normalize: config.normalize ?? true,
+            cacheDir: config.cacheDir,
         };
     }
 
@@ -117,6 +125,7 @@ export class HuggingFaceVectorizer extends BaseVectorizer {
             this.pipelineInstance = await pipeline('feature-extraction', this.config.model, {
                 device: this.config.device,
                 dtype: this.config.dtype,
+                cache_dir: this.config.cacheDir,
             });
 
             return this.pipelineInstance;
