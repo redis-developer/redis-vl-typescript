@@ -27,6 +27,8 @@ describe('CountQuery', () => {
         const q = new CountQuery({ filter: Tag('brand').eq('nike') });
         expect(q.offset).toBe(0);
         expect(q.limit).toBe(0);
+        expect(q.getOffset()).toBe(0);
+        expect(q.getLimit()).toBe(0);
     });
 
     it('exposes a noContent flag so callers can wire up FT.SEARCH NOCONTENT', () => {

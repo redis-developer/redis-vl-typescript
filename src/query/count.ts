@@ -41,6 +41,14 @@ export class CountQuery extends BaseQuery {
         return 0;
     }
 
+    getOffset(): number {
+        return 0;
+    }
+
+    getLimit(): number {
+        return 0;
+    }
+
     buildQuery(): string {
         return renderFilter(this.filter);
     }
