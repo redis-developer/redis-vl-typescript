@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { BaseQuery, BaseVectorQuery } from '../../../src/query/base.js';
 import { VectorQuery } from '../../../src/query/vector.js';
 import { QueryValidationError } from '../../../src/errors.js';
 import { VectorDataType, VectorDistanceMetric } from '../../../src/schema/types.js';
@@ -14,6 +15,8 @@ describe('VectorQuery', () => {
             });
 
             expect(query).toBeInstanceOf(VectorQuery);
+            expect(query).toBeInstanceOf(BaseVectorQuery);
+            expect(query).toBeInstanceOf(BaseQuery);
             expect(query.numResults).toBe(10);
             expect(query.vectorField).toBe('embedding');
             expect(query.returnFields).toEqual(['title', 'score']);
@@ -176,6 +179,16 @@ describe('VectorQuery', () => {
             expect(query.offset).toBe(20);
             expect(query.limit).toBe(10);
         });
+
+        it('should support chainable paging updates', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+            }).paging(30, 15);
+
+            expect(query.offset).toBe(30);
+            expect(query.limit).toBe(15);
+        });
     });
 
     describe('returnFields', () => {
@@ -196,6 +209,30 @@ describe('VectorQuery', () => {
             });
 
             expect(query.returnFields).toBeUndefined();
+        });
+
+        it('should support chainable return field updates with skip-decode fields', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+            }).setReturnFields(['title', 'embedding'], { skipDecode: 'embedding' });
+
+            expect(query.returnFields).toEqual(['title', 'embedding']);
+            expect(query.skipDecodeFields).toEqual(['embedding']);
+        });
+    });
+
+    describe('filter updates', () => {
+        it('should support chainable filter updates', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+            }).setFilter('@category:{books}');
+
+            expect(query.filter).toBe('@category:{books}');
+            expect(query.buildQuery()).toBe(
+                '(@category:{books})=>[KNN 10 @embedding $vector AS vector_distance]'
+            );
         });
     });
 
