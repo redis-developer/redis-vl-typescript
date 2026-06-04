@@ -623,13 +623,10 @@ export class SearchIndex {
             // Add sorting if specified in execution options. These options
             // preserve the historical API and override query-level sorting.
             if (options?.sortBy) {
-                searchOptions.SORTBY = options.sortBy;
-                if (options.sortOrder) {
-                    searchOptions.SORTBY = {
-                        BY: options.sortBy,
-                        DIRECTION: options.sortOrder,
-                    };
-                }
+                searchOptions.SORTBY = {
+                    BY: options.sortBy,
+                    ...(options.sortOrder ? { DIRECTION: options.sortOrder } : {}),
+                };
             }
 
             // CountQuery (and any other consumer) can opt into NOCONTENT to

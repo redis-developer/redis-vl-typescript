@@ -1429,6 +1429,29 @@ describe('SearchIndex', () => {
                 })
             );
         });
+
+        it('should pass options.sortBy as an object when no sort order is supplied', async () => {
+            const ftSearch = mockClient.ft.search as MockedFunction<SearchFunction>;
+            ftSearch.mockResolvedValue({
+                total: 0,
+                documents: [],
+            } as Awaited<ReturnType<SearchFunction>>);
+
+            const index = new SearchIndex(schema, mockClient);
+            await index.search(new FilterQuery(), {
+                sortBy: 'id',
+            });
+
+            expect(ftSearch).toHaveBeenCalledWith(
+                'redisvl-test-index',
+                '*',
+                expect.objectContaining({
+                    SORTBY: {
+                        BY: 'id',
+                    },
+                })
+            );
+        });
     });
 
     describe('aggregate', () => {
