@@ -29,8 +29,12 @@ export interface TextQueryConfig {
     /** Free-text query. Tokenised on whitespace, normalized (lowercase, comma + curly-quote strip), stopword-filtered, then OR-joined. */
     text: string;
 
-    /** Indexed text field to search against. */
-    textFieldName: string;
+    /**
+     * Indexed text field to search against. Pass a string to search a single
+     * field, or a `Record<field, weight>` to search multiple fields with
+     * per-field weighting. Weights must be finite numbers > 0.
+     */
+    textFieldName: string | Record<string, number>;
 
     /**
      * Scorer to apply when ranking results. Defaults to `BM25STD`.
@@ -54,6 +58,18 @@ export interface TextQueryConfig {
     limit?: number;
 
     /**
+     * Per-token weight map. Keys are individual words (no inner whitespace) and
+     * are matched case-insensitively against the escaped query token (Python
+     * parity). A key containing Redis special chars (e.g. `wi-fi`, `c++`) will
+     * therefore NOT match — the escaped token differs from the un-escaped key —
+     * so its weight is silently dropped, mirroring Python's
+     * `_tokenize_and_escape_query`. Values must be finite numbers >= 0. A weight
+     * of 0 effectively suppresses scoring for that token. When omitted, no
+     * per-token weighting is applied.
+     */
+    textWeights?: Record<string, number>;
+
+    /**
      * Stopwords to drop before OR-joining tokens.
      *
      * - `'english'` (default): use the embedded NLTK English list (198 words, BSD-3-Clause Snowball).
@@ -67,6 +83,67 @@ export interface TextQueryConfig {
     stopwords?: StopwordsInput;
 }
 
+function parseFieldWeights(
+    spec: string | Record<string, number>
+): Readonly<Record<string, number>> {
+    if (spec == null || spec === '') {
+        throw new QueryValidationError('textFieldName is required');
+    }
+    // Defensively copy into a null-prototype record so a caller mutating their
+    // config object after construction cannot alter this query, and so a field
+    // named `__proto__` cannot pollute Object.prototype.
+    const normalized: Record<string, number> = Object.create(null);
+    if (typeof spec === 'string') {
+        normalized[spec] = 1.0;
+        return Object.freeze(normalized);
+    }
+    if (Array.isArray(spec)) {
+        throw new QueryValidationError(
+            'textFieldName must be a string or a record of field:weight mappings'
+        );
+    }
+    const entries = Object.entries(spec);
+    if (entries.length === 0) {
+        throw new QueryValidationError('textFieldName record must contain at least one field');
+    }
+    for (const [field, weight] of entries) {
+        if (field.length === 0) {
+            throw new QueryValidationError('textFieldName keys must be non-empty strings');
+        }
+        if (!Number.isFinite(weight) || weight <= 0) {
+            throw new QueryValidationError(
+                `textFieldName weight for '${field}' must be a finite number > 0, got ${weight}`
+            );
+        }
+        normalized[field] = weight;
+    }
+    return Object.freeze(normalized);
+}
+
+function parseTextWeights(
+    weights: Record<string, number> | undefined
+): Readonly<Record<string, number>> {
+    // null-prototype record: assigning a key like `__proto__` stores an own
+    // property instead of invoking the prototype setter (prototype pollution).
+    const parsed: Record<string, number> = Object.create(null);
+    if (!weights) return Object.freeze(parsed);
+    for (const [rawKey, weight] of Object.entries(weights)) {
+        const key = rawKey.trim().toLowerCase();
+        if (!key || /\s/.test(key)) {
+            throw new QueryValidationError(
+                `Only individual words may be weighted. Got { ${rawKey}:${weight} }`
+            );
+        }
+        if (!Number.isFinite(weight) || weight < 0) {
+            throw new QueryValidationError(
+                `Weights must be a non-negative number. Got { ${key}:${weight} }`
+            );
+        }
+        parsed[key] = weight;
+    }
+    return Object.freeze(parsed);
+}
+
 /**
  * Full-text search query with optional filter.
  *
@@ -76,24 +153,47 @@ export interface TextQueryConfig {
  * survivors inside the target field. Use `filter` to scope the search to
  * a subset of documents (e.g. by tag or numeric range).
  *
- * **Note:** per-field and per-token weights from Python's
- * `redisvl.query.TextQuery` are not yet ported.
+ * Supports per-token weighting via `textWeights` and per-field weighting by
+ * passing a `Record<field, weight>` to `textFieldName`. Both render using
+ * Redis Search's `=> { $weight: N }` syntax (dialect 2).
  *
- * @example
+ * @example Single-field, default weights
  * ```typescript
- * import { TextQuery, Tag } from 'redis-vl';
+ * import { TextQuery } from 'redis-vl';
  *
  * const q = new TextQuery({
  *   text: 'machine learning',
  *   textFieldName: 'description',
- *   filter: Tag('category').eq('tech'),
  * });
- * const results = await index.search(q);
+ * ```
+ *
+ * @example Multi-field weighted
+ * ```typescript
+ * new TextQuery({
+ *   text: 'machine learning',
+ *   textFieldName: { title: 5.0, body: 1.0 },
+ * });
+ * ```
+ *
+ * @example Per-token weighted
+ * ```typescript
+ * new TextQuery({
+ *   text: 'apple orange pear',
+ *   textFieldName: 'description',
+ *   textWeights: { apple: 2.0, orange: 0.5 },
+ * });
  * ```
  */
 export class TextQuery implements BaseQuery {
     public readonly text: string;
-    public readonly textFieldName: string;
+    /**
+     * Per-field weights. Iteration follows insertion order, which determines
+     * the order of field clauses in the rendered query. A single field with
+     * weight 1.0 renders identically to passing a bare string for `textFieldName`.
+     */
+    public readonly fieldWeights: Readonly<Record<string, number>>;
+    /** Per-token weights. Keys are normalised to lowercase, whitespace-trimmed single tokens. */
+    public readonly textWeights: Readonly<Record<string, number>>;
     public readonly textScorer: TextScorer;
     public readonly filter?: FilterInput;
     public readonly returnFields?: string[];
@@ -103,12 +203,9 @@ export class TextQuery implements BaseQuery {
     public readonly stopwords: ReadonlySet<string> | null;
 
     constructor(config: TextQueryConfig) {
-        if (!config.textFieldName) {
-            throw new QueryValidationError('textFieldName is required');
-        }
-
         this.text = config.text;
-        this.textFieldName = config.textFieldName;
+        this.fieldWeights = parseFieldWeights(config.textFieldName);
+        this.textWeights = parseTextWeights(config.textWeights);
         this.textScorer = config.textScorer ?? 'BM25STD';
         this.filter = config.filter;
         this.returnFields = config.returnFields;
@@ -120,16 +217,34 @@ export class TextQuery implements BaseQuery {
 
     buildQuery(): string {
         const stopwordSet = this.stopwords;
+        const weights = this.textWeights;
         const tokens: string[] = [];
         for (const raw of this.text.split(/\s+/)) {
             const norm = normalizeToken(raw);
             if (norm.length === 0) continue;
             const escaped = escaper.escape(norm);
             if (stopwordSet && stopwordSet.has(escaped)) continue;
-            tokens.push(escaped);
+            if (Object.hasOwn(weights, escaped)) {
+                tokens.push(`${escaped}=>{$weight:${weights[escaped]}}`);
+            } else {
+                tokens.push(escaped);
+            }
         }
 
-        const textClause = `@${this.textFieldName}:(${tokens.join(' | ')})`;
+        const orList = tokens.join(' | ');
+
+        const fieldClauses: string[] = [];
+        for (const [field, weight] of Object.entries(this.fieldWeights)) {
+            if (weight === 1.0) {
+                fieldClauses.push(`@${field}:(${orList})`);
+            } else {
+                fieldClauses.push(`@${field}:(${orList}) => { $weight: ${weight} }`);
+            }
+        }
+
+        const textClause =
+            fieldClauses.length === 1 ? fieldClauses[0] : `(${fieldClauses.join(' | ')})`;
+
         const filterStr = renderFilter(this.filter);
         if (filterStr === '*') {
             return textClause;
@@ -139,5 +254,22 @@ export class TextQuery implements BaseQuery {
 
     buildParams(): Record<string, unknown> {
         return {};
+    }
+
+    /**
+     * Returns the configured text field. A bare string is returned when exactly
+     * one field is configured with weight 1.0. Otherwise returns a copy of the
+     * normalised field-weight record. Mirrors Python's `text_field_name`
+     * property for cross-language compatibility.
+     */
+    get textFieldName(): string | Readonly<Record<string, number>> {
+        const entries = Object.entries(this.fieldWeights);
+        if (entries.length === 1) {
+            const [field, weight] = entries[0];
+            if (weight === 1.0) {
+                return field;
+            }
+        }
+        return { ...this.fieldWeights };
     }
 }

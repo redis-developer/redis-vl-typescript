@@ -16,7 +16,9 @@ describe('TextQuery', () => {
         });
 
         it('throws if textFieldName is missing', () => {
-            expect(() => new TextQuery({ text: 'hello' } as any)).toThrow(QueryValidationError);
+            const construct = () => new TextQuery({ text: 'hello' } as any);
+            expect(construct).toThrow(QueryValidationError);
+            expect(construct).toThrow(/textFieldName is required/);
         });
 
         it('defaults numResults to 10', () => {
@@ -80,6 +82,51 @@ describe('TextQuery', () => {
                 textFieldName: 'description',
             });
             expect(q.buildQuery()).toBe('@description:(quick | fox)');
+        });
+
+        it('renders a single field with weight 1.0 without a $weight clause', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { description: 1.0 },
+            });
+            expect(q.buildQuery()).toBe('@description:(quick | fox)');
+        });
+
+        it('renders a single field with non-default weight using $weight syntax', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { description: 5 },
+            });
+            expect(q.buildQuery()).toBe('@description:(quick | fox) => { $weight: 5 }');
+        });
+
+        it('renders multiple fields OR-joined with mixed weights', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { title: 3, body: 1.0 },
+            });
+            expect(q.buildQuery()).toBe(
+                '(@title:(quick | fox) => { $weight: 3 } | @body:(quick | fox))'
+            );
+        });
+
+        it('renders multiple fields with all weights 1.0 wrapped in outer parens', () => {
+            const q = new TextQuery({
+                text: 'quick fox',
+                textFieldName: { title: 1.0, body: 1.0 },
+            });
+            expect(q.buildQuery()).toBe('(@title:(quick | fox) | @body:(quick | fox))');
+        });
+
+        it('combines multi-field weighted text clause with a filter via AND', () => {
+            const q = new TextQuery({
+                text: 'engineer',
+                textFieldName: { title: 2, summary: 1.0 },
+                filter: Tag('active').eq('true'),
+            });
+            expect(q.buildQuery()).toBe(
+                '(@active:{true} (@title:(engineer) => { $weight: 2 } | @summary:(engineer)))'
+            );
         });
     });
 
@@ -236,6 +283,257 @@ describe('TextQuery', () => {
             expect(stopwords.english).toBeInstanceOf(Set);
             expect(stopwords.english.size).toBe(198);
             expect(stopwords.english.has('the')).toBe(true);
+        });
+    });
+
+    describe('field weights', () => {
+        it('normalises a string textFieldName to weight 1.0 in fieldWeights', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: 'description' });
+            expect(q.fieldWeights).toEqual({ description: 1.0 });
+        });
+
+        it('accepts a Record<string, number> for textFieldName', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: { title: 5.0, body: 1.0 },
+            });
+            expect(q.fieldWeights).toEqual({ title: 5.0, body: 1.0 });
+        });
+
+        it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+            'rejects field weight %p',
+            (weight) => {
+                expect(
+                    () =>
+                        new TextQuery({
+                            text: 'hello',
+                            textFieldName: { title: weight },
+                        })
+                ).toThrow(QueryValidationError);
+            }
+        );
+
+        it('rejects a non-numeric field weight', () => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        textFieldName: { title: 'five' as any },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('rejects an array for textFieldName via the explicit array guard', () => {
+            // A numeric array would otherwise slip past weight validation
+            // (Object.entries([1]) -> [['0', 1]]), so this asserts the
+            // Array.isArray guard, not the weight-type path.
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        textFieldName: [1] as any,
+                    })
+            ).toThrow(/string or a record/);
+        });
+
+        it('rejects an empty record for textFieldName', () => {
+            expect(() => new TextQuery({ text: 'hello', textFieldName: {} })).toThrow(
+                /at least one field/
+            );
+        });
+
+        it('rejects an empty-string field name', () => {
+            expect(() => new TextQuery({ text: 'hello', textFieldName: { '': 5 } })).toThrow(
+                /non-empty strings/
+            );
+        });
+
+        it('defensively copies the field-weight record so post-construction mutation cannot leak', () => {
+            const source = { title: 5, body: 1.0 };
+            const q = new TextQuery({ text: 'quick fox', textFieldName: source });
+            source.title = 999;
+            // The query is unaffected by the later mutation of the source object.
+            expect(q.fieldWeights).toEqual({ title: 5, body: 1.0 });
+            expect(q.buildQuery()).toBe(
+                '(@title:(quick | fox) => { $weight: 5 } | @body:(quick | fox))'
+            );
+        });
+
+        it('freezes the stored field-weight record', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: { title: 5 } });
+            expect(Object.isFrozen(q.fieldWeights)).toBe(true);
+        });
+    });
+
+    describe('text weights (per-token)', () => {
+        it('defaults textWeights to an empty record', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: 'd' });
+            expect(q.textWeights).toEqual({});
+        });
+
+        it('lowercases keys when parsing textWeights', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: 'd',
+                textWeights: { Apple: 2, ORANGE: 0.5 },
+            });
+            expect(q.textWeights).toEqual({ apple: 2, orange: 0.5 });
+        });
+
+        it('trims whitespace around textWeights keys', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: 'd',
+                textWeights: { '  apple  ': 2 },
+            });
+            expect(q.textWeights).toEqual({ apple: 2 });
+        });
+
+        it('rejects textWeights keys containing inner whitespace', () => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        textFieldName: 'd',
+                        textWeights: { 'two words': 2 },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it.each([
+            ['tab', 'two\twords'],
+            ['newline', 'two\nwords'],
+        ])('rejects textWeights keys containing a %s', (_label, key) => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'hello',
+                        textFieldName: 'd',
+                        textWeights: { [key]: 2 },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('stores a __proto__ weight key as own data without polluting the prototype', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: 'd',
+                // Computed key creates an own '__proto__' property rather than
+                // invoking the special object-literal prototype setter.
+                textWeights: { ['__proto__']: 5 } as Record<string, number>,
+            });
+            // The record has no prototype, so the key lands as own data and
+            // Object.prototype is never touched.
+            expect(Object.getPrototypeOf(q.textWeights)).toBeNull();
+            expect(Object.hasOwn(q.textWeights, '__proto__')).toBe(true);
+            expect(Object.isFrozen(q.textWeights)).toBe(true);
+            expect(q.buildQuery()).toBe('@d:(hello)');
+        });
+
+        it('accepts a token weight of 0', () => {
+            const q = new TextQuery({
+                text: 'apple',
+                textFieldName: 'd',
+                textWeights: { apple: 0 },
+            });
+            expect(q.textWeights).toEqual({ apple: 0 });
+            expect(q.buildQuery()).toBe('@d:(apple=>{$weight:0})');
+        });
+
+        it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('rejects token weight %p', (weight) => {
+            expect(
+                () =>
+                    new TextQuery({
+                        text: 'apple',
+                        textFieldName: 'd',
+                        textWeights: { apple: weight },
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('renders per-token weights inside the OR list', () => {
+            const q = new TextQuery({
+                text: 'apple orange pear',
+                textFieldName: 'd',
+                textWeights: { apple: 2, orange: 0.5 },
+            });
+            expect(q.buildQuery()).toBe('@d:(apple=>{$weight:2} | orange=>{$weight:0.5} | pear)');
+        });
+
+        it('silently drops the per-token weight for a token with a special char (Python parity)', () => {
+            // Weights are looked up against the ESCAPED token, mirroring Python's
+            // _tokenize_and_escape_query (query.py:1431). The escaped form ('wi\\-fi')
+            // does not match the un-escaped weight key ('wi-fi'), so the weight is
+            // silently dropped and the token renders bare — exactly as in Python.
+            const q = new TextQuery({
+                text: 'wi-fi',
+                textFieldName: 'd',
+                textWeights: { 'wi-fi': 2 },
+                stopwords: null,
+            });
+            expect(q.buildQuery()).toBe('@d:(wi\\-fi)');
+        });
+
+        it('matches token-weight keys case-insensitively against input text', () => {
+            const q = new TextQuery({
+                text: 'Apple ORANGE pear',
+                textFieldName: 'd',
+                textWeights: { apple: 2, orange: 0.5 },
+            });
+            // Tokens are lowercased before lookup (and before escape).
+            expect(q.buildQuery()).toBe('@d:(apple=>{$weight:2} | orange=>{$weight:0.5} | pear)');
+        });
+
+        it('combines per-token and per-field weights', () => {
+            const q = new TextQuery({
+                text: 'apple pear',
+                textFieldName: { title: 3, body: 1.0 },
+                textWeights: { apple: 2 },
+            });
+            expect(q.buildQuery()).toBe(
+                '(@title:(apple=>{$weight:2} | pear) => { $weight: 3 } | @body:(apple=>{$weight:2} | pear))'
+            );
+        });
+
+        it('does not resolve inherited keys via prototype chain (default textWeights)', () => {
+            const q = new TextQuery({
+                text: 'constructor toString hasOwnProperty',
+                textFieldName: 'd',
+            });
+            // Without prototype-null hardening, 'constructor' would resolve to the
+            // Object constructor and render as garbage. All three tokens must render
+            // bare.
+            expect(q.buildQuery()).toBe('@d:(constructor | tostring | hasownproperty)');
+        });
+    });
+
+    describe('textFieldName property', () => {
+        it('returns a bare string when single field has weight 1.0', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: 'description' });
+            expect(q.textFieldName).toBe('description');
+        });
+
+        it('returns a bare string when a single-field record has weight 1.0 (Python parity)', () => {
+            const q = new TextQuery({ text: 'hello', textFieldName: { description: 1.0 } });
+            expect(q.textFieldName).toBe('description');
+        });
+
+        it('returns the record when single field has non-default weight', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: { description: 5 },
+            });
+            expect(q.textFieldName).toEqual({ description: 5 });
+        });
+
+        it('returns the record when multiple fields are configured', () => {
+            const q = new TextQuery({
+                text: 'hello',
+                textFieldName: { title: 1.0, body: 1.0 },
+            });
+            expect(q.textFieldName).toEqual({ title: 1.0, body: 1.0 });
         });
     });
 });
