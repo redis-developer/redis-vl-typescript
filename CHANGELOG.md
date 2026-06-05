@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.0-beta.3](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.1.0-beta.2...redis-vl-v0.1.0-beta.3) (2026-06-05)
+
+
+### Features
+
+* **query:** port TextQuery per-token and per-field weights ([#17](https://github.com/redis-developer/redis-vl-typescript/issues/17)) ([#32](https://github.com/redis-developer/redis-vl-typescript/issues/32)) ([0a738fd](https://github.com/redis-developer/redis-vl-typescript/commit/0a738fdd2836216be7acd1f4335a7c3c882a4722))
+* **vectorizers:** add configurable model cacheDir ([#42](https://github.com/redis-developer/redis-vl-typescript/issues/42)) ([77cb289](https://github.com/redis-developer/redis-vl-typescript/commit/77cb2892cfa7bc326da0558f587eb22453b331ed))
+
 ## [0.1.0-beta.2](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.1.0-beta.1...redis-vl-v0.1.0-beta.2) (2026-06-03)
 
 
