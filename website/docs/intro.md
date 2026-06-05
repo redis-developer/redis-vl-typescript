@@ -19,15 +19,10 @@ sidebar_position: 1
 
 ## Installation
 
-:::warning Pre-1.0 release
-`redis-vl` is in beta. APIs, defaults, and the package itself may change
-between minor versions.
-:::
-
 ### Option A: Install from npm
 
 ```bash
-npm install redis-vl@beta
+npm install redis-vl
 ```
 
 ### Option B: Install from source

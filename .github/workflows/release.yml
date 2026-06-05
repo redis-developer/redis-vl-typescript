@@ -21,11 +21,6 @@ jobs:
             release_created: ${{ steps.release.outputs.release_created }}
             version: ${{ steps.release.outputs.version }}
         steps:
-            # release-please reads release-please-config.json and
-            # .release-please-manifest.json. Prerelease mode (`prerelease: true`,
-            # `prerelease-type: beta`) makes it cut -beta versions. To graduate
-            # to GA later, drop those fields (optionally a one-time
-            # `release-as` to pin the first stable version).
             # PAT so the release PR triggers required CI; GITHUB_TOKEN-created
             # PRs don't. Falls back to GITHUB_TOKEN when the secret is unset.
             - name: Run release-please
@@ -76,21 +71,10 @@ jobs:
             - name: Build
               run: npm run build
 
-            # Prereleases (version contains a hyphen, e.g. 0.1.0-beta.2) publish
-            # under the `beta` dist-tag so `npm i redis-vl` keeps resolving to
-            # the latest stable; GA versions publish to `latest`.
-            - name: Determine npm dist-tag
-              id: disttag
-              run: |
-                  if [[ "${{ needs.release-please.outputs.version }}" == *-* ]]; then
-                    echo "tag=beta" >> "$GITHUB_OUTPUT"
-                  else
-                    echo "tag=latest" >> "$GITHUB_OUTPUT"
-                  fi
-
             # Access is public via package.json publishConfig; the package is
-            # unscoped so no --access flag is needed.
+            # unscoped so no --access flag is needed. Publishes to the default
+            # `latest` dist-tag.
             - name: Publish to npm
-              run: npm publish --provenance --tag ${{ steps.disttag.outputs.tag }}
+              run: npm publish --provenance
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
