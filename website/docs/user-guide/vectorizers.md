@@ -42,6 +42,21 @@ const embeddings = await vectorizer.embedMany([
 First run downloads the model (~50MB). Subsequent runs use the cached model.
 :::
 
+### Cache Location
+
+By default, models are cached inside the installed package
+(`node_modules/@huggingface/transformers/.cache/`), which is wiped whenever
+dependencies are reinstalled. Set `cacheDir` to a stable path to persist
+downloaded models across reinstalls (e.g. a shared volume in Docker/serverless,
+or a CI cache directory):
+
+```typescript
+const vectorizer = new HuggingFaceVectorizer({
+    model: 'Xenova/all-MiniLM-L6-v2',
+    cacheDir: '/var/cache/huggingface',
+});
+```
+
 ## Using with Search Index
 
 ### Define Vector Field

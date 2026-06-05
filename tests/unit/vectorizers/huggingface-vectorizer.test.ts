@@ -408,4 +408,41 @@ describe('HuggingFaceVectorizer', () => {
             await expect(vectorizer.embed('test')).rejects.toThrow('Network error');
         });
     });
+
+    describe('cacheDir', () => {
+        it('should forward cacheDir to the pipeline as cache_dir when provided', async () => {
+            const mockEmbedding = new Float32Array(384).fill(0.1);
+            mockPipeline.mockResolvedValue(vi.fn().mockResolvedValue({ data: mockEmbedding }));
+
+            const vectorizer = new HuggingFaceVectorizer({
+                model: 'Xenova/all-MiniLM-L6-v2',
+                cacheDir: '/tmp/hf-cache',
+            });
+
+            await vectorizer.embed('Hello world');
+
+            expect(mockPipeline).toHaveBeenCalledWith(
+                'feature-extraction',
+                'Xenova/all-MiniLM-L6-v2',
+                expect.objectContaining({ cache_dir: '/tmp/hf-cache' })
+            );
+        });
+
+        it('should pass undefined cache_dir when cacheDir is omitted', async () => {
+            const mockEmbedding = new Float32Array(384).fill(0.1);
+            mockPipeline.mockResolvedValue(vi.fn().mockResolvedValue({ data: mockEmbedding }));
+
+            const vectorizer = new HuggingFaceVectorizer({
+                model: 'Xenova/all-MiniLM-L6-v2',
+            });
+
+            await vectorizer.embed('Hello world');
+
+            expect(mockPipeline).toHaveBeenCalledWith(
+                'feature-extraction',
+                'Xenova/all-MiniLM-L6-v2',
+                expect.objectContaining({ cache_dir: undefined })
+            );
+        });
+    });
 });
