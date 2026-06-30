@@ -8,14 +8,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Language](https://img.shields.io/badge/language-TypeScript-blue)
-![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)
-![Status](https://img.shields.io/badge/status-beta-orange)
+![Node Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)
 
 </div>
-
----
-
-> **⚠️** RedisVL TypeScript is in active development. APIs may change before v1.0 release.
 
 ---
 
@@ -37,13 +32,10 @@ Redis Vector Library (RedisVL) is the TypeScript/Node.js client for building AI 
 
 ## Getting Started
 
-> [!WARNING]
-> `RedisVL TypeScript` is in beta. APIs, defaults, and the package itself may change between minor versions.
-
 **Option A: Install from npm:**
 
 ```bash
-npm install redis-vl@beta
+npm install redis-vl
 ```
 
 **Option B: Install from source** by cloning the repo and linking it locally:
