@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.1.0-beta.3...redis-vl-v0.1.0) (2026-06-30)
+
+
+### Miscellaneous Chores
+
+* **release:** graduate from beta prereleases to stable 0.1.0 ([#41](https://github.com/redis-developer/redis-vl-typescript/issues/41)) ([2869d24](https://github.com/redis-developer/redis-vl-typescript/commit/2869d24633c9cf048c7c6cb0aae30e29ea4e008c))
+
 ## [0.1.0-beta.3](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.1.0-beta.2...redis-vl-v0.1.0-beta.3) (2026-06-05)
 
 
