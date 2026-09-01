@@ -2,7 +2,7 @@
  * Redis Client Type Definitions
  *
  * The bare `RedisClientType` / `RedisClusterType` aliases re-exported from
- * the `redis` package default their `RESP` generic to `2`. When consumers
+ * the `redis` package default their `RESP` generic to `3`. When consumers
  * call `createClient(...)` without an explicit annotation, TypeScript
  * infers `RESP` as the full `RespVersions` union (`2 | 3`), making the
  * inferred client unassignable to APIs typed against the bare alias.

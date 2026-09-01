@@ -63,7 +63,7 @@ results.documents.forEach((doc) => {
 console.log(`Server time: ${results.executionTime}ms`);
 ```
 
-`index.hybridSearch()` returns a `HybridSearchResult<T>` — the same shape as `SearchResult` (`total`, `documents`), plus `executionTime` and `warnings` reported by the server.
+`index.hybridSearch()` returns a `HybridSearchResult<T>` — the same shape as `SearchResult` (`total`, `documents`, `warnings`), plus the server-reported `executionTime`.
 
 ## Text Body — Tokenised vs Verbatim
 

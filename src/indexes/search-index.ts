@@ -6,7 +6,6 @@
 import type { RediSearchSchema } from '@redis/search';
 import type { RedisClientType, RedisClusterType } from 'redis';
 import type { AnyRedisClient } from '../redis/client-types.js';
-import { assertSupportedProtocol } from '../redis/protocol.js';
 import { IndexSchema } from '../schema/schema.js';
 import { buildRedisVLSchemaFromRedisIndexInfo } from '../redis/index-info-parser.js';
 import { BaseStorage, HashStorage, JsonStorage } from '../storage/index.js';
@@ -175,11 +174,9 @@ export class SearchIndex {
             throw new RedisVLError('Must provide a valid Redis client');
         }
 
-        assertSupportedProtocol(client);
-
         this.schema = schema;
-        // Narrow the publicly-accepted wide client surface to the RESP=2
-        // shape this library is implemented against. See client-types.ts.
+        // Narrow the publicly-accepted wide client surface to the shape
+        // this library is implemented against. See client-types.ts.
         this.client = client as RedisClientType | RedisClusterType;
         this.validateOnLoad = validateOnLoad;
 
@@ -214,7 +211,6 @@ export class SearchIndex {
         client: AnyRedisClient,
         validateOnLoad = false
     ): Promise<SearchIndex> {
-        assertSupportedProtocol(client);
         const ftClient = client as RedisClientType | RedisClusterType;
         let info: Awaited<ReturnType<(RedisClientType | RedisClusterType)['ft']['info']>>;
         try {
@@ -658,6 +654,7 @@ export class SearchIndex {
             return {
                 total: response.total,
                 documents,
+                warnings: response.warnings,
             };
         } catch (error) {
             throw new RedisVLError(
