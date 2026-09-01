@@ -133,7 +133,7 @@ When you need a raw filter string instead (for example, when porting existing qu
 
 ## Query Types
 
-All four query types are passed to `index.search()` and return a `SearchResult<T>` (`total` + `documents`).
+All four query types are passed to `index.search()` and return a `SearchResult<T>` (`total` + `documents`, plus any server `warnings`).
 
 ### FilterQuery
 

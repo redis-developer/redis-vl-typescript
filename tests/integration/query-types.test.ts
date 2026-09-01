@@ -136,6 +136,11 @@ describe('Query types integration (FilterQuery / CountQuery / VectorRangeQuery /
             expect(results.documents).toHaveLength(6);
         });
 
+        it('surfaces the server warnings array on search results', async () => {
+            const results = await index.search(new FilterQuery({ numResults: 100 }));
+            expect(results.warnings).toEqual([]);
+        });
+
         it('filters by a single tag value', async () => {
             const q = new FilterQuery({ filter: Tag('category').eq('furniture') });
             const results = await index.search(q);

@@ -86,16 +86,15 @@ describe('SearchIndex', () => {
             }).toThrow(/Must provide a valid Redis client/);
         });
 
-        it('should throw RedisVLError when the client is configured for RESP=3', () => {
+        it('should accept a client configured for RESP=3', () => {
             const resp3Client = {
                 ...mockClient,
                 options: { RESP: 3 },
             } as unknown as RedisClientType;
-            expect(() => new SearchIndex(schema, resp3Client)).toThrow(RedisVLError);
-            expect(() => new SearchIndex(schema, resp3Client)).toThrow(/RESP=3/);
+            expect(() => new SearchIndex(schema, resp3Client)).not.toThrow();
         });
 
-        it('should accept a client whose options omit RESP (default RESP=2)', () => {
+        it('should accept a client whose options omit RESP', () => {
             const defaultClient = {
                 ...mockClient,
                 options: {},
@@ -1337,6 +1336,7 @@ describe('SearchIndex', () => {
             ftSearch.mockResolvedValue({
                 total: 0,
                 documents: [],
+                warnings: [],
             } as Awaited<ReturnType<SearchFunction>>);
 
             const index = new SearchIndex(vectorSchema, mockClient);
@@ -1362,6 +1362,7 @@ describe('SearchIndex', () => {
             ftSearch.mockResolvedValue({
                 total: 0,
                 documents: [],
+                warnings: [],
             } as Awaited<ReturnType<SearchFunction>>);
 
             const index = new SearchIndex(schema, mockClient);
@@ -1380,6 +1381,22 @@ describe('SearchIndex', () => {
                     SCORER: 'TFIDF',
                 })
             );
+        });
+
+        it('should pass through warnings from the FT.SEARCH reply', async () => {
+            const ftSearch = mockClient.ft.search as MockedFunction<SearchFunction>;
+            ftSearch.mockResolvedValue({
+                total: 0,
+                documents: [],
+                warnings: ['Timeout limit was reached'],
+            } as Awaited<ReturnType<SearchFunction>>);
+
+            const index = new SearchIndex(schema, mockClient);
+            const results = await index.search(
+                new TextQuery({ text: 'hello', textFieldName: 'title' })
+            );
+
+            expect(results.warnings).toEqual(['Timeout limit was reached']);
         });
     });
 
