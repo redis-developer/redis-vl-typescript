@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { BaseQuery } from '../../../src/query/base.js';
 import { AggregationQuery, Reducers } from '../../../src/query/aggregation.js';
 import { Tag, Num } from '../../../src/query/filter.js';
 import { QueryValidationError } from '../../../src/errors.js';
@@ -8,7 +7,6 @@ describe('AggregationQuery', () => {
     describe('query string', () => {
         it('defaults to wildcard when no filter is supplied', () => {
             const q = new AggregationQuery();
-            expect(q).toBeInstanceOf(BaseQuery);
             expect(q.toCommand().query).toBe('*');
         });
 
@@ -236,11 +234,6 @@ describe('AggregationQuery', () => {
         it('appends across multiple load() calls', () => {
             const q = new AggregationQuery().load('a').load(['b', 'c']);
             expect(q.toCommand().options.LOAD).toEqual(['@a', '@b', '@c']);
-        });
-
-        it('maps inherited return fields to LOAD', () => {
-            const q = new AggregationQuery().setReturnFields(['title', 'price']);
-            expect(q.toCommand().options.LOAD).toEqual(['@title', '@price']);
         });
     });
 

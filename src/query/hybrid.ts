@@ -15,15 +15,11 @@
  */
 
 import type { FtHybridOptions } from '@redis/search/dist/lib/commands/HYBRID.js';
-import { QueryValidationError } from '../errors.js';
-import { encodeVectorBuffer } from '../redis/utils.js';
+import { QueryValidationError, SchemaValidationError } from '../errors.js';
+import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
+import { VectorDataType } from '../schema/types.js';
 import { TokenEscaper } from '../utils/token-escaper.js';
-import {
-    BaseVectorQuery,
-    renderFilter,
-    type BaseVectorQueryConfig,
-    type FilterInput,
-} from './base.js';
+import { renderFilter, type FilterInput } from './base.js';
 import type { TextScorer } from './text.js';
 
 const escaper = new TokenEscaper();
@@ -52,10 +48,8 @@ export type HybridCombine =
     | { type: 'RRF'; constant?: number; window?: number }
     | { type: 'LINEAR'; alpha?: number; beta?: number; window?: number };
 
-type HybridSortField = { field: string; direction?: 'ASC' | 'DESC' };
-
 /** Configuration for {@link HybridQuery}. */
-export interface HybridQueryConfig extends BaseVectorQueryConfig {
+export interface HybridQueryConfig {
     /**
      * Text query body.
      *
@@ -69,6 +63,12 @@ export interface HybridQueryConfig extends BaseVectorQueryConfig {
 
     /** Indexed text field name. When supplied, triggers tokenization. */
     textFieldName?: string;
+
+    /** Query vector. */
+    vector: number[];
+
+    /** Indexed vector field name. */
+    vectorField: string;
 
     /**
      * Vector retrieval method. Defaults to `{ type: 'KNN', k: 10 }`.
@@ -116,14 +116,23 @@ export interface HybridQueryConfig extends BaseVectorQueryConfig {
      */
     combinedScoreAlias?: string;
 
+    /** Fields to load into the result payload (FT.HYBRID `LOAD`). */
+    returnFields?: string[];
+
     /** Number of results to return. Defaults to 10. */
     numResults?: number;
+
+    /** Pagination offset. */
+    offset?: number;
 
     /** Sort specification (FT.HYBRID `SORTBY`). */
     sortBy?: Array<{ field: string; direction?: 'ASC' | 'DESC' }>;
 
     /** Disable result sorting (FT.HYBRID `NOSORT`). */
     noSort?: boolean;
+
+    /** Vector encoding type. Defaults to `FLOAT32`. */
+    datatype?: VectorDataType | string;
 
     /** Server-side query timeout in milliseconds. */
     timeout?: number;
@@ -189,6 +198,16 @@ function assertUnitInterval(value: number | undefined, label: string): void {
     }
 }
 
+function validateFields(fields: string[] | undefined, label: string): string[] | undefined {
+    if (fields === undefined) return undefined;
+    return fields.map((field) => {
+        assertNonEmptyString(field, label);
+        // Trim during normalization so padded inputs like `' price '` don't
+        // leak into LOAD/SORTBY clauses as `@ price `, which Redis rejects.
+        return field.trim();
+    });
+}
+
 function validateSortBy(
     sortBy: Array<{ field: string; direction?: 'ASC' | 'DESC' }> | undefined
 ): Array<{ field: string; direction?: 'ASC' | 'DESC' }> | undefined {
@@ -224,26 +243,38 @@ function validateSortBy(
  * const results = await index.hybridSearch(q);
  * ```
  */
-export class HybridQuery extends BaseVectorQuery {
+export class HybridQuery {
     public readonly text: string;
     public readonly textFieldName?: string;
+    public readonly vector: number[];
+    public readonly vectorField: string;
     public readonly vectorMethod:
         | { type: 'KNN'; k: number; efRuntime?: number }
         | { type: 'RANGE'; radius: number; epsilon?: number };
+    public readonly vsimFilter?: FilterInput;
     public readonly postFilter?: string;
     public readonly textScorer?: TextScorer;
     public readonly combine?: HybridCombine;
     public readonly textScoreAlias?: string;
     public readonly vectorScoreAlias?: string;
     public readonly combinedScoreAlias: string;
+    public readonly returnFields?: string[];
     public readonly numResults: number;
+    public readonly offset: number;
+    public readonly sortBy?: Array<{ field: string; direction?: 'ASC' | 'DESC' }>;
     public readonly noSort?: boolean;
+    public readonly datatype: VectorDataType;
     public readonly timeout?: number;
-    private readonly _hybridSortBy?: HybridSortField[];
 
     constructor(config: HybridQueryConfig) {
         if (!config.text || config.text.trim() === '') {
             throw new QueryValidationError('text cannot be empty');
+        }
+        if (!config.vector || config.vector.length === 0) {
+            throw new QueryValidationError('vector cannot be empty');
+        }
+        if (!config.vectorField || config.vectorField.trim() === '') {
+            throw new QueryValidationError('vectorField is required');
         }
         assertNonEmptyString(config.textFieldName, 'textFieldName');
         assertNonEmptyString(config.postFilter, 'postFilter');
@@ -273,6 +304,7 @@ export class HybridQuery extends BaseVectorQuery {
         assertPositiveInteger(config.numResults ?? 10, 'numResults');
         assertNonNegativeInteger(config.offset ?? 0, 'offset');
         assertPositiveInteger(config.timeout, 'timeout');
+        const returnFields = validateFields(config.returnFields, 'returnFields');
         const sortBy = validateSortBy(config.sortBy);
         if (config.noSort && sortBy && sortBy.length > 0) {
             throw new QueryValidationError('noSort cannot be used with sortBy');
@@ -290,40 +322,36 @@ export class HybridQuery extends BaseVectorQuery {
             }
         }
 
-        const vsimFilter = config.vsimFilter ?? config.filter;
-        super({
-            ...config,
-            filter: vsimFilter,
-            offset: config.offset ?? 0,
-            limit: config.numResults ?? 10,
-        });
+        try {
+            this.datatype = normalizeVectorDataType(config.datatype);
+        } catch (error) {
+            if (error instanceof SchemaValidationError) {
+                throw new QueryValidationError(error.message);
+            }
+            throw error;
+        }
 
         this.text = config.text;
         this.textFieldName = config.textFieldName;
+        this.vector = [...config.vector];
+        this.vectorField = config.vectorField;
         this.vectorMethod =
             method.type === 'KNN'
                 ? { type: 'KNN', k: method.k ?? 10, efRuntime: method.efRuntime }
                 : method;
+        this.vsimFilter = config.vsimFilter;
         this.postFilter = config.postFilter;
         this.textScorer = config.textScorer;
         this.combine = config.combine;
         this.textScoreAlias = config.textScoreAlias;
         this.vectorScoreAlias = config.vectorScoreAlias;
         this.combinedScoreAlias = config.combinedScoreAlias ?? 'hybrid_score';
+        this.returnFields = returnFields;
         this.numResults = config.numResults ?? 10;
-        this._hybridSortBy = sortBy;
+        this.offset = config.offset ?? 0;
+        this.sortBy = sortBy;
         this.noSort = config.noSort;
         this.timeout = config.timeout;
-    }
-
-    /** VSIM filter used to pre-filter vector candidates. */
-    get vsimFilter(): FilterInput | undefined {
-        return this.filter;
-    }
-
-    /** The SEARCH clause query body. */
-    buildQuery(): string {
-        return this.renderTextBody();
     }
 
     /**
@@ -335,7 +363,7 @@ export class HybridQuery extends BaseVectorQuery {
             SEARCH: this.buildSearchClause(),
             VSIM: this.buildVsimClause(),
             PARAMS: { [VECTOR_PARAM_NAME]: encodeVectorBuffer(this.vector, this.datatype) },
-            LIMIT: { offset: this.offset ?? 0, count: this.limit ?? this.numResults },
+            LIMIT: { offset: this.offset, count: this.numResults },
         };
 
         // Always yield a known combined score alias so result mapping is stable
@@ -353,16 +381,11 @@ export class HybridQuery extends BaseVectorQuery {
         }
         options.LOAD = [...loadFields];
 
-        const sortFields = this.getHybridSortFields();
-        if (this.noSort && sortFields.length > 0) {
-            throw new QueryValidationError('noSort cannot be used with sortBy');
-        }
-
-        if (sortFields.length > 0) {
+        if (this.sortBy && this.sortBy.length > 0) {
             // SORTBY uses the same field-reference convention as LOAD —
             // `@field` for hash fields, `$.path` for JSON paths.
             options.SORTBY = {
-                fields: sortFields.map((s) => ({
+                fields: this.sortBy.map((s) => ({
                     field: prefixFieldRef(s.field as string),
                     ...(s.direction ? { direction: s.direction } : {}),
                 })),
@@ -412,10 +435,6 @@ export class HybridQuery extends BaseVectorQuery {
         if (this.vsimFilter !== undefined) vsim.FILTER = renderFilter(this.vsimFilter);
         if (this.vectorScoreAlias !== undefined) vsim.YIELD_SCORE_AS = this.vectorScoreAlias;
         return vsim;
-    }
-
-    private getHybridSortFields(): HybridSortField[] {
-        return [...(this._hybridSortBy ?? []), ...this.sortFields];
     }
 
     private encodeVectorMethod(): NonNullable<FtHybridOptions['VSIM']['method']> {

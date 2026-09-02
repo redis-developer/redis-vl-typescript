@@ -11,7 +11,7 @@
 
 import type { FtAggregateOptions } from '@redis/search/dist/lib/commands/AGGREGATE.js';
 import { QueryValidationError } from '../errors.js';
-import { BaseQuery, renderFilter, type FilterInput, type SortByOptions } from './base.js';
+import { renderFilter, type FilterInput } from './base.js';
 
 /** Output of {@link AggregationQuery.toCommand}. */
 export interface AggregateCommand {
@@ -224,7 +224,8 @@ function assertPositiveInteger(value: number | undefined, label: string): void {
  * const { total, results } = await index.aggregate(q);
  * ```
  */
-export class AggregationQuery extends BaseQuery {
+export class AggregationQuery {
+    private readonly _query: string;
     private readonly steps: Step[] = [];
     private _load?: LoadField[];
     private _params?: Record<string, string | number>;
@@ -239,7 +240,7 @@ export class AggregationQuery extends BaseQuery {
      *   the rest of the query DSL uses.
      */
     constructor(query?: FilterInput) {
-        super({ filter: query });
+        this._query = renderFilter(query);
     }
 
     /**
@@ -278,16 +279,8 @@ export class AggregationQuery extends BaseQuery {
     }
 
     /** SORTBY one or more fields. Bare strings sort ASC. */
-    sortBy(field: string, options?: SortByOptions): this;
-    sortBy(by: SortSpec | SortSpec[], max?: number): this;
-    sortBy(by: SortSpec | SortSpec[], maxOrOptions?: number | SortByOptions): this {
-        const list =
-            typeof maxOrOptions === 'object' && !Array.isArray(by) && typeof by === 'string'
-                ? [{ field: by, direction: maxOrOptions.direction }]
-                : Array.isArray(by)
-                  ? by
-                  : [by];
-        const max = typeof maxOrOptions === 'number' ? maxOrOptions : undefined;
+    sortBy(by: SortSpec | SortSpec[], max?: number): this {
+        const list = Array.isArray(by) ? by : [by];
         if (list.length === 0) {
             throw new QueryValidationError('sortBy requires at least one field');
         }
@@ -385,12 +378,7 @@ export class AggregationQuery extends BaseQuery {
 
     /** The rendered query string this aggregation will use. */
     get query(): string {
-        return this.buildQuery();
-    }
-
-    /** Build the FT.AGGREGATE query string. */
-    buildQuery(): string {
-        return renderFilter(this.queryFilter);
+        return this._query;
     }
 
     /** Build the structured options for `client.ft.aggregate(indexName, query, options)`. */
@@ -407,13 +395,12 @@ export class AggregationQuery extends BaseQuery {
             options.PARAMS = this._params;
         }
 
-        const loadFields = [...(this.returnFields ?? []), ...(this._load ?? [])];
-        if (loadFields.length > 0) {
+        if (this._load && this._load.length > 0) {
             // The Redis client types LOAD entries with template-literal types
             // (`@${string}` / `$.${string}`). We've already enforced that
             // contract via prefixFieldRef, but TS can't see through the
             // string return — cast at the boundary.
-            options.LOAD = loadFields.map((f) =>
+            options.LOAD = this._load.map((f) =>
                 typeof f === 'string'
                     ? prefixFieldRef(f)
                     : f.as !== undefined
@@ -428,7 +415,7 @@ export class AggregationQuery extends BaseQuery {
             ) as FtAggregateOptions['STEPS'];
         }
 
-        return { query: this.buildQuery(), options };
+        return { query: this._query, options };
     }
 
     private renderStep(step: Step): unknown {
