@@ -497,6 +497,53 @@ describe('Vector Search Integration', () => {
             });
         });
     });
+
+    describe('numResults above the Redis default LIMIT', () => {
+        it('returns every requested neighbour when numResults exceeds 10', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-knn-limit',
+                    prefix: 'rvl-test-knn-limit',
+                    storageType: 'hash',
+                },
+                fields: [
+                    {
+                        name: 'embedding',
+                        type: 'vector',
+                        attrs: {
+                            dims: VECTOR_DIMS,
+                            algorithm: 'flat',
+                            distanceMetric: 'l2',
+                        },
+                    },
+                ],
+            });
+            const knnIndex = new SearchIndex(schema, client);
+            await knnIndex.create({ overwrite: true, drop: true });
+
+            try {
+                const docs = Array.from({ length: 25 }, (_, i) => ({
+                    id: String(i),
+                    embedding: unit([i + 1, 1, 0, 0]),
+                }));
+                await knnIndex.load(docs, { idField: 'id' });
+                await new Promise((r) => setTimeout(r, 100));
+
+                const results = await knnIndex.search(
+                    new VectorQuery({
+                        vector: unit([1, 1, 0, 0]),
+                        vectorField: 'embedding',
+                        numResults: 20,
+                    })
+                );
+
+                expect(results.total).toBe(20);
+                expect(results.documents).toHaveLength(20);
+            } finally {
+                await knnIndex.delete({ drop: true }).catch(() => {});
+            }
+        });
+    });
 });
 
 describe('Vector Search with JSON Storage Integration', () => {
@@ -609,11 +656,8 @@ describe('Vector Search with JSON Storage Integration', () => {
         const results = await index.search(query);
 
         expect(results.total).toBeGreaterThan(0);
-        const laptopResult = results.documents.find((doc) =>
-            String(doc.value.title).includes('Laptop')
-        );
-        expect(laptopResult).toBeDefined();
-        expect(laptopResult?.score).toBeDefined();
+        expect(results.documents[0].value.title).toContain('Laptop');
+        expect(results.documents[0].score).toBeDefined();
     });
 
     it('should filter by nested JSON fields', async () => {

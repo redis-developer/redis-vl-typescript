@@ -161,7 +161,7 @@ export class VectorQuery extends BaseVectorQuery {
     public readonly searchBufferCapacity?: number;
 
     constructor(config: VectorQueryConfig) {
-        super(config);
+        super({ ...config, limit: config.limit ?? config.numResults ?? 10 });
 
         // Validate HNSW parameters
         if (config.efRuntime !== undefined && config.efRuntime <= 0) {
@@ -217,6 +217,7 @@ export class VectorQuery extends BaseVectorQuery {
         this.searchWindowSize = config.searchWindowSize;
         this.useSearchHistory = config.useSearchHistory;
         this.searchBufferCapacity = config.searchBufferCapacity;
+        this.sortBy(this.scoreAlias);
     }
 
     /**

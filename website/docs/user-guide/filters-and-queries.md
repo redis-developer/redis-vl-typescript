@@ -135,6 +135,26 @@ When you need a raw filter string instead (for example, when porting existing qu
 
 All four query types are passed to `index.search()` and return a `SearchResult<T>` (`total` + `documents`, plus any server `warnings`).
 
+### Chainable helpers
+
+Every `FT.SEARCH` query type (`VectorQuery`, `VectorRangeQuery`, `FilterQuery`, `CountQuery`, `TextQuery`) supports chainable updates after construction:
+
+```typescript
+const q = new FilterQuery({ filter: Tag('brand').eq('nike') })
+    .setReturnFields(['title', 'price'])
+    .paging(0, 25)
+    .sortBy('price', { direction: 'DESC' });
+```
+
+| Helper | Behaviour |
+| ------ | --------- |
+| `setFilter(filter)` | Replace the filter. Pass `null` to clear it. |
+| `setReturnFields(fields)` | Replace the returned fields. Call with no arguments to clear. |
+| `paging(offset, limit)` | Set pagination. A `limit` of `0` fetches only the total. |
+| `sortBy(field, { direction })` | Set the sort. Each call replaces the previous sort; `sortBy(null)` clears it. |
+
+`FT.SEARCH` supports a single sort field. An `options.sortBy` passed to `index.search()` overrides the query-level sort.
+
 ### FilterQuery
 
 Returns documents matching a filter, with no vector or text scoring.

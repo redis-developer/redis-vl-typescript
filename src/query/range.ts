@@ -109,6 +109,7 @@ export class VectorRangeQuery extends BaseVectorQuery {
         this.scoreAlias = config.scoreAlias ?? 'vector_distance';
         this.hybridPolicy = config.hybridPolicy;
         this.batchSize = config.batchSize;
+        this.sortBy(this.scoreAlias);
     }
 
     buildQuery(): string {

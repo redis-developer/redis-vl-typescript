@@ -5,7 +5,6 @@ import {
     renderFilter,
     type BaseQueryConfig,
     type BaseVectorQueryConfig,
-    type FilterInput,
 } from '../../../src/query/base.js';
 import { Tag } from '../../../src/query/filter.js';
 import { QueryValidationError } from '../../../src/errors.js';
@@ -14,18 +13,6 @@ import { VectorDataType } from '../../../src/schema/types.js';
 class TestQuery extends BaseQuery {
     constructor(config: BaseQueryConfig = {}) {
         super(config);
-    }
-
-    get filter(): FilterInput | undefined {
-        return this.queryFilter;
-    }
-
-    get offset(): number | undefined {
-        return this.queryOffset;
-    }
-
-    get limit(): number | undefined {
-        return this.queryLimit;
     }
 
     buildQuery(): string {
@@ -79,54 +66,38 @@ describe('BaseQuery', () => {
         expect(() => new TestQuery().setFilter('   ')).toThrow(QueryValidationError);
     });
 
-    it('should set return fields and skip-decode fields', () => {
-        const query = new TestQuery().setReturnFields(['title', 'embedding'], {
-            skipDecode: 'embedding',
-        });
+    it('should set return fields', () => {
+        const query = new TestQuery().setReturnFields(['title', 'embedding']);
 
         expect(query.returnFields).toEqual(['title', 'embedding']);
-        expect(query.skipDecodeFields).toEqual(['embedding']);
 
-        query.setReturnFields(['title'], { skipDecode: ['raw', 'blob'] });
+        query.setReturnFields(['title']);
         expect(query.returnFields).toEqual(['title']);
-        expect(query.skipDecodeFields).toEqual(['raw', 'blob']);
     });
 
-    it('should defensively copy return and skip-decode fields', () => {
+    it('should defensively copy return fields', () => {
         const fields = ['title'];
-        const skipDecode = ['embedding'];
-        const query = new TestQuery().setReturnFields(fields, { skipDecode });
+        const query = new TestQuery().setReturnFields(fields);
 
         fields.push('price');
-        skipDecode.push('blob');
 
         expect(query.returnFields).toEqual(['title']);
-        expect(query.skipDecodeFields).toEqual(['embedding']);
     });
 
-    it('should clear return fields and skip-decode fields', () => {
-        const query = new TestQuery()
-            .setReturnFields(['title'], { skipDecode: 'embedding' })
-            .setReturnFields();
+    it('should clear return fields', () => {
+        const query = new TestQuery().setReturnFields(['title']).setReturnFields();
 
         expect(query.returnFields).toBeUndefined();
-        expect(query.skipDecodeFields).toBeUndefined();
     });
 
-    it('should trim return fields and skip-decode fields before storing them', () => {
-        const query = new TestQuery().setReturnFields([' title ', ' $.path '], {
-            skipDecode: [' embedding '],
-        });
+    it('should trim return fields before storing them', () => {
+        const query = new TestQuery().setReturnFields([' title ', ' $.path ']);
 
         expect(query.returnFields).toEqual(['title', '$.path']);
-        expect(query.skipDecodeFields).toEqual(['embedding']);
     });
 
-    it('should reject invalid return and skip-decode fields', () => {
+    it('should reject invalid return fields', () => {
         expect(() => new TestQuery().setReturnFields(['title', ''])).toThrow(QueryValidationError);
-        expect(() =>
-            new TestQuery().setReturnFields(['title'], { skipDecode: ['embedding', ''] })
-        ).toThrow(QueryValidationError);
     });
 
     it('should set paging values', () => {
@@ -136,22 +107,33 @@ describe('BaseQuery', () => {
         expect(query.limit).toBe(10);
     });
 
-    it('should reject invalid paging values', () => {
-        expect(() => new TestQuery().paging(-1, 10)).toThrow(QueryValidationError);
-        expect(() => new TestQuery().paging(0, 0)).toThrow(QueryValidationError);
-        expect(() => new TestQuery({ offset: -1 })).toThrow(QueryValidationError);
-        expect(() => new TestQuery({ limit: 0 })).toThrow(QueryValidationError);
+    it('should allow a zero limit for count-style queries', () => {
+        const query = new TestQuery().paging(0, 0);
+
+        expect(query.offset).toBe(0);
+        expect(query.limit).toBe(0);
+        expect(new TestQuery({ limit: 0 }).limit).toBe(0);
     });
 
-    it('should collect sort fields', () => {
+    it('should reject invalid paging values', () => {
+        expect(() => new TestQuery().paging(-1, 10)).toThrow(QueryValidationError);
+        expect(() => new TestQuery().paging(0, -1)).toThrow(QueryValidationError);
+        expect(() => new TestQuery({ offset: -1 })).toThrow(QueryValidationError);
+        expect(() => new TestQuery({ limit: 1.5 })).toThrow(QueryValidationError);
+    });
+
+    it('should replace the sort field on subsequent sortBy calls', () => {
         const query = new TestQuery().sortBy('price').sortBy(' created_at ', {
             direction: 'DESC',
         });
 
-        expect(query.sortFields).toEqual([
-            { field: 'price', direction: 'ASC' },
-            { field: 'created_at', direction: 'DESC' },
-        ]);
+        expect(query.sortFields).toEqual([{ field: 'created_at', direction: 'DESC' }]);
+    });
+
+    it('should clear the sort when sortBy is called with null', () => {
+        const query = new TestQuery().sortBy('price').sortBy(null);
+
+        expect(query.sortFields).toEqual([]);
     });
 
     it('should reject invalid sort fields', () => {

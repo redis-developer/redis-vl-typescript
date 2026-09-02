@@ -214,18 +214,6 @@ export class TextQuery extends BaseQuery {
         this.stopwords = resolveStopwords(config.stopwords);
     }
 
-    get filter(): FilterInput | undefined {
-        return this.queryFilter;
-    }
-
-    get offset(): number | undefined {
-        return this.queryOffset;
-    }
-
-    get limit(): number | undefined {
-        return this.queryLimit;
-    }
-
     buildQuery(): string {
         const stopwordSet = this.stopwords;
         const weights = this.textWeights;

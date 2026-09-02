@@ -14,9 +14,6 @@ import type { FilterExpression } from './filter.js';
  */
 export type FilterInput = string | FilterExpression;
 
-/** Backward-compatible alias for shared query filters. */
-export type QueryFilter = FilterInput;
-
 /**
  * Render a {@link FilterInput} to its Redis Search string form, treating
  * `undefined` and the wildcard expression as "no filter" (`*`).
@@ -57,14 +54,6 @@ export interface BaseQueryConfig {
 }
 
 /**
- * Options for configuring returned fields.
- */
-export interface ReturnFieldsOptions {
-    /** Fields that should not be decoded by higher-level result processors. */
-    skipDecode?: string | string[];
-}
-
-/**
  * Options for sorting query results.
  */
 export interface SortByOptions {
@@ -81,7 +70,6 @@ export interface SortByOptions {
 export abstract class BaseQuery {
     private _filter?: FilterInput;
     private _returnFields?: string[];
-    private _skipDecodeFields?: string[];
     private _offset?: number;
     private _limit?: number;
     private readonly _sortFields: SortField[] = [];
@@ -109,38 +97,23 @@ export abstract class BaseQuery {
         return this._returnFields ? [...this._returnFields] : undefined;
     }
 
-    /** Fields that should not be decoded by higher-level result processors. */
-    get skipDecodeFields(): string[] | undefined {
-        return this._skipDecodeFields ? [...this._skipDecodeFields] : undefined;
-    }
-
     /** Sort fields collected for query execution. */
     get sortFields(): SortField[] {
         return this._sortFields.map((field) => ({ ...field }));
     }
 
-    /** Offset for execution code that works with the abstract query base. */
-    getOffset(): number | undefined {
-        return this._offset;
-    }
-
-    /** Limit for execution code that works with the abstract query base. */
-    getLimit(): number | undefined {
-        return this._limit;
-    }
-
-    /** Filter expression used by subclasses when rendering query strings. */
-    protected get queryFilter(): FilterInput | undefined {
+    /** Filter expression used as the base Redis query string. */
+    get filter(): FilterInput | undefined {
         return this._filter;
     }
 
-    /** Offset value exposed by concrete query classes. */
-    protected get queryOffset(): number | undefined {
+    /** Offset for pagination. */
+    get offset(): number | undefined {
         return this._offset;
     }
 
-    /** Limit value exposed by concrete query classes. */
-    protected get queryLimit(): number | undefined {
+    /** Number of results to return. */
+    get limit(): number | undefined {
         return this._limit;
     }
 
@@ -160,24 +133,13 @@ export abstract class BaseQuery {
     }
 
     /** Set or clear return fields. */
-    setReturnFields(fields?: string[], options: ReturnFieldsOptions = {}): this {
+    setReturnFields(fields?: string[]): this {
         if (fields === undefined) {
             this._returnFields = undefined;
-            this._skipDecodeFields = undefined;
             return this;
         }
 
         this._returnFields = validateStringList(fields, 'returnFields');
-
-        if (options.skipDecode !== undefined) {
-            const skipDecode = Array.isArray(options.skipDecode)
-                ? options.skipDecode
-                : [options.skipDecode];
-            this._skipDecodeFields = validateStringList(skipDecode, 'skipDecode');
-        } else {
-            this._skipDecodeFields = undefined;
-        }
-
         return this;
     }
 
@@ -190,13 +152,18 @@ export abstract class BaseQuery {
         return this;
     }
 
-    /** Add a sort field. */
-    sortBy(field: string, options: SortByOptions = {}): this {
+    /** Set the sort field, replacing any previous sort. Pass `null` to clear. */
+    sortBy(field: string | null, options: SortByOptions = {}): this {
+        if (field === null) {
+            this._sortFields.length = 0;
+            return this;
+        }
         const normalizedField = validateNonEmptyString(field, 'sort field');
         const direction = options.direction ?? 'ASC';
         if (direction !== 'ASC' && direction !== 'DESC') {
             throw new QueryValidationError('sort direction must be either ASC or DESC');
         }
+        this._sortFields.length = 0;
         this._sortFields.push({ field: normalizedField, direction });
         return this;
     }
@@ -278,21 +245,6 @@ export abstract class BaseVectorQuery extends BaseQuery {
         return [...this._vector];
     }
 
-    /** Filter expression used by the query. */
-    get filter(): FilterInput | undefined {
-        return this.queryFilter;
-    }
-
-    /** Offset for pagination. */
-    get offset(): number | undefined {
-        return this.queryOffset;
-    }
-
-    /** Number of results to return. */
-    get limit(): number | undefined {
-        return this.queryLimit;
-    }
-
     /** Name of the vector field in the index. */
     get vectorField(): string {
         return this._vectorField;
@@ -329,8 +281,8 @@ function validateOffset(offset: number): void {
 }
 
 function validateLimit(limit: number): void {
-    if (!Number.isInteger(limit) || limit <= 0) {
-        throw new QueryValidationError('limit must be a positive integer');
+    if (!Number.isInteger(limit) || limit < 0) {
+        throw new QueryValidationError('limit must be a non-negative integer');
     }
 }
 

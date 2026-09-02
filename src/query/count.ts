@@ -26,27 +26,7 @@ export class CountQuery extends BaseQuery {
     public readonly noContent = true;
 
     constructor(config: CountQueryConfig = {}) {
-        super({ filter: config.filter });
-    }
-
-    get filter(): FilterInput | undefined {
-        return this.queryFilter;
-    }
-
-    get offset(): number {
-        return 0;
-    }
-
-    get limit(): number {
-        return 0;
-    }
-
-    getOffset(): number {
-        return 0;
-    }
-
-    getLimit(): number {
-        return 0;
+        super({ filter: config.filter, offset: 0, limit: 0 });
     }
 
     buildQuery(): string {

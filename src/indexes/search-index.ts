@@ -530,7 +530,7 @@ export class SearchIndex {
      * @param query - Query object (VectorQuery, FilterQuery, etc.)
      * @param options - Optional query execution options. If both query-level
      *   `query.sortBy(...)` and `options.sortBy` are supplied, `options.sortBy`
-     *   takes precedence to preserve the existing `search()` API.
+     *   takes precedence.
      * @returns Search results with documents and scores
      *
      * @example
@@ -598,26 +598,22 @@ export class SearchIndex {
             }
 
             // Add pagination
-            const queryLimit = query.getLimit();
-            const queryOffset = query.getOffset();
-            if (queryLimit !== undefined || queryOffset !== undefined) {
-                const offset = queryOffset ?? 0;
-                const limit = queryLimit ?? 10;
+            if (query.limit !== undefined || query.offset !== undefined) {
+                const offset = query.offset ?? 0;
+                const limit = query.limit ?? 10;
                 searchOptions.LIMIT = { from: offset, size: limit };
             }
 
-            // Add sorting if specified on the query. FT.SEARCH accepts one
-            // SORTBY clause, so use the first collected sort field.
-            if (query.sortFields.length > 0) {
-                const [sortField] = query.sortFields;
+            // Add sorting if specified on the query.
+            const [sortField] = query.sortFields;
+            if (sortField) {
                 searchOptions.SORTBY = {
                     BY: sortField.field,
                     DIRECTION: sortField.direction,
                 };
             }
 
-            // Add sorting if specified in execution options. These options
-            // preserve the historical API and override query-level sorting.
+            // Execution options override query-level sorting.
             if (options?.sortBy) {
                 searchOptions.SORTBY = {
                     BY: options.sortBy,

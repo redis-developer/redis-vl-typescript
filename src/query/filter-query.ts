@@ -49,18 +49,6 @@ export class FilterQuery extends BaseQuery {
         this.numResults = numResults;
     }
 
-    get filter(): FilterInput | undefined {
-        return this.queryFilter;
-    }
-
-    get offset(): number | undefined {
-        return this.queryOffset;
-    }
-
-    get limit(): number | undefined {
-        return this.queryLimit;
-    }
-
     buildQuery(): string {
         return renderFilter(this.filter);
     }

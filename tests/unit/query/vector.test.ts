@@ -189,6 +189,66 @@ describe('VectorQuery', () => {
             expect(query.offset).toBe(30);
             expect(query.limit).toBe(15);
         });
+
+        it('should default the limit to numResults so KNN results are not truncated', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+                numResults: 20,
+            });
+
+            expect(query.limit).toBe(20);
+        });
+
+        it('should let an explicit limit override the numResults default', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+                numResults: 20,
+                limit: 5,
+            });
+
+            expect(query.limit).toBe(5);
+        });
+    });
+
+    describe('default sorting', () => {
+        it('should sort by the vector distance alias by default', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+            });
+
+            expect(query.sortFields).toEqual([{ field: 'vector_distance', direction: 'ASC' }]);
+        });
+
+        it('should sort by a custom score alias when supplied', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+                scoreAlias: 'similarity',
+            });
+
+            expect(query.sortFields).toEqual([{ field: 'similarity', direction: 'ASC' }]);
+        });
+
+        it('should let sortBy replace the default distance sort', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+            }).sortBy('price', { direction: 'DESC' });
+
+            expect(query.sortFields).toEqual([{ field: 'price', direction: 'DESC' }]);
+        });
+
+        it('should let sortBy(null) clear the default distance sort', () => {
+            const query = new VectorQuery({
+                vector: [0.1, 0.2, 0.3],
+                vectorField: 'embedding',
+            }).sortBy(null);
+
+            expect(query.sortFields).toEqual([]);
+        });
     });
 
     describe('returnFields', () => {
@@ -211,14 +271,13 @@ describe('VectorQuery', () => {
             expect(query.returnFields).toBeUndefined();
         });
 
-        it('should support chainable return field updates with skip-decode fields', () => {
+        it('should support chainable return field updates', () => {
             const query = new VectorQuery({
                 vector: [0.1, 0.2, 0.3],
                 vectorField: 'embedding',
-            }).setReturnFields(['title', 'embedding'], { skipDecode: 'embedding' });
+            }).setReturnFields(['title', 'embedding']);
 
             expect(query.returnFields).toEqual(['title', 'embedding']);
-            expect(query.skipDecodeFields).toEqual(['embedding']);
         });
     });
 

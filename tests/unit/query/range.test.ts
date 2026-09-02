@@ -28,6 +28,19 @@ describe('VectorRangeQuery', () => {
             expect(q.distanceThreshold).toBe(0.2);
         });
 
+        it('sorts by the vector distance alias by default', () => {
+            const q = new VectorRangeQuery({ vector: vec, vectorField: 'embedding' });
+            expect(q.sortFields).toEqual([{ field: 'vector_distance', direction: 'ASC' }]);
+        });
+
+        it('lets sortBy replace or clear the default distance sort', () => {
+            const q = new VectorRangeQuery({ vector: vec, vectorField: 'embedding' }).sortBy(
+                'price'
+            );
+            expect(q.sortFields).toEqual([{ field: 'price', direction: 'ASC' }]);
+            expect(q.sortBy(null).sortFields).toEqual([]);
+        });
+
         it('rejects negative distanceThreshold', () => {
             expect(
                 () =>

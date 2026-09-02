@@ -52,7 +52,6 @@ export { BaseQuery, BaseVectorQuery } from './query/base.js';
 export type {
     BaseQueryConfig,
     BaseVectorQueryConfig,
-    ReturnFieldsOptions,
     SearchResult,
     SearchDocument,
     QueryOptions,
