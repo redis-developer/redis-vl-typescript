@@ -528,7 +528,9 @@ export class SearchIndex {
      * Execute a search query against the index
      *
      * @param query - Query object (VectorQuery, FilterQuery, etc.)
-     * @param options - Optional query execution options
+     * @param options - Optional query execution options. If both query-level
+     *   `query.sortBy(...)` and `options.sortBy` are supplied, `options.sortBy`
+     *   takes precedence.
      * @returns Search results with documents and scores
      *
      * @example
@@ -602,15 +604,21 @@ export class SearchIndex {
                 searchOptions.LIMIT = { from: offset, size: limit };
             }
 
-            // Add sorting if specified
+            // Add sorting if specified on the query.
+            const [sortField] = query.sortFields;
+            if (sortField) {
+                searchOptions.SORTBY = {
+                    BY: sortField.field,
+                    DIRECTION: sortField.direction,
+                };
+            }
+
+            // Execution options override query-level sorting.
             if (options?.sortBy) {
-                searchOptions.SORTBY = options.sortBy;
-                if (options.sortOrder) {
-                    searchOptions.SORTBY = {
-                        BY: options.sortBy,
-                        DIRECTION: options.sortOrder,
-                    };
-                }
+                searchOptions.SORTBY = {
+                    BY: options.sortBy,
+                    ...(options.sortOrder ? { DIRECTION: options.sortOrder } : {}),
+                };
             }
 
             // CountQuery (and any other consumer) can opt into NOCONTENT to

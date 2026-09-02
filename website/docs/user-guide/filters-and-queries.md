@@ -135,6 +135,36 @@ When you need a raw filter string instead (for example, when porting existing qu
 
 All four query types are passed to `index.search()` and return a `SearchResult<T>` (`total` + `documents`, plus any server `warnings`).
 
+### Chainable helpers
+
+Every `FT.SEARCH` query type (`VectorQuery`, `VectorRangeQuery`, `FilterQuery`, `CountQuery`, `TextQuery`) supports chainable updates after construction:
+
+```typescript
+const q = new FilterQuery({ filter: Tag('brand').eq('nike') })
+    .setReturnFields(['title', 'price'])
+    .paging(0, 25)
+    .sortBy('price', { direction: 'DESC' });
+```
+
+| Helper | Behaviour |
+| ------ | --------- |
+| `setFilter(filter)` | Replace the filter. Pass `null` to clear it. |
+| `setReturnFields(fields)` | Replace the returned fields. Call with no arguments to clear. |
+| `paging(offset, limit)` | Set pagination. A `limit` of `0` fetches only the total. |
+| `sortBy(field, { direction })` | Set the sort. Each call replaces the previous sort; `sortBy(null)` clears it. |
+
+`FT.SEARCH` supports a single sort field. An `options.sortBy` passed to `index.search()` overrides the query-level sort. Vector queries (`VectorQuery`, `VectorRangeQuery`) sort by their distance alias by default, so `documents[0]` is always the closest match.
+
+### How result-count options map to Redis
+
+`limit` and `offset` always mean the native `LIMIT <offset> <count>` pair. `numResults` is the "top N" shorthand that sets the default for `limit`:
+
+| Class | `numResults` feeds | `limit` / `offset` feed |
+| ----- | ------------------ | ----------------------- |
+| `VectorQuery` | `KNN <k>` (candidate pool) and the `limit` default | `LIMIT <offset> <count>` |
+| `FilterQuery` / `TextQuery` | the `limit` default | `LIMIT <offset> <count>` |
+| `HybridQuery` | the `limit` default | `LIMIT <offset> <count>` (KNN k lives in `vectorMethod.k`) |
+
 ### FilterQuery
 
 Returns documents matching a filter, with no vector or text scoring.

@@ -119,10 +119,16 @@ export interface HybridQueryConfig {
     /** Fields to load into the result payload (FT.HYBRID `LOAD`). */
     returnFields?: string[];
 
-    /** Number of results to return. Defaults to 10. */
+    /**
+     * Number of results to return. Default for `limit` (the FT.HYBRID
+     * `LIMIT` count). Defaults to 10.
+     */
     numResults?: number;
 
-    /** Pagination offset. */
+    /** FT.HYBRID `LIMIT` count. Takes priority over `numResults`. */
+    limit?: number;
+
+    /** FT.HYBRID `LIMIT` offset. */
     offset?: number;
 
     /** Sort specification (FT.HYBRID `SORTBY`). */
@@ -154,17 +160,18 @@ const VECTOR_PARAM_NAME = 'vector';
  * doesn't belong in a LOAD/SORTBY slot or a typo of `@name`/`$.name`.
  */
 function prefixFieldRef(name: string): string {
-    if (name.startsWith('@')) return name;
-    if (name.startsWith('$')) {
-        if (!name.startsWith('$.')) {
+    const field = name.trim();
+    if (field.startsWith('@')) return field;
+    if (field.startsWith('$')) {
+        if (!field.startsWith('$.')) {
             throw new QueryValidationError(
-                `Field reference '${name}' looks like a parameter ref or typo; ` +
-                    `use '@${name.slice(1)}' for an index field or '$.${name.slice(1)}' for a JSONPath`
+                `Field reference '${field}' looks like a parameter ref or typo; ` +
+                    `use '@${field.slice(1)}' for an index field or '$.${field.slice(1)}' for a JSONPath`
             );
         }
-        return name;
+        return field;
     }
-    return `@${name}`;
+    return `@${field}`;
 }
 
 function assertNonEmptyString(value: string | undefined, label: string): void {
@@ -259,6 +266,7 @@ export class HybridQuery {
     public readonly combinedScoreAlias: string;
     public readonly returnFields?: string[];
     public readonly numResults: number;
+    public readonly limit: number;
     public readonly offset: number;
     public readonly sortBy?: Array<{ field: string; direction?: 'ASC' | 'DESC' }>;
     public readonly noSort?: boolean;
@@ -301,6 +309,7 @@ export class HybridQuery {
         }
 
         assertPositiveInteger(config.numResults ?? 10, 'numResults');
+        assertNonNegativeInteger(config.limit ?? 0, 'limit');
         assertNonNegativeInteger(config.offset ?? 0, 'offset');
         assertPositiveInteger(config.timeout, 'timeout');
         const returnFields = validateFields(config.returnFields, 'returnFields');
@@ -347,6 +356,7 @@ export class HybridQuery {
         this.combinedScoreAlias = config.combinedScoreAlias ?? 'hybrid_score';
         this.returnFields = returnFields;
         this.numResults = config.numResults ?? 10;
+        this.limit = config.limit ?? this.numResults;
         this.offset = config.offset ?? 0;
         this.sortBy = sortBy;
         this.noSort = config.noSort;
@@ -362,7 +372,7 @@ export class HybridQuery {
             SEARCH: this.buildSearchClause(),
             VSIM: this.buildVsimClause(),
             PARAMS: { [VECTOR_PARAM_NAME]: encodeVectorBuffer(this.vector, this.datatype) },
-            LIMIT: { offset: this.offset, count: this.numResults },
+            LIMIT: { offset: this.offset, count: this.limit },
         };
 
         // Always yield a known combined score alias so result mapping is stable

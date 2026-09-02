@@ -525,6 +525,42 @@ describe('HybridQuery', () => {
             expect(options.LIMIT).toEqual({ offset: 0, count: 10 });
         });
 
+        it('maps limit to the LIMIT count', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                limit: 25,
+            });
+            const { options } = q.toCommand();
+            expect(options.LIMIT).toEqual({ offset: 0, count: 25 });
+        });
+
+        it('lets limit take priority over numResults', () => {
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: VECTOR,
+                vectorField: 'embedding',
+                numResults: 10,
+                limit: 25,
+            });
+            const { options } = q.toCommand();
+            expect(options.LIMIT).toEqual({ offset: 0, count: 25 });
+            expect(q.limit).toBe(25);
+        });
+
+        it('rejects a negative limit', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: VECTOR,
+                        vectorField: 'embedding',
+                        limit: -1,
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
         it('emits SORTBY with @-prefixed field + direction', () => {
             const q = new HybridQuery({
                 text: 'foo',

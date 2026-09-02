@@ -242,8 +242,9 @@ results.documents.forEach((doc) => {
 new HybridQuery({
     // ...
     returnFields: ['title', 'price'], // FT.HYBRID LOAD
-    numResults: 25, // FT.HYBRID LIMIT count
-    offset: 0,
+    numResults: 25, // default for limit
+    limit: 25, // FT.HYBRID LIMIT count (takes priority over numResults)
+    offset: 0, // FT.HYBRID LIMIT offset
     sortBy: [{ field: 'price', direction: 'DESC' }],
     timeout: 500,
 });

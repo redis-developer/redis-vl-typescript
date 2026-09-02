@@ -3,12 +3,45 @@ import { createClient, type RedisClientType } from 'redis';
 import { IndexSchema } from '../../src/schema/schema.js';
 import { SearchIndex } from '../../src/indexes/search-index.js';
 import { VectorQuery } from '../../src/query/vector.js';
-import { HuggingFaceVectorizer } from '../../src/vectorizers/index.js';
+
+const VECTOR_DIMS = 4;
+
+function unit(vector: number[]): number[] {
+    const magnitude = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
+    return vector.map((value) => value / magnitude);
+}
+
+const TEST_EMBEDDINGS = new Map<string, number[]>([
+    ['laptop computer for programming', unit([1, 0, 0, 0])],
+    ['wireless mouse', unit([0.7, 0.7, 0, 0])],
+    ['mechanical keyboard', unit([0.85, 0.53, 0, 0])],
+    ['office desk chair', unit([0, 0, 0.6, 0.8])],
+    ['standing desk', unit([0, 0, 1, 0])],
+    ['monitor screen 27 inch', unit([0.9, 0.44, 0, 0])],
+    ['gaming laptop', unit([1, 0, 0, 0])],
+    ['wireless gaming mouse', unit([0.72, 0.69, 0, 0])],
+    ['office desk', unit([0, 0, 1, 0])],
+    ['desktop computer', unit([0.995, 0.1, 0, 0])],
+    ['computer', unit([0.995, 0.1, 0, 0])],
+    ['desk', unit([0, 0, 1, 0])],
+    ['electronics', unit([0.9, 0.44, 0, 0])],
+    ['laptop computer', unit([0.995, 0.1, 0, 0])],
+    ['phone', unit([0.65, 0.76, 0, 0])],
+    ['laptop', unit([1, 0, 0, 0])],
+    ['product', unit([0.5, 0.5, 0.5, 0.5])],
+    ['gaming', unit([1, 0.05, 0, 0])],
+]);
+
+class TestVectorizer {
+    async embed(text: string): Promise<number[]> {
+        return [...(TEST_EMBEDDINGS.get(text.toLowerCase()) ?? unit([0.5, 0.5, 0.5, 0.5]))];
+    }
+}
 
 describe('Vector Search Integration', () => {
     let client: RedisClientType;
     let index: SearchIndex;
-    let vectorizer: HuggingFaceVectorizer;
+    let vectorizer: TestVectorizer;
     let products: any[]; // Shared test data
 
     beforeAll(async () => {
@@ -18,11 +51,7 @@ describe('Vector Search Integration', () => {
         });
         await client.connect();
 
-        // Create vectorizer
-        vectorizer = new HuggingFaceVectorizer({
-            model: 'Xenova/all-MiniLM-L6-v2',
-            cacheDir: process.env.HF_CACHE_DIR,
-        });
+        vectorizer = new TestVectorizer();
 
         // Create schema for product search
         const schema = IndexSchema.fromObject({
@@ -39,7 +68,7 @@ describe('Vector Search Integration', () => {
                     name: 'embedding',
                     type: 'vector',
                     attrs: {
-                        dims: 384,
+                        dims: VECTOR_DIMS,
                         algorithm: 'hnsw',
                         distanceMetric: 'cosine',
                     },
@@ -290,7 +319,7 @@ describe('Vector Search Integration', () => {
                             name: 'embedding',
                             type: 'vector',
                             attrs: {
-                                dims: 384,
+                                dims: VECTOR_DIMS,
                                 algorithm: 'flat',
                                 distanceMetric: 'ip',
                             },
@@ -468,12 +497,59 @@ describe('Vector Search Integration', () => {
             });
         });
     });
+
+    describe('numResults above the Redis default LIMIT', () => {
+        it('returns every requested neighbour when numResults exceeds 10', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-knn-limit',
+                    prefix: 'rvl-test-knn-limit',
+                    storageType: 'hash',
+                },
+                fields: [
+                    {
+                        name: 'embedding',
+                        type: 'vector',
+                        attrs: {
+                            dims: VECTOR_DIMS,
+                            algorithm: 'flat',
+                            distanceMetric: 'l2',
+                        },
+                    },
+                ],
+            });
+            const knnIndex = new SearchIndex(schema, client);
+            await knnIndex.create({ overwrite: true, drop: true });
+
+            try {
+                const docs = Array.from({ length: 25 }, (_, i) => ({
+                    id: String(i),
+                    embedding: unit([i + 1, 1, 0, 0]),
+                }));
+                await knnIndex.load(docs, { idField: 'id' });
+                await new Promise((r) => setTimeout(r, 100));
+
+                const results = await knnIndex.search(
+                    new VectorQuery({
+                        vector: unit([1, 1, 0, 0]),
+                        vectorField: 'embedding',
+                        numResults: 20,
+                    })
+                );
+
+                expect(results.total).toBe(20);
+                expect(results.documents).toHaveLength(20);
+            } finally {
+                await knnIndex.delete({ drop: true }).catch(() => {});
+            }
+        });
+    });
 });
 
 describe('Vector Search with JSON Storage Integration', () => {
     let client: RedisClientType;
     let index: SearchIndex;
-    let vectorizer: HuggingFaceVectorizer;
+    let vectorizer: TestVectorizer;
 
     beforeAll(async () => {
         // Connect to Redis
@@ -482,11 +558,7 @@ describe('Vector Search with JSON Storage Integration', () => {
         });
         await client.connect();
 
-        // Create vectorizer
-        vectorizer = new HuggingFaceVectorizer({
-            model: 'Xenova/all-MiniLM-L6-v2',
-            cacheDir: process.env.HF_CACHE_DIR,
-        });
+        vectorizer = new TestVectorizer();
 
         // Create schema for product search with JSON storage
         const schema = IndexSchema.fromObject({
@@ -505,7 +577,7 @@ describe('Vector Search with JSON Storage Integration', () => {
                     type: 'vector',
                     attrs: {
                         as: 'embedding',
-                        dims: 384,
+                        dims: VECTOR_DIMS,
                         algorithm: 'hnsw',
                         distanceMetric: 'cosine',
                     },
