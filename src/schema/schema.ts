@@ -203,7 +203,7 @@ export class IndexSchema {
         } else {
             // For HASH storage, path should always be null
             if (path !== null && path !== undefined) {
-                // TODO: log a warning
+                console.warn(`[IndexSchema] path '${path}' will be ignored for HASH storage type; path should be null.`);
             }
             field.path = null;
         }
@@ -275,7 +275,7 @@ export class IndexSchema {
      */
     removeField(fieldName: string): void {
         if (!Object.hasOwn(this.fields, fieldName)) {
-            // TODO: log a warning
+            console.warn(`[IndexSchema] removeField: field '${fieldName}' not found in schema. Known fields: [${Object.keys(this.fields).join(', ')}]`);
             return;
         }
         delete this.fields[fieldName];
