@@ -10,7 +10,7 @@ export interface FilterQueryConfig {
     /** Fields to include in each result document. */
     returnFields?: string[];
 
-    /** Number of results to return. Defaults to 10. */
+    /** Number of results to return. Default for `limit` (the `LIMIT` count). Defaults to 10. */
     numResults?: number;
 
     /** Pagination offset. */

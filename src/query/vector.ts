@@ -17,7 +17,10 @@ export type UseSearchHistory = 'OFF' | 'ON' | 'AUTO';
  * Configuration for VectorQuery
  */
 export interface VectorQueryConfig extends BaseVectorQueryConfig {
-    /** Number of results to return */
+    /**
+     * Number of nearest neighbours to retrieve (the `KNN <k>` clause).
+     * Also the default for `limit`. Defaults to 10.
+     */
     numResults?: number;
 
     /** Distance metric to use */

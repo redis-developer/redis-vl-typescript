@@ -48,13 +48,13 @@ export interface TextQueryConfig {
     /** Fields to include in each result document. */
     returnFields?: string[];
 
-    /** Number of results to return. Defaults to 10. */
+    /** Number of results to return. Default for `limit` (the `LIMIT` count). Defaults to 10. */
     numResults?: number;
 
     /** Pagination offset. */
     offset?: number;
 
-    /** Pagination limit. Defaults to numResults. */
+    /** `LIMIT` count. Takes priority over `numResults`. */
     limit?: number;
 
     /**
