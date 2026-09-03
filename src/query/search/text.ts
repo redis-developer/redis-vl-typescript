@@ -1,7 +1,7 @@
 import { BaseQuery, renderFilter, type FilterInput } from './base.js';
-import { TokenEscaper } from '../utils/token-escaper.js';
-import { QueryValidationError } from '../errors.js';
-import { resolveStopwords, type StopwordsInput } from '../utils/stopwords/resolve.js';
+import { TokenEscaper } from '../../utils/token-escaper.js';
+import { QueryValidationError } from '../../errors.js';
+import { resolveStopwords, type StopwordsInput } from '../../utils/stopwords/resolve.js';
 
 const escaper = new TokenEscaper();
 

@@ -4,9 +4,9 @@ import {
     type BaseVectorQueryConfig,
     type FilterInput,
 } from './base.js';
-import { VectorDataType, VectorDistanceMetric } from '../schema/types.js';
-import { QueryValidationError } from '../errors.js';
-import { encodeVectorBuffer } from '../redis/utils.js';
+import { VectorDataType, VectorDistanceMetric } from '../../schema/types.js';
+import { QueryValidationError } from '../../errors.js';
+import { encodeVectorBuffer } from '../../redis/utils.js';
 import type { HybridPolicy } from './vector.js';
 
 /**

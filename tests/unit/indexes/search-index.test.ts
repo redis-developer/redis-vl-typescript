@@ -5,10 +5,10 @@ import { IndexSchema, IndexInfo } from '../../../src/schema/schema.js';
 import { StorageType, VectorDataType } from '../../../src/schema/types.js';
 import type { RedisClientType } from 'redis';
 import { RedisVLError, SchemaValidationError } from '../../../src/errors.js';
-import { VectorQuery } from '../../../src/query/vector.js';
-import { TextQuery } from '../../../src/query/text.js';
-import { FilterQuery } from '../../../src/query/filter-query.js';
-import { AggregationQuery, Reducers } from '../../../src/query/aggregation.js';
+import { VectorQuery } from '../../../src/query/search/vector.js';
+import { TextQuery } from '../../../src/query/search/text.js';
+import { FilterQuery } from '../../../src/query/search/filter-query.js';
+import { AggregationQuery, Reducers } from '../../../src/query/aggregate/aggregation.js';
 
 describe('SearchIndex', () => {
     let schema: IndexSchema;

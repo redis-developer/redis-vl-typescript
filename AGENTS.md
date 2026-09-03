@@ -24,7 +24,7 @@ Before consulting reference implementations:
     ls ../redis-vl-python ../redis-vl-java
     ```
 
-2. If any are missing, clone them as siblings using the canonical upstream URLs in the [Reference](#reference) section below.
+2. If any are missing, clone them as siblings using the canonical upstream URLs in the [Reference](#reference-repositories) section below.
 
 | Repository | Sibling path         |
 | ---------- | -------------------- |
@@ -157,5 +157,5 @@ See [contributor guide → Commit Format rule 10](./website/docs/contributing/gi
 
 For API design and behavior, consult the Python and Java RedisVL implementations:
 
-- **RedisVL Python**: https://github.com/redis-developer/redisvl
-- **RedisVL Java**: https://github.com/redis-developer/redis-vl-java
+- **RedisVL Python**: https://github.com/redis/redis-vl-python
+- **RedisVL Java**: https://github.com/redis/redis-vl-java

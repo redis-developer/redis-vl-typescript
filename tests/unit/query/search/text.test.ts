@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { BaseQuery } from '../../../src/query/base.js';
-import { TextQuery } from '../../../src/query/text.js';
-import { Tag } from '../../../src/query/filter.js';
-import { QueryValidationError } from '../../../src/errors.js';
+import { BaseQuery } from '../../../../src/query/search/base.js';
+import { TextQuery } from '../../../../src/query/search/text.js';
+import { Tag } from '../../../../src/query/filter.js';
+import { QueryValidationError } from '../../../../src/errors.js';
 
 const textScorers = ['BM25', 'BM25STD', 'TFIDF', 'TFIDF.DOCNORM', 'DISMAX', 'DOCSCORE'] as const;
 
@@ -281,7 +281,7 @@ describe('TextQuery', () => {
         });
 
         it('exposes the english set via the public stopwords namespace', async () => {
-            const { stopwords } = await import('../../../src/index.js');
+            const { stopwords } = await import('../../../../src/index.js');
             expect(stopwords.english).toBeInstanceOf(Set);
             expect(stopwords.english.size).toBe(198);
             expect(stopwords.english.has('the')).toBe(true);

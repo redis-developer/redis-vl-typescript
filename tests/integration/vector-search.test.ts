@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 import { IndexSchema } from '../../src/schema/schema.js';
 import { SearchIndex } from '../../src/indexes/search-index.js';
-import { VectorQuery } from '../../src/query/vector.js';
+import { VectorQuery } from '../../src/query/search/vector.js';
 
 const VECTOR_DIMS = 4;
 

@@ -16,11 +16,11 @@ import type {
     SearchDocument,
     QueryOptions,
     HybridSearchResult,
-} from '../query/base.js';
-import { VectorQuery } from '../query/vector.js';
-import { VectorRangeQuery } from '../query/range.js';
+} from '../query/search/base.js';
+import { VectorQuery } from '../query/search/vector.js';
+import { VectorRangeQuery } from '../query/search/range.js';
 import { HybridQuery } from '../query/hybrid.js';
-import type { AggregationQuery } from '../query/aggregation.js';
+import type { AggregationQuery } from '../query/aggregate/aggregation.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 import type { VectorFieldAttrs } from '../schema/fields.js';
 

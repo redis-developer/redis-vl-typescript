@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BaseQuery, BaseVectorQuery } from '../../../src/query/base.js';
-import { VectorQuery } from '../../../src/query/vector.js';
-import { QueryValidationError } from '../../../src/errors.js';
-import { VectorDataType, VectorDistanceMetric } from '../../../src/schema/types.js';
+import { BaseQuery, BaseVectorQuery } from '../../../../src/query/search/base.js';
+import { VectorQuery } from '../../../../src/query/search/vector.js';
+import { QueryValidationError } from '../../../../src/errors.js';
+import { VectorDataType, VectorDistanceMetric } from '../../../../src/schema/types.js';
 
 describe('VectorQuery', () => {
     describe('constructor', () => {

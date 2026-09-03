@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { AggregationQuery, Reducers } from '../../../src/query/aggregation.js';
-import { Tag, Num } from '../../../src/query/filter.js';
-import { QueryValidationError } from '../../../src/errors.js';
+import { AggregationQuery, Reducers } from '../../../../src/query/aggregate/aggregation.js';
+import { Tag, Num } from '../../../../src/query/filter.js';
+import { QueryValidationError } from '../../../../src/errors.js';
 
 describe('AggregationQuery', () => {
     describe('query string', () => {
