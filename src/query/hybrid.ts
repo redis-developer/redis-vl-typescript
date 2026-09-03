@@ -19,8 +19,8 @@ import { QueryValidationError, SchemaValidationError } from '../errors.js';
 import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
 import { VectorDataType } from '../schema/types.js';
 import { TokenEscaper } from '../utils/token-escaper.js';
-import { renderFilter, type FilterInput } from './base.js';
-import type { TextScorer } from './text.js';
+import { renderFilter, type FilterInput } from './search/base.js';
+import type { TextScorer } from './search/text.js';
 
 const escaper = new TokenEscaper();
 const DEFAULT_COMBINE: HybridCombine = { type: 'RRF' };

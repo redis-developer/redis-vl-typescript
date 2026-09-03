@@ -12,10 +12,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 import { IndexSchema } from '../../src/schema/schema.js';
 import { SearchIndex } from '../../src/indexes/search-index.js';
-import { FilterQuery } from '../../src/query/filter-query.js';
-import { CountQuery } from '../../src/query/count.js';
-import { VectorRangeQuery } from '../../src/query/range.js';
-import { TextQuery } from '../../src/query/text.js';
+import { FilterQuery } from '../../src/query/search/filter-query.js';
+import { CountQuery } from '../../src/query/search/count.js';
+import { VectorRangeQuery } from '../../src/query/search/range.js';
+import { TextQuery } from '../../src/query/search/text.js';
 import { Tag, Num, Text } from '../../src/query/filter.js';
 
 interface Product extends Record<string, unknown> {

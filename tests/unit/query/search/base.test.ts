@@ -5,10 +5,10 @@ import {
     renderFilter,
     type BaseQueryConfig,
     type BaseVectorQueryConfig,
-} from '../../../src/query/base.js';
-import { Tag } from '../../../src/query/filter.js';
-import { QueryValidationError } from '../../../src/errors.js';
-import { VectorDataType } from '../../../src/schema/types.js';
+} from '../../../../src/query/search/base.js';
+import { Tag } from '../../../../src/query/filter.js';
+import { QueryValidationError } from '../../../../src/errors.js';
+import { VectorDataType } from '../../../../src/schema/types.js';
 
 class TestQuery extends BaseQuery {
     constructor(config: BaseQueryConfig = {}) {

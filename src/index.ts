@@ -27,16 +27,16 @@ export { SearchIndex } from './indexes/search-index.js';
 export type { CreateIndexOptions, DeleteIndexOptions } from './indexes/search-index.js';
 
 // Query exports
-export { VectorQuery } from './query/vector.js';
-export type { VectorQueryConfig, HybridPolicy, UseSearchHistory } from './query/vector.js';
-export { VectorRangeQuery } from './query/range.js';
-export type { VectorRangeQueryConfig } from './query/range.js';
-export { FilterQuery } from './query/filter-query.js';
-export type { FilterQueryConfig } from './query/filter-query.js';
-export { CountQuery } from './query/count.js';
-export type { CountQueryConfig } from './query/count.js';
-export { TextQuery } from './query/text.js';
-export type { TextQueryConfig, TextScorer } from './query/text.js';
+export { VectorQuery } from './query/search/vector.js';
+export type { VectorQueryConfig, HybridPolicy, UseSearchHistory } from './query/search/vector.js';
+export { VectorRangeQuery } from './query/search/range.js';
+export type { VectorRangeQueryConfig } from './query/search/range.js';
+export { FilterQuery } from './query/search/filter-query.js';
+export type { FilterQueryConfig } from './query/search/filter-query.js';
+export { CountQuery } from './query/search/count.js';
+export type { CountQueryConfig } from './query/search/count.js';
+export { TextQuery } from './query/search/text.js';
+export type { TextQueryConfig, TextScorer } from './query/search/text.js';
 export { HybridQuery } from './query/hybrid.js';
 export type {
     HybridQueryConfig,
@@ -44,11 +44,16 @@ export type {
     HybridCombine,
     HybridCommand,
 } from './query/hybrid.js';
-export { AggregationQuery, Reducers } from './query/aggregation.js';
-export type { AggregateCommand, SortSpec, LoadField, Reducer } from './query/aggregation.js';
+export { AggregationQuery, Reducers } from './query/aggregate/aggregation.js';
+export type {
+    AggregateCommand,
+    SortSpec,
+    LoadField,
+    Reducer,
+} from './query/aggregate/aggregation.js';
 export { Tag, Num, Text, Geo, GeoRadius, Timestamp, FilterExpression } from './query/filter.js';
 export type { Inclusive, GeoUnit } from './query/filter.js';
-export { BaseQuery, BaseVectorQuery } from './query/base.js';
+export { BaseQuery, BaseVectorQuery } from './query/search/base.js';
 export type {
     BaseQueryConfig,
     BaseVectorQueryConfig,
@@ -60,7 +65,7 @@ export type {
     SortByOptions,
     SortDirection,
     SortField,
-} from './query/base.js';
+} from './query/search/base.js';
 
 // Error exports
 export {

@@ -3,10 +3,10 @@
  * Query builders for Redis search operations.
  */
 
-import { QueryValidationError, SchemaValidationError } from '../errors.js';
-import { normalizeVectorDataType } from '../redis/utils.js';
-import { VectorDataType } from '../schema/types.js';
-import type { FilterExpression } from './filter.js';
+import { QueryValidationError, SchemaValidationError } from '../../errors.js';
+import { normalizeVectorDataType } from '../../redis/utils.js';
+import { VectorDataType } from '../../schema/types.js';
+import type { FilterExpression } from '../filter.js';
 
 /**
  * A filter clause supplied to a query - either a pre-built {@link FilterExpression}

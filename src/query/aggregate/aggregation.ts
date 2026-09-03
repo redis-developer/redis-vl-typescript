@@ -10,8 +10,8 @@
  */
 
 import type { FtAggregateOptions } from '@redis/search/dist/lib/commands/AGGREGATE.js';
-import { QueryValidationError } from '../errors.js';
-import { renderFilter, type FilterInput } from './base.js';
+import { QueryValidationError } from '../../errors.js';
+import { renderFilter, type FilterInput } from '../search/base.js';
 
 /** Output of {@link AggregationQuery.toCommand}. */
 export interface AggregateCommand {

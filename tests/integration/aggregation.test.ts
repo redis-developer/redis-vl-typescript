@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 import { IndexSchema } from '../../src/schema/schema.js';
 import { SearchIndex } from '../../src/indexes/search-index.js';
-import { AggregationQuery, Reducers } from '../../src/query/aggregation.js';
+import { AggregationQuery, Reducers } from '../../src/query/aggregate/aggregation.js';
 import { Tag } from '../../src/query/filter.js';
 
 interface Product extends Record<string, unknown> {

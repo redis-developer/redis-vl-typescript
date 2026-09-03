@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { BaseQuery, BaseVectorQuery } from '../../../src/query/base.js';
-import { VectorRangeQuery } from '../../../src/query/range.js';
-import { Tag } from '../../../src/query/filter.js';
-import { QueryValidationError } from '../../../src/errors.js';
-import { VectorDataType } from '../../../src/schema/types.js';
+import { BaseQuery, BaseVectorQuery } from '../../../../src/query/search/base.js';
+import { VectorRangeQuery } from '../../../../src/query/search/range.js';
+import { Tag } from '../../../../src/query/filter.js';
+import { QueryValidationError } from '../../../../src/errors.js';
+import { VectorDataType } from '../../../../src/schema/types.js';
 
 describe('VectorRangeQuery', () => {
     const vec = [0.1, 0.2, 0.3];

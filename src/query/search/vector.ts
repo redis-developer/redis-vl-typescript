@@ -1,7 +1,7 @@
 import { BaseVectorQuery, renderFilter, type BaseVectorQueryConfig } from './base.js';
-import { VectorDistanceMetric } from '../schema/types.js';
-import { QueryValidationError } from '../errors.js';
-import { encodeVectorBuffer } from '../redis/utils.js';
+import { VectorDistanceMetric } from '../../schema/types.js';
+import { QueryValidationError } from '../../errors.js';
+import { encodeVectorBuffer } from '../../redis/utils.js';
 
 /**
  * Hybrid policy options for vector search with filters
