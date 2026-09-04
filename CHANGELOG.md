@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.0](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.1.0...redis-vl-v0.2.0) (2026-09-04)
+
+
+### Features
+
+* **client:** Bump to node-redis v6 ([39ae34a](https://github.com/redis-developer/redis-vl-typescript/commit/39ae34a5fd1ad36605309417aa86e15779f4b5c5))
+* **client:** Bump to node-redis v6 ([74d7b07](https://github.com/redis-developer/redis-vl-typescript/commit/74d7b07750e208ef3912ab9a73385dd53b96dd8f))
+* **index:** add SearchIndex.listAll() ([adeb130](https://github.com/redis-developer/redis-vl-typescript/commit/adeb1305d48b93b3dcc7dbc28021a3fba59613df))
+* **index:** add SearchIndex.listAll() ([1229861](https://github.com/redis-developer/redis-vl-typescript/commit/1229861bf5aab81d20964f5925048866a9177843))
+* **query:** add limit option to HybridQuery ([0b0cccb](https://github.com/redis-developer/redis-vl-typescript/commit/0b0cccbfb5e6974a177afd245beaabbe06efa48c))
+* **query:** add shared query base classes ([3c5c8f0](https://github.com/redis-developer/redis-vl-typescript/commit/3c5c8f0f4346f18606580724a169784cebeb5c21))
+* **query:** rebase shared query base on main ([e21a813](https://github.com/redis-developer/redis-vl-typescript/commit/e21a813e1cbb309ba5ace7aeb8e5f11a98efaebe))
+
+
+### Bug Fixes
+
+* **query:** fix paging, sorting, and result limits in query classes ([e808dbd](https://github.com/redis-developer/redis-vl-typescript/commit/e808dbd86a9e749772f3e61c3a75344867a354df))
+* **query:** normalize shared query fields ([f8c8d23](https://github.com/redis-developer/redis-vl-typescript/commit/f8c8d23f9af18accef6d051706cfe398aed41551))
+* **query:** preserve count query zero limit ([2f6b434](https://github.com/redis-developer/redis-vl-typescript/commit/2f6b434ce79d889835ebc6cc1447eb279224a7ff))
+
 ## [0.1.0](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.1.0-beta.3...redis-vl-v0.1.0) (2026-06-30)
 
 
