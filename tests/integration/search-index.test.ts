@@ -472,6 +472,28 @@ describe('SearchIndex Integration Tests', () => {
         });
     });
 
+    describe('listAll()', () => {
+        it('lists created indices and stops listing them after deletion', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-listall',
+                    prefix: 'rvl-test-listall',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+
+            expect(await SearchIndex.listAll(client)).toContain('redisvl-test-listall');
+
+            await index.delete({ drop: true });
+
+            expect(await SearchIndex.listAll(client)).not.toContain('redisvl-test-listall');
+        });
+    });
+
     describe('delete()', () => {
         it('should delete index without dropping documents', async () => {
             const schema = IndexSchema.fromObject({

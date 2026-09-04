@@ -345,6 +345,31 @@ export class SearchIndex {
     }
 
     /**
+     * List the names of all search indices in the Redis database.
+     *
+     * @param client - Redis client instance
+     * @returns Names of every search index in the database
+     *
+     * @example
+     * ```typescript
+     * const names = await SearchIndex.listAll(client);
+     * // Next, you can load one of the existing index:
+     * const index = await SearchIndex.fromExisting(names[0], client);
+     * ```
+     */
+    static async listAll(client: AnyRedisClient) {
+        const ftClient = client as RedisClientType | RedisClusterType;
+        try {
+            return await ftClient.ft._list();
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to list indices: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
      * Delete the index from Redis.
      *
      * @param options - Deletion options
