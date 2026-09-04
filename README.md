@@ -1,5 +1,5 @@
 <div align="center">
-    <img width="300" src="https://redis.io/wp-content/uploads/2024/04/Logotype.svg" alt="Redis">
+    <img width="300" src="https://redis-developer.github.io/redis-vl-typescript/img/logo.svg" alt="Redis">
     <h1>Redis Vector Library</h1>
     <p><strong>The AI-native Redis TypeScript/Node.js client</strong></p>
 </div>

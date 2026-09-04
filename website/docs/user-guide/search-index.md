@@ -48,6 +48,10 @@ import { createClient } from 'redis';
 const client = createClient();
 await client.connect();
 
+// Discover what indices exist in the database
+const names = await SearchIndex.listAll(client);
+console.log('All indices:', names); // ['products', ...]
+
 // Load an existing index by name
 const index = await SearchIndex.fromExisting('products', client);
 

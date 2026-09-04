@@ -200,6 +200,30 @@ describe('SearchIndex', () => {
         });
     });
 
+    describe('listAll()', () => {
+        it('should list all search indices in the database', async () => {
+            (mockClient.ft._list as any).mockResolvedValue(['redisvl-test-index', 'another-index']);
+
+            const indices = await SearchIndex.listAll(mockClient);
+
+            expect(indices).toEqual(['redisvl-test-index', 'another-index']);
+            expect(mockClient.ft._list).toHaveBeenCalled();
+        });
+
+        it('should return an empty array when no indices exist', async () => {
+            (mockClient.ft._list as any).mockResolvedValue([]);
+
+            expect(await SearchIndex.listAll(mockClient)).toEqual([]);
+        });
+
+        it('should wrap client failures in RedisVLError', async () => {
+            (mockClient.ft._list as any).mockRejectedValue(new Error('connection lost'));
+
+            await expect(SearchIndex.listAll(mockClient)).rejects.toThrow(RedisVLError);
+            await expect(SearchIndex.listAll(mockClient)).rejects.toThrow(/connection lost/);
+        });
+    });
+
     describe('delete()', () => {
         it('should delete index without dropping data by default', async () => {
             (mockClient.ft.dropIndex as any).mockResolvedValue('OK');
