@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.2.1...redis-vl-v0.2.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **release:** publish to npm with trusted publishing ([5aecf04](https://github.com/redis-developer/redis-vl-typescript/commit/5aecf04632cc527a30a387e19ff14271e913637d))
+* **release:** publish to npm with trusted publishing ([a58c7d8](https://github.com/redis-developer/redis-vl-typescript/commit/a58c7d81c5e17707ab241821b3d0cfabcde38f0d))
+
 ## [0.2.1](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.2.0...redis-vl-v0.2.1) (2026-10-26)
 
 
