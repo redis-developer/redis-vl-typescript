@@ -4,6 +4,9 @@
         // Override to NOT emit files (we only want type checking)
         "noEmit": true,
 
+        // Tests and examples live outside src/
+        "rootDir": ".",
+
         // Allow importing from vitest
         "types": ["vitest/globals", "node"]
     },
