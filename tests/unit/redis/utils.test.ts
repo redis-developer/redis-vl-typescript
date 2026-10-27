@@ -4,6 +4,7 @@ import { VectorDataType } from '../../../src/schema/types.js';
 import {
     decodeVectorBuffer,
     encodeVectorBuffer,
+    encodeVectorInput,
     normalizeVectorDataType,
 } from '../../../src/redis/utils.js';
 
@@ -133,6 +134,40 @@ describe('vector buffer utilities', () => {
                 }
             }
         );
+    });
+
+    describe('encodeVectorInput()', () => {
+        it('should return a Buffer unchanged, without re-encoding it', () => {
+            const preEncoded = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+
+            const result = encodeVectorInput(preEncoded, VectorDataType.FLOAT32);
+
+            expect(result).toBe(preEncoded);
+        });
+
+        it('should not apply the datatype to a Buffer', () => {
+            const preEncoded = encodeVectorBuffer([0.1, 0.2], VectorDataType.FLOAT64);
+
+            const result = encodeVectorInput(preEncoded, VectorDataType.FLOAT64);
+
+            expect(result.byteLength).toBe(16);
+            expect(result.equals(preEncoded)).toBe(true);
+        });
+
+        it('should encode a number array using the datatype', () => {
+            const vector = [0.1, -0.2, 3.75];
+
+            const result = encodeVectorInput(vector, VectorDataType.FLOAT32);
+
+            expect(result.equals(encodeVectorBuffer(vector, VectorDataType.FLOAT32))).toBe(true);
+            expect(result.byteLength).toBe(12);
+        });
+
+        it('should default an array to FLOAT32', () => {
+            const result = encodeVectorInput([1, 2]);
+
+            expect(result.byteLength).toBe(8);
+        });
     });
 
     describe('normalizeVectorDataType()', () => {

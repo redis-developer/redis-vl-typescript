@@ -9,6 +9,7 @@ import { VectorQuery } from '../../../src/query/search/vector.js';
 import { TextQuery } from '../../../src/query/search/text.js';
 import { FilterQuery } from '../../../src/query/search/filter-query.js';
 import { AggregationQuery, Reducers } from '../../../src/query/aggregate/aggregation.js';
+import { encodeVectorBuffer } from '../../../src/redis/utils.js';
 
 describe('SearchIndex', () => {
     let schema: IndexSchema;
@@ -461,6 +462,39 @@ describe('SearchIndex', () => {
                 expect((embedding as Buffer).readDoubleLE(8)).toBeCloseTo(0.2, 12);
                 expect((embedding as Buffer).readDoubleLE(16)).toBeCloseTo(0.3, 12);
             });
+
+            it('should store a pre-encoded Buffer vector unchanged', async () => {
+                const indexInfo = new IndexInfo({
+                    name: 'redisvl-test-data-load-vector-buffer',
+                    prefix: 'rvl-test-data-load-vector-buffer',
+                    storageType: StorageType.HASH,
+                });
+                const vectorSchema = new IndexSchema({ index: indexInfo });
+                vectorSchema.addField({ name: 'id', type: 'tag' });
+                vectorSchema.addField({
+                    name: 'embedding',
+                    type: 'vector',
+                    attrs: { algorithm: 'flat', dims: 3 },
+                });
+
+                const hSet = vi.fn().mockReturnThis();
+                const mockPipeline = {
+                    hSet,
+                    expire: vi.fn().mockReturnThis(),
+                    execAsPipeline: vi.fn().mockResolvedValue([]),
+                };
+                mockClient.multi = vi
+                    .fn()
+                    .mockReturnValue(mockPipeline) as RedisClientType['multi'];
+
+                const preEncoded = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+                const index = new SearchIndex(vectorSchema, mockClient);
+                await index.load([{ id: 'doc-1', embedding: preEncoded }], { idField: 'id' });
+
+                const storedDocument = hSet.mock.calls[0][1] as Record<string, unknown>;
+
+                expect(storedDocument.embedding).toBe(preEncoded);
+            });
         });
 
         describe('JSON storage', () => {
@@ -545,6 +579,86 @@ describe('SearchIndex', () => {
                     '$',
                     expect.objectContaining({ processed: true })
                 );
+            });
+
+            describe('vector fields', () => {
+                const buildVectorSchema = (path?: string): IndexSchema => {
+                    const vectorSchema = new IndexSchema({
+                        index: new IndexInfo({
+                            name: 'redisvl-test-json-vector',
+                            prefix: 'rvl-test-json-vector',
+                            storageType: StorageType.JSON,
+                        }),
+                    });
+                    vectorSchema.addField({ name: 'id', type: 'tag' });
+                    vectorSchema.addField({
+                        name: 'embedding',
+                        type: 'vector',
+                        ...(path ? { path } : {}),
+                        attrs: { algorithm: 'flat', dims: 3 },
+                    });
+                    return vectorSchema;
+                };
+
+                it('should store a number array vector as a JSON array', async () => {
+                    const index = new SearchIndex(buildVectorSchema(), mockClient);
+
+                    await index.load([{ id: 'doc-1', embedding: [0.1, 0.2, 0.3] }], {
+                        idField: 'id',
+                    });
+
+                    expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledWith(
+                        'rvl-test-json-vector:doc-1',
+                        '$',
+                        expect.objectContaining({ embedding: [0.1, 0.2, 0.3] })
+                    );
+                });
+
+                it('should reject a Buffer vector instead of storing it as a JSON object', async () => {
+                    const index = new SearchIndex(buildVectorSchema(), mockClient);
+                    const preEncoded = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+
+                    const loading = index.load([{ id: 'doc-1', embedding: preEncoded }], {
+                        idField: 'id',
+                    });
+
+                    await expect(loading).rejects.toThrow(SchemaValidationError);
+                    await expect(loading).rejects.toThrow(/embedding/);
+                    await expect(loading).rejects.toThrow(/number array/);
+                    expect((mockClient as any).mockPipeline.json.set).not.toHaveBeenCalled();
+                });
+
+                it('should reject a Buffer vector even when validateOnLoad is off', async () => {
+                    const index = new SearchIndex(buildVectorSchema(), mockClient);
+                    const preEncoded = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+
+                    await expect(
+                        index.load([{ id: 'doc-1', embedding: preEncoded }], {
+                            idField: 'id',
+                            validateOnLoad: false,
+                        })
+                    ).rejects.toThrow(SchemaValidationError);
+                });
+
+                it('should reject a Buffer vector at a nested JSON path', async () => {
+                    const index = new SearchIndex(buildVectorSchema('$.nested.vec'), mockClient);
+                    const preEncoded = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+
+                    await expect(
+                        index.load([{ id: 'doc-1', nested: { vec: preEncoded } }], {
+                            idField: 'id',
+                        })
+                    ).rejects.toThrow(SchemaValidationError);
+                    expect((mockClient as any).mockPipeline.json.set).not.toHaveBeenCalled();
+                });
+
+                it('should not reject a document that is missing the vector field', async () => {
+                    const index = new SearchIndex(buildVectorSchema(), mockClient);
+
+                    await index.load([{ id: 'doc-1' }], { idField: 'id' });
+
+                    expect((mockClient as any).mockPipeline.json.set).toHaveBeenCalledTimes(1);
+                });
             });
         });
 

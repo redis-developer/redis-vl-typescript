@@ -9,6 +9,7 @@ import {
 import { Tag } from '../../../../src/query/filter.js';
 import { QueryValidationError } from '../../../../src/errors.js';
 import { VectorDataType } from '../../../../src/schema/types.js';
+import { encodeVectorBuffer } from '../../../../src/redis/utils.js';
 
 class TestQuery extends BaseQuery {
     constructor(config: BaseQueryConfig = {}) {
@@ -179,5 +180,64 @@ describe('BaseVectorQuery', () => {
                     datatype: 'float25',
                 })
         ).toThrow(QueryValidationError);
+    });
+
+    describe('Buffer vectors', () => {
+        it('should accept a pre-encoded Buffer vector', () => {
+            const buffer = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+
+            const query = new TestVectorQuery({ vector: buffer, vectorField: 'embedding' });
+
+            expect(Buffer.isBuffer(query.vector)).toBe(true);
+            expect(query.vector).toEqual(buffer);
+        });
+
+        it('should return a defensive copy of a Buffer vector', () => {
+            const buffer = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+            const original = Buffer.from(buffer);
+            const query = new TestVectorQuery({ vector: buffer, vectorField: 'embedding' });
+
+            buffer.fill(0);
+            expect(query.vector).toEqual(original);
+
+            (query.vector as Buffer).fill(0);
+            expect(query.vector).toEqual(original);
+        });
+
+        it('should reject an empty Buffer', () => {
+            expect(
+                () => new TestVectorQuery({ vector: Buffer.alloc(0), vectorField: 'embedding' })
+            ).toThrow(QueryValidationError);
+        });
+
+        it.each([
+            { datatype: VectorDataType.FLOAT32, byteLength: 6 },
+            { datatype: VectorDataType.FLOAT64, byteLength: 12 },
+            { datatype: VectorDataType.FLOAT16, byteLength: 3 },
+        ])(
+            'should reject a $datatype Buffer whose length is not a multiple of the element size',
+            ({ datatype, byteLength }) => {
+                expect(
+                    () =>
+                        new TestVectorQuery({
+                            vector: Buffer.alloc(byteLength),
+                            vectorField: 'embedding',
+                            datatype,
+                        })
+                ).toThrow(/not a multiple of/);
+            }
+        );
+
+        it('should accept a Buffer that matches the element size of a non-default datatype', () => {
+            const buffer = encodeVectorBuffer([0.1, 0.2], VectorDataType.FLOAT64);
+
+            const query = new TestVectorQuery({
+                vector: buffer,
+                vectorField: 'embedding',
+                datatype: VectorDataType.FLOAT64,
+            });
+
+            expect(query.vector).toEqual(buffer);
+        });
     });
 });

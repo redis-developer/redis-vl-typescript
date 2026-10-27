@@ -4,8 +4,8 @@
  */
 
 import { QueryValidationError, SchemaValidationError } from '../../errors.js';
-import { normalizeVectorDataType } from '../../redis/utils.js';
-import { VectorDataType } from '../../schema/types.js';
+import { normalizeVectorDataType, validateWholeVectorElements } from '../../redis/utils.js';
+import { VectorDataType, VectorInput } from '../../schema/types.js';
 import type { FilterExpression } from '../filter.js';
 
 /**
@@ -192,8 +192,12 @@ export abstract class BaseQuery {
  * Common vector query configuration.
  */
 export interface BaseVectorQueryConfig extends BaseQueryConfig {
-    /** Vector to search with. */
-    vector: number[];
+    /**
+     * Vector to search with: a number array, or a Buffer already encoded in
+     * the index's vector datatype (sent to Redis as-is). To wrap a typed array,
+     * use `Buffer.from(array.buffer, array.byteOffset, array.byteLength)`.
+     */
+    vector: VectorInput;
 
     /** Name of the vector field in the index. */
     vectorField: string;
@@ -209,7 +213,7 @@ export interface BaseVectorQueryConfig extends BaseQueryConfig {
  * Base abstract class for vector-backed query types.
  */
 export abstract class BaseVectorQuery extends BaseQuery {
-    private readonly _vector: number[];
+    private readonly _vector: VectorInput;
     private readonly _vectorField: string;
     private readonly _datatype: VectorDataType;
     private readonly _normalizeDistance: boolean;
@@ -226,23 +230,29 @@ export abstract class BaseVectorQuery extends BaseQuery {
             throw new QueryValidationError('vectorField is required');
         }
 
-        this._vector = [...config.vector];
         this._vectorField = vectorField;
         this._normalizeDistance = config.normalizeDistance ?? false;
 
         try {
             this._datatype = normalizeVectorDataType(config.datatype);
+            if (Buffer.isBuffer(config.vector)) {
+                validateWholeVectorElements(config.vector, this._datatype);
+            }
         } catch (error) {
             if (error instanceof SchemaValidationError) {
                 throw new QueryValidationError(error.message);
             }
             throw error;
         }
+
+        this._vector = Buffer.isBuffer(config.vector)
+            ? Buffer.from(config.vector)
+            : [...config.vector];
     }
 
-    /** Vector to search with. */
-    get vector(): number[] {
-        return [...this._vector];
+    /** Vector to search with, exactly as supplied (number array or Buffer). */
+    get vector(): VectorInput {
+        return Buffer.isBuffer(this._vector) ? Buffer.from(this._vector) : [...this._vector];
     }
 
     /** Name of the vector field in the index. */

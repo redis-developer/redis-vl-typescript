@@ -1,7 +1,26 @@
 import type { RedisClient, WriteOptions } from './base-storage.js';
 import { BaseStorage } from './base-storage.js';
 import type { IndexSchema } from '../schema/schema.js';
+import { FieldType } from '../schema/types.js';
 import { SchemaValidationError } from '../errors.js';
+
+/**
+ * Read the value at a dotted JSON path such as `$.embedding` or `$.meta.vec`.
+ * Returns `undefined` if any step along the path is missing. Array indexes and
+ * wildcards are not supported.
+ */
+function readJsonPath(doc: Record<string, unknown>, path: string): unknown {
+    let current: unknown = doc;
+
+    for (const segment of path.replace(/^\$\.?/, '').split('.')) {
+        if (current === null || typeof current !== 'object') {
+            return undefined;
+        }
+        current = (current as Record<string, unknown>)[segment];
+    }
+
+    return current;
+}
 
 /**
  * Storage implementation for Redis JSON data type.
@@ -33,6 +52,7 @@ export class JsonStorage extends BaseStorage {
 
         // Pass 1: Preprocess and validate all documents
         const preparedDocs = await this.preprocessAndValidateDocuments(data, options);
+        this.validateNoBufferVectors(preparedDocs);
 
         // Pass 2: Write all valid documents in batches using pipeline
         const loadedKeys: string[] = [];
@@ -64,6 +84,30 @@ export class JsonStorage extends BaseStorage {
         }
 
         return loadedKeys;
+    }
+
+    /**
+     * JSON storage only: reject documents that hold a Buffer in a vector field,
+     * since JSON storage only accepts number arrays.
+     */
+    private validateNoBufferVectors(preparedDocs: Array<{ doc: Record<string, unknown> }>): void {
+        const vectorFields = Object.values(this.schema.fields).flatMap((field) =>
+            field.type === FieldType.VECTOR && field.path
+                ? [{ name: field.name, path: field.path }]
+                : []
+        );
+
+        for (let i = 0; i < preparedDocs.length; i++) {
+            for (const { name, path } of vectorFields) {
+                if (Buffer.isBuffer(readJsonPath(preparedDocs[i].doc, path))) {
+                    throw new SchemaValidationError(
+                        `Vector field '${name}' holds a Buffer, which JSON storage cannot store. ` +
+                            `Pass a number array instead, or use HASH storage for pre-encoded vectors.`,
+                        i
+                    );
+                }
+            }
+        }
     }
 
     /**

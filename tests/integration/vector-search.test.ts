@@ -3,6 +3,7 @@ import { createClient, type RedisClientType } from 'redis';
 import { IndexSchema } from '../../src/schema/schema.js';
 import { SearchIndex } from '../../src/indexes/search-index.js';
 import { VectorQuery } from '../../src/query/search/vector.js';
+import { SchemaValidationError } from '../../src/errors.js';
 
 const VECTOR_DIMS = 4;
 
@@ -544,6 +545,80 @@ describe('Vector Search Integration', () => {
             }
         });
     });
+
+    describe('pre-encoded Buffer vectors', () => {
+        it('returns the same results for a Buffer query vector as for the array', async () => {
+            const queryEmbedding = await vectorizer.embed('desktop computer');
+
+            const fromArray = await index.search(
+                new VectorQuery({
+                    vector: queryEmbedding,
+                    vectorField: 'embedding',
+                    numResults: 3,
+                })
+            );
+            const fromBuffer = await index.search(
+                new VectorQuery({
+                    vector: Buffer.from(new Float32Array(queryEmbedding).buffer),
+                    vectorField: 'embedding',
+                    numResults: 3,
+                })
+            );
+
+            expect(fromBuffer.documents.map((doc) => doc.id)).toEqual(
+                fromArray.documents.map((doc) => doc.id)
+            );
+            expect(fromBuffer.documents.map((doc) => doc.score)).toEqual(
+                fromArray.documents.map((doc) => doc.score)
+            );
+        });
+
+        it('stores a Buffer vector loaded into a HASH index and finds it by search', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-buffer-hash',
+                    prefix: 'rvl-test-buffer-hash',
+                    storageType: 'hash',
+                },
+                fields: [
+                    {
+                        name: 'embedding',
+                        type: 'vector',
+                        attrs: { dims: VECTOR_DIMS, algorithm: 'flat', distanceMetric: 'l2' },
+                    },
+                ],
+            });
+            const bufferIndex = new SearchIndex(schema, client);
+            await bufferIndex.create({ overwrite: true, drop: true });
+
+            try {
+                const target = unit([1, 0, 0, 0]);
+                await bufferIndex.load(
+                    [
+                        {
+                            id: 'near',
+                            embedding: Buffer.from(new Float32Array(target).buffer),
+                        },
+                        { id: 'far', embedding: unit([0, 0, 0, 1]) },
+                    ],
+                    { idField: 'id' }
+                );
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
+                const results = await bufferIndex.search(
+                    new VectorQuery({
+                        vector: Buffer.from(new Float32Array(target).buffer),
+                        vectorField: 'embedding',
+                        numResults: 2,
+                    })
+                );
+
+                expect(results.documents[0].id).toBe('rvl-test-buffer-hash:near');
+            } finally {
+                await bufferIndex.delete({ drop: true }).catch(() => {});
+            }
+        });
+    });
 });
 
 describe('Vector Search with JSON Storage Integration', () => {
@@ -679,6 +754,53 @@ describe('Vector Search with JSON Storage Integration', () => {
             if (rating) {
                 expect(rating).toBeGreaterThanOrEqual(4.5);
             }
+        });
+    });
+
+    describe('pre-encoded Buffer vectors', () => {
+        it('returns the same results for a Buffer query vector as for the array', async () => {
+            const queryEmbedding = await vectorizer.embed('computer');
+
+            const fromArray = await index.search(
+                new VectorQuery({
+                    vector: queryEmbedding,
+                    vectorField: 'embedding',
+                    numResults: 3,
+                })
+            );
+            const fromBuffer = await index.search(
+                new VectorQuery({
+                    vector: Buffer.from(new Float32Array(queryEmbedding).buffer),
+                    vectorField: 'embedding',
+                    numResults: 3,
+                })
+            );
+
+            expect(fromBuffer.documents.map((doc) => doc.id)).toEqual(
+                fromArray.documents.map((doc) => doc.id)
+            );
+            expect(fromBuffer.documents.map((doc) => doc.score)).toEqual(
+                fromArray.documents.map((doc) => doc.score)
+            );
+        });
+
+        it('rejects loading a Buffer vector into a JSON index instead of corrupting it', async () => {
+            const keyBefore = await client.keys('product:json:buffer-*');
+
+            await expect(
+                index.load(
+                    [
+                        {
+                            id: 'buffer-1',
+                            title: 'Buffer Document',
+                            embedding: Buffer.from(new Float32Array(unit([1, 0, 0, 0])).buffer),
+                        },
+                    ],
+                    { idField: 'id' }
+                )
+            ).rejects.toThrow(SchemaValidationError);
+
+            expect(await client.keys('product:json:buffer-*')).toEqual(keyBefore);
         });
     });
 });

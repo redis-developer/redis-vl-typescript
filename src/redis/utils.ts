@@ -1,5 +1,5 @@
 import { SchemaValidationError } from '../errors.js';
-import { VectorDataType } from '../schema/types.js';
+import { VectorDataType, VectorInput } from '../schema/types.js';
 
 export type VectorDataTypeInput = VectorDataType | string | undefined;
 
@@ -58,10 +58,26 @@ export function encodeVectorBuffer(
     }
 }
 
-export function decodeVectorBuffer(
+/**
+ * Convert a query vector into the bytes Redis expects. A Buffer is assumed to
+ * be encoded already and is returned unchanged; a number array is encoded
+ * using `datatype`.
+ */
+export function encodeVectorInput(
+    vector: VectorInput,
+    datatype: VectorDataTypeInput = VectorDataType.FLOAT32
+): Buffer {
+    return Buffer.isBuffer(vector) ? vector : encodeVectorBuffer(vector, datatype);
+}
+
+/**
+ * Check that the Buffer's length is an exact number of elements of the given
+ * datatype.
+ */
+export function validateWholeVectorElements(
     buffer: Buffer,
     datatype: VectorDataTypeInput = VectorDataType.FLOAT32
-): number[] {
+): void {
     const normalizedDatatype = normalizeVectorDataType(datatype);
     const elementSize = vectorElementByteLength(normalizedDatatype);
 
@@ -70,6 +86,14 @@ export function decodeVectorBuffer(
             `Vector buffer byte length (${buffer.byteLength}) is not a multiple of the ${normalizedDatatype} element size (${elementSize} bytes)`
         );
     }
+}
+
+export function decodeVectorBuffer(
+    buffer: Buffer,
+    datatype: VectorDataTypeInput = VectorDataType.FLOAT32
+): number[] {
+    const normalizedDatatype = normalizeVectorDataType(datatype);
+    validateWholeVectorElements(buffer, normalizedDatatype);
 
     switch (normalizedDatatype) {
         case VectorDataType.FLOAT64:

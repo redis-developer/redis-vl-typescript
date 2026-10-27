@@ -16,8 +16,12 @@
 
 import type { FtHybridOptions } from '@redis/search/dist/lib/commands/HYBRID.js';
 import { QueryValidationError, SchemaValidationError } from '../errors.js';
-import { encodeVectorBuffer, normalizeVectorDataType } from '../redis/utils.js';
-import { VectorDataType } from '../schema/types.js';
+import {
+    encodeVectorInput,
+    normalizeVectorDataType,
+    validateWholeVectorElements,
+} from '../redis/utils.js';
+import { VectorDataType, VectorInput } from '../schema/types.js';
 import { TokenEscaper } from '../utils/token-escaper.js';
 import { renderFilter, type FilterInput } from './search/base.js';
 import type { TextScorer } from './search/text.js';
@@ -64,8 +68,11 @@ export interface HybridQueryConfig {
     /** Indexed text field name. When supplied, triggers tokenization. */
     textFieldName?: string;
 
-    /** Query vector. */
-    vector: number[];
+    /**
+     * Query vector: a number array, or a Buffer already encoded in the
+     * vector datatype (sent to Redis as-is).
+     */
+    vector: VectorInput;
 
     /** Indexed vector field name. */
     vectorField: string;
@@ -252,7 +259,7 @@ function validateSortBy(
 export class HybridQuery {
     public readonly text: string;
     public readonly textFieldName?: string;
-    public readonly vector: number[];
+    public readonly vector: VectorInput;
     public readonly vectorField: string;
     public readonly vectorMethod:
         | { type: 'KNN'; k: number; efRuntime?: number }
@@ -332,6 +339,9 @@ export class HybridQuery {
 
         try {
             this.datatype = normalizeVectorDataType(config.datatype);
+            if (Buffer.isBuffer(config.vector)) {
+                validateWholeVectorElements(config.vector, this.datatype);
+            }
         } catch (error) {
             if (error instanceof SchemaValidationError) {
                 throw new QueryValidationError(error.message);
@@ -341,7 +351,9 @@ export class HybridQuery {
 
         this.text = config.text;
         this.textFieldName = config.textFieldName;
-        this.vector = [...config.vector];
+        this.vector = Buffer.isBuffer(config.vector)
+            ? Buffer.from(config.vector)
+            : [...config.vector];
         this.vectorField = config.vectorField;
         this.vectorMethod =
             method.type === 'KNN'
@@ -371,7 +383,7 @@ export class HybridQuery {
         const options: FtHybridOptions = {
             SEARCH: this.buildSearchClause(),
             VSIM: this.buildVsimClause(),
-            PARAMS: { [VECTOR_PARAM_NAME]: encodeVectorBuffer(this.vector, this.datatype) },
+            PARAMS: { [VECTOR_PARAM_NAME]: encodeVectorInput(this.vector, this.datatype) },
             LIMIT: { offset: this.offset, count: this.limit },
         };
 
