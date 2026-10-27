@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.2.2...redis-vl-v0.3.0) (2026-10-27)
+
+
+### Features
+
+* accept pre-encoded Buffer vectors in vector queries ([6af7aba](https://github.com/redis-developer/redis-vl-typescript/commit/6af7aba2a1429d04538f7bea010af7a80350f9de))
+* accept pre-encoded Buffer vectors in vector queries ([600cbd7](https://github.com/redis-developer/redis-vl-typescript/commit/600cbd7b2e1f51885a25ab24958373bce32c56f2))
+
 ## [0.2.2](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.2.1...redis-vl-v0.2.2) (2026-10-26)
 
 
