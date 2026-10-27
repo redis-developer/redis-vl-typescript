@@ -261,6 +261,23 @@ describe('Query types integration (FilterQuery / CountQuery / VectorRangeQuery /
             });
         });
 
+        it('accepts a pre-encoded Buffer query vector', async () => {
+            const q = new VectorRangeQuery({
+                vector: Buffer.from(new Float32Array(VEC_LAPTOP).buffer),
+                vectorField: 'embedding',
+                distanceThreshold: 0.2,
+                limit: 10,
+            });
+            const results = await index.search(q);
+
+            const titles = results.documents.map((d) => d.value.title).sort();
+            expect(titles).toEqual([
+                'Laptop computer for programming',
+                'Mechanical keyboard',
+                'Monitor screen 27 inch',
+            ]);
+        });
+
         it('combines a tag filter with the vector range clause', async () => {
             // Same threshold as above, but restricted to brand=acme.
             // From the in-range set { laptop, keyboard, monitor }, only laptop

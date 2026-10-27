@@ -3,6 +3,7 @@ import { HybridQuery } from '../../../src/query/hybrid.js';
 import { Tag, Num } from '../../../src/query/filter.js';
 import { QueryValidationError } from '../../../src/errors.js';
 import { VectorDataType } from '../../../src/schema/types.js';
+import { encodeVectorBuffer } from '../../../src/redis/utils.js';
 
 const VECTOR = [0.1, 0.2, 0.3, 0.4];
 
@@ -17,6 +18,28 @@ describe('HybridQuery', () => {
                         vectorField: 'embedding',
                     })
             ).toThrow(QueryValidationError);
+        });
+
+        it('throws when vector is an empty Buffer', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: Buffer.alloc(0),
+                        vectorField: 'embedding',
+                    })
+            ).toThrow(QueryValidationError);
+        });
+
+        it('throws when a Buffer vector is not a multiple of the element size', () => {
+            expect(
+                () =>
+                    new HybridQuery({
+                        text: 'foo',
+                        vector: Buffer.alloc(6),
+                        vectorField: 'embedding',
+                    })
+            ).toThrow(/not a multiple of/);
         });
 
         it('throws when vectorField is missing', () => {
@@ -308,6 +331,18 @@ describe('HybridQuery', () => {
             const { options } = q.toCommand();
             const paramName = (options.VSIM.vector as string).slice(1);
             expect((options.PARAMS![paramName] as Buffer).byteLength).toBe(VECTOR.length * 8);
+        });
+
+        it('passes a pre-encoded Buffer vector through byte-for-byte', () => {
+            const preEncoded = encodeVectorBuffer(VECTOR, VectorDataType.FLOAT32);
+            const q = new HybridQuery({
+                text: 'foo',
+                vector: preEncoded,
+                vectorField: 'embedding',
+            });
+            const { options } = q.toCommand();
+            const paramName = (options.VSIM.vector as string).slice(1);
+            expect((options.PARAMS![paramName] as Buffer).equals(preEncoded)).toBe(true);
         });
 
         it('defaults to KNN with k=10', () => {

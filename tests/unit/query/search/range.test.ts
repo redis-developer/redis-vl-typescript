@@ -4,6 +4,7 @@ import { VectorRangeQuery } from '../../../../src/query/search/range.js';
 import { Tag } from '../../../../src/query/filter.js';
 import { QueryValidationError } from '../../../../src/errors.js';
 import { VectorDataType } from '../../../../src/schema/types.js';
+import { encodeVectorBuffer } from '../../../../src/redis/utils.js';
 
 describe('VectorRangeQuery', () => {
     const vec = [0.1, 0.2, 0.3];
@@ -107,6 +108,16 @@ describe('VectorRangeQuery', () => {
             const buffer = q.buildParams().vector as Buffer;
             // FLOAT64 -> 8 bytes per element, 3 elements.
             expect(buffer.byteLength).toBe(24);
+        });
+
+        it('passes a pre-encoded Buffer vector through byte-for-byte', () => {
+            const preEncoded = encodeVectorBuffer(vec, VectorDataType.FLOAT32);
+            const q = new VectorRangeQuery({ vector: preEncoded, vectorField: 'embedding' });
+
+            const buffer = q.buildParams().vector as Buffer;
+
+            expect(buffer).toBeInstanceOf(Buffer);
+            expect(buffer.equals(preEncoded)).toBe(true);
         });
 
         it('omits hybrid params when not supplied', () => {

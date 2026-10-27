@@ -1,7 +1,7 @@
 import { BaseVectorQuery, renderFilter, type BaseVectorQueryConfig } from './base.js';
 import { VectorDistanceMetric } from '../../schema/types.js';
 import { QueryValidationError } from '../../errors.js';
-import { encodeVectorBuffer } from '../../redis/utils.js';
+import { encodeVectorInput } from '../../redis/utils.js';
 
 /**
  * Hybrid policy options for vector search with filters
@@ -270,7 +270,7 @@ export class VectorQuery extends BaseVectorQuery {
      * @returns Query parameters object with vector buffer and algorithm params
      */
     buildParams(): Record<string, unknown> {
-        const vectorBuffer = encodeVectorBuffer(this.vector, this.datatype);
+        const vectorBuffer = encodeVectorInput(this.vector, this.datatype);
 
         const params: Record<string, unknown> = {
             ...super.buildParams(),

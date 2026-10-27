@@ -415,6 +415,7 @@ export class SearchIndex {
      * @throws {Error} If keys length doesn't match data length
      * @throws {Error} If idField is not found in a document
      * @throws {SchemaValidationError} If validation fails when validateOnLoad is enabled
+     * @throws {SchemaValidationError} If a vector field holds a Buffer on a JSON index
      * @throws {RedisVLError} If there's an error loading data to Redis
      *
      * @example

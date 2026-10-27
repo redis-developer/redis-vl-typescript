@@ -39,6 +39,12 @@ export enum VectorDataType {
 }
 
 /**
+ * A vector supplied to a query: a number array, or a Buffer already encoded
+ * in the vector datatype
+ */
+export type VectorInput = number[] | Buffer;
+
+/**
  * Vector index algorithms
  */
 export enum VectorIndexAlgorithm {

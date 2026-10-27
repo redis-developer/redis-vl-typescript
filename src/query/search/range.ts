@@ -6,7 +6,7 @@ import {
 } from './base.js';
 import { VectorDataType, VectorDistanceMetric } from '../../schema/types.js';
 import { QueryValidationError } from '../../errors.js';
-import { encodeVectorBuffer } from '../../redis/utils.js';
+import { encodeVectorInput } from '../../redis/utils.js';
 import type { HybridPolicy } from './vector.js';
 
 /**
@@ -125,7 +125,7 @@ export class VectorRangeQuery extends BaseVectorQuery {
     buildParams(): Record<string, unknown> {
         const params: Record<string, unknown> = {
             ...super.buildParams(),
-            vector: encodeVectorBuffer(this.vector, this.datatype),
+            vector: encodeVectorInput(this.vector, this.datatype),
             distance_threshold: this.distanceThreshold,
         };
 

@@ -222,6 +222,12 @@ results.documents.forEach((doc, i) => {
 });
 ```
 
+`vector` also accepts a `Buffer` of bytes you have already encoded in the query's `datatype` (default `FLOAT32`), for example `vector: readFileSync('query-vector.f32')`. It is sent to Redis unchanged. This works for `VectorQuery`, `VectorRangeQuery` and `HybridQuery`.
+
+:::note Loading Buffer vectors
+`Buffer` vectors can be loaded into HASH indexes only. On a JSON index, `load()` throws a `SchemaValidationError`; pass a number array instead.
+:::
+
 ### Vector Search with Filtering
 
 Combine vector similarity with metadata filters:

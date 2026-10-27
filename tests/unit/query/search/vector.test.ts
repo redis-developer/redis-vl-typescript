@@ -3,6 +3,7 @@ import { BaseQuery, BaseVectorQuery } from '../../../../src/query/search/base.js
 import { VectorQuery } from '../../../../src/query/search/vector.js';
 import { QueryValidationError } from '../../../../src/errors.js';
 import { VectorDataType, VectorDistanceMetric } from '../../../../src/schema/types.js';
+import { encodeVectorBuffer } from '../../../../src/redis/utils.js';
 
 describe('VectorQuery', () => {
     describe('constructor', () => {
@@ -163,6 +164,31 @@ describe('VectorQuery', () => {
             expect(buffer.readDoubleLE(0)).toBeCloseTo(0.1, 12);
             expect(buffer.readDoubleLE(8)).toBeCloseTo(0.2, 12);
             expect(buffer.readDoubleLE(16)).toBeCloseTo(0.3, 12);
+        });
+
+        it('should pass a pre-encoded Buffer vector through byte-for-byte', () => {
+            const preEncoded = encodeVectorBuffer([0.1, 0.2, 0.3], VectorDataType.FLOAT32);
+            const query = new VectorQuery({
+                vector: preEncoded,
+                vectorField: 'embedding',
+            });
+
+            const buffer = query.buildParams().vector as Buffer;
+
+            expect(buffer).toBeInstanceOf(Buffer);
+            expect(buffer.equals(preEncoded)).toBe(true);
+        });
+
+        it('should build the same params for an array and its pre-encoded Buffer', () => {
+            const vector = [0.1, 0.2, 0.3];
+            const fromArray = new VectorQuery({ vector, vectorField: 'embedding' });
+            const fromBuffer = new VectorQuery({
+                vector: encodeVectorBuffer(vector, VectorDataType.FLOAT32),
+                vectorField: 'embedding',
+            });
+
+            expect(fromBuffer.buildParams()).toEqual(fromArray.buildParams());
+            expect(fromBuffer.buildQuery()).toBe(fromArray.buildQuery());
         });
     });
 

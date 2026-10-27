@@ -153,6 +153,28 @@ describeHybrid('HybridQuery integration (FT.HYBRID)', () => {
             });
         });
 
+        it('returns the same ranking for a pre-encoded Buffer vector as for the array', async () => {
+            const buildQuery = (vector: number[] | Buffer) =>
+                new HybridQuery({
+                    text: 'programming',
+                    textFieldName: 'description',
+                    vector,
+                    vectorField: 'embedding',
+                    vectorMethod: { type: 'KNN', k: 10 },
+                    combine: { type: 'RRF' },
+                });
+
+            const fromArray = await index.hybridSearch(buildQuery(VEC_LAPTOP));
+            const fromBuffer = await index.hybridSearch(
+                buildQuery(Buffer.from(new Float32Array(VEC_LAPTOP).buffer))
+            );
+
+            expect(fromBuffer.documents.length).toBeGreaterThan(0);
+            expect(fromBuffer.documents.map((doc) => doc.id)).toEqual(
+                fromArray.documents.map((doc) => doc.id)
+            );
+        });
+
         it('returns documents ranked by fused score with id, value, score, executionTime', async () => {
             const q = new HybridQuery({
                 text: 'programming',
