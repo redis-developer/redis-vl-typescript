@@ -2,7 +2,7 @@ import type { RedisClientType, RedisClusterType } from 'redis';
 import type { IndexSchema } from '../schema/schema.js';
 import type { BaseField, VectorFieldAttrs } from '../schema/fields.js';
 import { FieldType } from '../schema/types.js';
-import { SchemaValidationError } from '../errors.js';
+import { RedisVLError, SchemaValidationError } from '../errors.js';
 import { randomBytes } from 'crypto';
 import { vectorElementByteLength } from '../redis/utils.js';
 
@@ -69,6 +69,16 @@ export abstract class BaseStorage {
 
     constructor(schema: IndexSchema) {
         this.schema = schema;
+    }
+
+    /**
+     * Reject a batch size that would stop a batched read from ever finishing.
+     * @throws {RedisVLError} If batchSize is 0, negative, or NaN
+     */
+    protected validateBatchSize(batchSize: number): void {
+        if (!(batchSize > 0)) {
+            throw new RedisVLError(`batchSize must be greater than 0, got ${batchSize}`);
+        }
     }
 
     /**

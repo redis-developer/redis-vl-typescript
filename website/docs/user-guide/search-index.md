@@ -32,6 +32,24 @@ const index = new SearchIndex(schema, client);
 await index.create();
 ```
 
+### Stopwords
+
+Redis skips common words such as "the" and "a" when it indexes text. To set your own list of words to skip, add `stopwords` to the index settings. Pass an empty array (`[]`) to index every word.
+
+```typescript
+const schema = IndexSchema.fromObject({
+    index: {
+        name: 'products',
+        prefix: 'product:',
+        storage_type: 'hash',
+        stopwords: ['the', 'a', 'an'], // Redis will not index these words
+    },
+    fields: [{ name: 'title', type: 'text' }],
+});
+```
+
+Leave `stopwords` out to keep the Redis default list. This is separate from the `stopwords` option on `TextQuery`, which strips words from the query text before it is sent.
+
 ## Loading an Existing Index
 
 If an index already exists in Redis (for example, it was created by another
