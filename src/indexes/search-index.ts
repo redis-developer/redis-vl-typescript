@@ -24,6 +24,18 @@ import type { AggregationQuery } from '../query/aggregate/aggregation.js';
 import { DISTANCE_NORMALIZERS } from '../utils/distance.js';
 import type { VectorFieldAttrs } from '../schema/fields.js';
 
+const MISSING_INDEX_ERROR_FRAGMENTS = [
+    'unknown index name',
+    'no such index',
+    'search_index_not_found',
+    'index not found',
+];
+
+function isMissingIndexError(error: unknown): boolean {
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+    return MISSING_INDEX_ERROR_FRAGMENTS.some((fragment) => message.includes(fragment));
+}
+
 /**
  * Options for creating an index.
  */
@@ -298,6 +310,7 @@ export class SearchIndex {
      *
      * @param options - Creation options
      * @throws {Error} If no fields are defined for the index
+     * @throws {RedisVLError} If checking whether the index already exists fails
      * @returns The result from Redis FT.CREATE command
      */
     async create(options: CreateIndexOptions = {}) {
@@ -321,26 +334,34 @@ export class SearchIndex {
 
         // Create the index using Redis FT.CREATE
         const fieldSchema = this.convertFieldsToRedisSchema();
+        const { stopwords } = this.schema.index;
 
         return this.client.ft.create(this.name, fieldSchema, {
             ON: this.schema.index.storageType.toUpperCase() as 'HASH' | 'JSON',
             PREFIX: this.schema.index.prefix,
+            ...(stopwords !== undefined && { STOPWORDS: stopwords }),
         });
     }
 
     /**
      * Check if the index exists in Redis.
      *
-     * @returns True if the index exists, false otherwise
+     * @returns True if the index exists, false if Redis reports it as missing
+     * @throws {RedisVLError} If the check fails for any other reason, such as a connection
+     * failure or insufficient permissions. The original error is available as `cause`.
      */
     async exists(): Promise<boolean> {
         try {
-            // Try to get index info - if it exists, this will succeed
             await this.client.ft.info(this.name);
             return true;
-        } catch {
-            // If index doesn't exist, FT.INFO will throw an error
-            return false;
+        } catch (error) {
+            if (isMissingIndexError(error)) {
+                return false;
+            }
+            throw new RedisVLError(
+                `Failed to check whether index '${this.name}' exists: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
         }
     }
 
@@ -513,8 +534,9 @@ export class SearchIndex {
      * Uses pipelining for efficient batch retrieval.
      *
      * @param keys - Array of document keys (without prefix)
-     * @param batchSize - Number of commands per pipeline batch (default: 200)
+     * @param batchSize - Number of commands per pipeline batch (default: 200). Must be greater than 0.
      * @returns Array of documents (null for missing keys)
+     * @throws {RedisVLError} If batchSize is not greater than 0, or reading from Redis fails
      *
      * @example
      * ```typescript
@@ -522,10 +544,6 @@ export class SearchIndex {
      */
     async fetchMany(keys: string[], batchSize = 200): Promise<(Record<string, unknown> | null)[]> {
         try {
-            if (!keys || keys.length === 0) {
-                return [];
-            }
-
             // Normalize prefix (use first prefix if array)
             const prefix = Array.isArray(this.schema.index.prefix)
                 ? this.schema.index.prefix[0]

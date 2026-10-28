@@ -108,7 +108,7 @@ describe('SearchIndex', () => {
     describe('create()', () => {
         it('should create an index in Redis', async () => {
             (mockClient.ft.create as any).mockResolvedValue('OK');
-            (mockClient.ft.info as any).mockRejectedValue(new Error('Unknown index')); // Index doesn't exist
+            (mockClient.ft.info as any).mockRejectedValue(new Error('Unknown index name')); // Index doesn't exist
 
             const index = new SearchIndex(schema, mockClient);
             await index.create();
@@ -124,6 +124,57 @@ describe('SearchIndex', () => {
                     PREFIX: 'rvl-test',
                 })
             );
+        });
+
+        describe('stopwords', () => {
+            const buildSchema = (stopwords?: string[]): IndexSchema => {
+                const stopwordSchema = new IndexSchema({
+                    index: new IndexInfo({
+                        name: 'redisvl-test-stopwords',
+                        prefix: 'rvl-test-stopwords',
+                        storageType: StorageType.HASH,
+                        stopwords,
+                    }),
+                });
+                stopwordSchema.addField({ name: 'title', type: 'text' });
+                return stopwordSchema;
+            };
+
+            beforeEach(() => {
+                (mockClient.ft.create as any).mockResolvedValue('OK');
+                (mockClient.ft.info as any).mockRejectedValue(new Error('Unknown index name'));
+            });
+
+            it.each([{ stopwords: ['the', 'a'] }, { stopwords: [] }])(
+                'should pass schema.index.stopwords $stopwords to FT.CREATE',
+                async ({ stopwords }) => {
+                    await new SearchIndex(buildSchema(stopwords), mockClient).create();
+
+                    expect(mockClient.ft.create).toHaveBeenCalledWith(
+                        'redisvl-test-stopwords',
+                        expect.anything(),
+                        expect.objectContaining({ STOPWORDS: stopwords })
+                    );
+                }
+            );
+
+            it('should not send STOPWORDS when the schema does not set stopwords', async () => {
+                await new SearchIndex(buildSchema(), mockClient).create();
+
+                const options = (mockClient.ft.create as any).mock.calls[0][2];
+                expect(options).not.toHaveProperty('STOPWORDS');
+            });
+        });
+
+        it('should not create the index when checking for it fails for another reason', async () => {
+            (mockClient.ft.info as any).mockRejectedValue(
+                new Error('connect ECONNREFUSED 127.0.0.1:6379')
+            );
+
+            const index = new SearchIndex(schema, mockClient);
+
+            await expect(index.create()).rejects.toThrow(RedisVLError);
+            expect(mockClient.ft.create).not.toHaveBeenCalled();
         });
 
         it('should throw error if no fields are defined', async () => {
@@ -191,13 +242,35 @@ describe('SearchIndex', () => {
             expect(mockClient.ft.info).toHaveBeenCalledWith('redisvl-test-index');
         });
 
-        it('should return false if index does not exist', async () => {
-            (mockClient.ft.info as any).mockRejectedValue(new Error('Unknown index'));
+        it.each([
+            'Unknown index name',
+            'Unknown Index name',
+            'no such index',
+            'SEARCH_INDEX_NOT_FOUND Index not found: redisvl-test-index',
+        ])('should return false when Redis reports the index is missing: %s', async (message) => {
+            (mockClient.ft.info as any).mockRejectedValue(new Error(message));
 
             const index = new SearchIndex(schema, mockClient);
             const exists = await index.exists();
 
             expect(exists).toBe(false);
+        });
+
+        it.each([
+            'connect ECONNREFUSED 127.0.0.1:6379',
+            'NOPERM this user has no permissions to run the FT.INFO command',
+        ])('should throw instead of returning false for other errors: %s', async (message) => {
+            const failure = new Error(message);
+            (mockClient.ft.info as any).mockRejectedValue(failure);
+
+            const index = new SearchIndex(schema, mockClient);
+            const checking = index.exists();
+
+            await expect(checking).rejects.toThrow(RedisVLError);
+            await expect(checking).rejects.toThrow(
+                /Failed to check whether index 'redisvl-test-index' exists/
+            );
+            await expect(checking).rejects.toMatchObject({ cause: failure });
         });
     });
 
@@ -1085,6 +1158,72 @@ describe('SearchIndex', () => {
                 expect(results).toHaveLength(5);
                 // With batchSize=2, should execute pipeline 3 times (2+2+1)
                 expect(mockPipeline.execAsPipeline).toHaveBeenCalledTimes(3);
+            });
+
+            describe('batchSize validation', () => {
+                const mockDocs = [
+                    { id: '1', name: 'Alice' },
+                    { id: '2', name: 'Bob' },
+                    { id: '3', name: 'Charlie' },
+                ];
+
+                const buildIndex = (storageType: StorageType) => {
+                    const batchSchema = new IndexSchema({
+                        index: new IndexInfo({
+                            name: 'redisvl-test-fetch-many-validation',
+                            prefix: 'rvl-test-fetch-many-validation',
+                            storageType,
+                        }),
+                    });
+                    batchSchema.addField({ name: 'id', type: 'tag' });
+
+                    const mockPipeline = {
+                        hGetAll: vi.fn(),
+                        json: { get: vi.fn() },
+                        execAsPipeline: vi.fn().mockResolvedValue(mockDocs),
+                    };
+                    mockClient.multi = vi.fn().mockReturnValue(mockPipeline);
+
+                    return { index: new SearchIndex(batchSchema, mockClient), mockPipeline };
+                };
+
+                describe.each([StorageType.HASH, StorageType.JSON])('%s storage', (storageType) => {
+                    it.each([0, -1, NaN])(
+                        'should reject batchSize %s before reading from Redis',
+                        async (batchSize) => {
+                            const { index, mockPipeline } = buildIndex(storageType);
+
+                            const fetching = index.fetchMany(['1', '2', '3'], batchSize);
+
+                            await expect(fetching).rejects.toThrow(RedisVLError);
+                            await expect(fetching).rejects.toThrow(
+                                /batchSize must be greater than 0/
+                            );
+                            expect(mockPipeline.execAsPipeline).not.toHaveBeenCalled();
+                        }
+                    );
+
+                    it.each([0, -1, NaN])(
+                        'should reject batchSize %s even when there are no keys',
+                        async (batchSize) => {
+                            const { index, mockPipeline } = buildIndex(storageType);
+
+                            await expect(index.fetchMany([], batchSize)).rejects.toThrow(
+                                /batchSize must be greater than 0/
+                            );
+                            expect(mockPipeline.execAsPipeline).not.toHaveBeenCalled();
+                        }
+                    );
+
+                    it('should still read everything in one batch for an Infinity batchSize', async () => {
+                        const { index, mockPipeline } = buildIndex(storageType);
+
+                        const results = await index.fetchMany(['1', '2', '3'], Infinity);
+
+                        expect(results).toHaveLength(3);
+                        expect(mockPipeline.execAsPipeline).toHaveBeenCalledTimes(1);
+                    });
+                });
             });
         });
     });

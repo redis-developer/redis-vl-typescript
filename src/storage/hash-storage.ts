@@ -123,6 +123,8 @@ export class HashStorage extends BaseStorage {
         keys: string[],
         batchSize = this.defaultBatchSize
     ): Promise<(Record<string, unknown> | null)[]> {
+        this.validateBatchSize(batchSize);
+
         if (!keys || keys.length === 0) {
             return [];
         }

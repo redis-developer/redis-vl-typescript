@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 import {
     IndexSchema,
+    RedisVLError,
     SearchIndex,
     StorageType,
     VectorDataType,
@@ -139,6 +140,54 @@ describe('SearchIndex Integration Tests', () => {
             expect(exists).toBe(false);
             // No cleanup needed - index was never created
         });
+
+        it('should throw instead of reporting a missing index when Redis cannot be reached', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-searchindex-unreachable',
+                    prefix: 'rvl-test-unreachable',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const neverConnected = createClient({
+                url: process.env.REDIS_URL || 'redis://localhost:6379',
+            });
+
+            const index = new SearchIndex(schema, neverConnected as RedisClientType);
+
+            await expect(index.exists()).rejects.toThrow(RedisVLError);
+            await expect(index.create()).rejects.toThrow(RedisVLError);
+        });
+
+        it.each([
+            { label: 'a custom list', stopwords: ['foo', 'bar'], expected: ['bar', 'foo'] },
+            { label: 'an empty list', stopwords: [], expected: [] },
+        ])(
+            'should create the index with $label from schema.index.stopwords',
+            async ({ stopwords, expected }) => {
+                const schema = IndexSchema.fromObject({
+                    index: {
+                        name: 'redisvl-test-searchindex-stopwords',
+                        prefix: 'rvl-test-stopwords',
+                        storage_type: 'hash',
+                        stopwords,
+                    },
+                    fields: [{ name: 'title', type: 'text' }],
+                });
+                const index = new SearchIndex(schema, client);
+                await index.create({ overwrite: true, drop: true });
+
+                try {
+                    const info = (await client.ft.info(index.name)) as unknown as {
+                        stopwords_list: string[];
+                    };
+                    expect([...info.stopwords_list].sort()).toEqual(expected);
+                } finally {
+                    await index.delete({ drop: true }).catch(() => {});
+                }
+            }
+        );
 
         it('should overwrite existing index when overwrite=true', async () => {
             const schema1 = IndexSchema.fromObject({
