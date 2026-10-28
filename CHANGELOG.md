@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.3.0...redis-vl-v0.3.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* reject bad batch sizes, apply index stopwords, stop exists() hiding errors ([0555541](https://github.com/redis-developer/redis-vl-typescript/commit/0555541f19de313b5146d86abcefe9af413e62ef))
+* validate batchSize, apply index stopwords, and stop exists() hiding errors ([2c05423](https://github.com/redis-developer/redis-vl-typescript/commit/2c05423f4218aea6496152ed1176bde8073ea8dd))
+
 ## [0.3.0](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.2.2...redis-vl-v0.3.0) (2026-10-27)
 
 
