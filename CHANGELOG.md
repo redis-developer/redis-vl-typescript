@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.3.1...redis-vl-v0.4.0) (2026-11-05)
+
+
+### Features
+
+* **search-index:** add clear to empty an index without dropping it ([fac917c](https://github.com/redis-developer/redis-vl-typescript/commit/fac917cd9783d71a21bc755348bbdae34d5acce5))
+* **search-index:** add dropKeys to delete documents by key ([aabfbd4](https://github.com/redis-developer/redis-vl-typescript/commit/aabfbd461085fb3d6d98a81b4dda4b8fb5f7c19c))
+* **search-index:** add dropKeys, expireKeys and clear ([94f04ab](https://github.com/redis-developer/redis-vl-typescript/commit/94f04abf284f0ad5a51162d4c65900feff047435))
+* **search-index:** add expireKeys to set a time-to-live on documents ([e1d4dd7](https://github.com/redis-developer/redis-vl-typescript/commit/e1d4dd728e864a70f54fd69fb7744a3103960b49))
+
 ## [0.3.1](https://github.com/redis-developer/redis-vl-typescript/compare/redis-vl-v0.3.0...redis-vl-v0.3.1) (2026-10-28)
 
 
