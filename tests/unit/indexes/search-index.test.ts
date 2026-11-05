@@ -1228,6 +1228,81 @@ describe('SearchIndex', () => {
         });
     });
 
+    describe('dropKeys()', () => {
+        let unlink: MockedFunction<(keys: string | string[]) => Promise<number>>;
+
+        beforeEach(() => {
+            unlink = vi
+                .fn()
+                .mockImplementation(async (keys: string | string[]) =>
+                    Array.isArray(keys) ? keys.length : 1
+                );
+            (mockClient as any).unlink = unlink;
+        });
+
+        it('should unlink a single key and return the count deleted', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            const deleted = await index.dropKeys('rvl-test:1');
+
+            expect(deleted).toBe(1);
+            expect(unlink).toHaveBeenCalledTimes(1);
+            expect(unlink).toHaveBeenCalledWith(['rvl-test:1']);
+        });
+
+        it('should unlink an array of keys in one call', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            const deleted = await index.dropKeys(['rvl-test:1', 'rvl-test:2', 'rvl-test:3']);
+
+            expect(deleted).toBe(3);
+            expect(unlink).toHaveBeenCalledTimes(1);
+            expect(unlink).toHaveBeenCalledWith(['rvl-test:1', 'rvl-test:2', 'rvl-test:3']);
+        });
+
+        it('should unlink large key lists in chunks of 500 and add up the counts', async () => {
+            const index = new SearchIndex(schema, mockClient);
+            const keys = Array.from({ length: 1200 }, (_, i) => `rvl-test:${i}`);
+
+            const deleted = await index.dropKeys(keys);
+
+            expect(deleted).toBe(1200);
+            expect(unlink.mock.calls.map(([chunk]) => chunk.length)).toEqual([500, 500, 200]);
+        });
+
+        it('should return 0 without calling Redis for an empty array', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.dropKeys([])).toBe(0);
+            expect(unlink).not.toHaveBeenCalled();
+        });
+
+        it('should unlink one key at a time on a cluster client', async () => {
+            const clusterClient = { unlink, masters: [] } as unknown as RedisClientType;
+            const index = new SearchIndex(schema, clusterClient);
+
+            const deleted = await index.dropKeys(['rvl-test:1', 'rvl-test:2', 'rvl-test:3']);
+
+            expect(deleted).toBe(3);
+            expect(unlink).toHaveBeenCalledTimes(3);
+            expect(unlink).toHaveBeenNthCalledWith(1, 'rvl-test:1');
+            expect(unlink).toHaveBeenNthCalledWith(2, 'rvl-test:2');
+            expect(unlink).toHaveBeenNthCalledWith(3, 'rvl-test:3');
+        });
+
+        it('should wrap Redis errors in RedisVLError and keep the cause', async () => {
+            const cause = new Error('NOPERM this user has no permissions to run unlink');
+            unlink.mockRejectedValueOnce(cause);
+            const index = new SearchIndex(schema, mockClient);
+
+            const dropping = index.dropKeys(['rvl-test:1']);
+
+            await expect(dropping).rejects.toThrow(RedisVLError);
+            await expect(dropping).rejects.toThrow(/Failed to drop keys/);
+            await expect(dropping).rejects.toMatchObject({ cause });
+        });
+    });
+
     describe('Data Preprocessing', () => {
         describe('load() with preprocess option', () => {
             it('should apply preprocess function to each document', async () => {

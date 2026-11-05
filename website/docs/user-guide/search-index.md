@@ -181,10 +181,15 @@ await index.load([{ id: 'prod-1', title: 'Updated Laptop', category: 'electronic
 
 ### Delete Documents
 
-Remove specific documents:
+Remove specific documents with `dropKeys()`. It takes full Redis keys, including the prefix, such as the ones `load()` returns or the `id` on each search result. It returns how many documents were deleted:
 
 ```typescript
-await index.delete({ ids: ['prod-1', 'prod-2'] });
+// Delete one document
+await index.dropKeys('product:prod-1');
+
+// Delete several, using the ids from a search
+const results = await index.search(query);
+const deleted = await index.dropKeys(results.documents.map((doc) => doc.id));
 ```
 
 ### Drop Index
@@ -202,7 +207,7 @@ RedisVL automatically batches operations for performance:
 ```typescript
 // Load 1000 documents in batches of 100
 const keys = await index.load(largeDataset, {
-    batchSize: 100, // Default: 100
+    batchSize: 100, // Default: 200
 });
 ```
 

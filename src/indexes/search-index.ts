@@ -36,6 +36,9 @@ function isMissingIndexError(error: unknown): boolean {
     return MISSING_INDEX_ERROR_FRAGMENTS.some((fragment) => message.includes(fragment));
 }
 
+/** Number of keys sent to Redis in one round trip by `dropKeys()`. */
+const KEY_BATCH_SIZE = 500;
+
 /**
  * Options for creating an index.
  */
@@ -566,6 +569,59 @@ export class SearchIndex {
                 { cause: error instanceof Error ? error : undefined }
             );
         }
+    }
+
+    /**
+     * Delete documents from Redis by key. The index itself is left in place.
+     *
+     * Takes full Redis keys, such as the ones `load()` returns or the `id` on
+     * each search result. This differs from `fetch()` and `fetchMany()`, which
+     * take ids without the prefix.
+     *
+     * Uses `UNLINK`, so Redis frees the memory in the background and a large
+     * delete does not pause the server. On a cluster the keys are unlinked one
+     * at a time, because keys in different slots cannot share one command.
+     *
+     * @param keys - A full Redis key, or an array of them
+     * @returns How many keys were deleted. Keys that do not exist are not counted.
+     * @throws {RedisVLError} If Redis fails to delete the keys
+     *
+     * @example
+     * ```typescript
+     * const keys = await index.load([{ title: 'Doc 1' }, { title: 'Doc 2' }]);
+     * const deleted = await index.dropKeys(keys[0]); // 1
+     * ```
+     */
+    async dropKeys(keys: string | string[]): Promise<number> {
+        try {
+            return await this.unlinkKeys(Array.isArray(keys) ? keys : [keys]);
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to drop keys: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Unlink keys in chunks of {@link KEY_BATCH_SIZE} and add up how many were deleted.
+     */
+    private async unlinkKeys(keys: string[]): Promise<number> {
+        const isCluster = 'masters' in this.client;
+        let deleted = 0;
+
+        for (let i = 0; i < keys.length; i += KEY_BATCH_SIZE) {
+            const chunk = keys.slice(i, i + KEY_BATCH_SIZE);
+
+            if (isCluster) {
+                const counts = await Promise.all(chunk.map((key) => this.client.unlink(key)));
+                deleted += counts.reduce((sum, count) => sum + count, 0);
+            } else {
+                deleted += await this.client.unlink(chunk);
+            }
+        }
+
+        return deleted;
     }
 
     /**

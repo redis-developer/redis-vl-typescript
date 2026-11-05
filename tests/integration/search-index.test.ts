@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 import {
+    FilterQuery,
     IndexSchema,
     RedisVLError,
     SearchIndex,
@@ -1269,6 +1270,69 @@ describe('SearchIndex Integration Tests', () => {
             expect(normalizedSecondScore).toBeCloseTo(1 - (rawSecondScore ?? 0) / 2, 10);
             expect(normalizedSecondScore).toBeLessThan(1);
             expect(normalizedSecondScore).toBeGreaterThan(0.99);
+        });
+    });
+
+    describe('dropKeys()', () => {
+        const buildIndex = async (name: string) => {
+            const schema = IndexSchema.fromObject({
+                index: { name, prefix: name, storage_type: 'hash' },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+            return index;
+        };
+
+        it('should delete only the named documents and return how many were deleted', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-some');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }, { title: 'C' }]);
+
+            const deleted = await index.dropKeys([keys[0], keys[1]]);
+
+            expect(deleted).toBe(2);
+            expect(await client.exists(keys)).toBe(1);
+            expect(await client.exists(keys[2])).toBe(1);
+            expect(await client.exists([keys[0], keys[1]])).toBe(0);
+        });
+
+        it('should accept a single key', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-single');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }]);
+
+            expect(await index.dropKeys(keys[0])).toBe(1);
+            expect(await client.exists(keys[0])).toBe(0);
+            expect(await client.exists(keys[1])).toBe(1);
+        });
+
+        it('should not count keys that do not exist', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-missing');
+            const keys = await index.load([{ title: 'A' }]);
+
+            const deleted = await index.dropKeys([keys[0], 'redisvl-test-dropkeys-missing:nope']);
+
+            expect(deleted).toBe(1);
+        });
+
+        it('should accept the ids returned by search results', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-search');
+            await index.load([{ title: 'A' }, { title: 'B' }]);
+
+            const results = await index.search(new FilterQuery());
+            const deleted = await index.dropKeys(results.documents.map((doc) => doc.id));
+
+            expect(deleted).toBe(2);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
+        });
+
+        it('should delete more keys than fit in one chunk', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-chunks');
+            const keys = await index.load(
+                Array.from({ length: 1200 }, (_, i) => ({ title: `Doc ${i}` }))
+            );
+
+            expect(await index.dropKeys(keys)).toBe(1200);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
         });
     });
 });
