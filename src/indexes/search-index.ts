@@ -36,7 +36,7 @@ function isMissingIndexError(error: unknown): boolean {
     return MISSING_INDEX_ERROR_FRAGMENTS.some((fragment) => message.includes(fragment));
 }
 
-/** Number of keys sent to Redis in one round trip by `dropKeys()`. */
+/** Number of keys sent to Redis in one round trip by `dropKeys()` and `expireKeys()`. */
 const KEY_BATCH_SIZE = 500;
 
 /**
@@ -622,6 +622,48 @@ export class SearchIndex {
         }
 
         return deleted;
+    }
+
+    /**
+     * Make documents expire: Redis deletes each key `ttl` seconds from now.
+     *
+     * Takes full Redis keys, like `dropKeys()`.
+     *
+     * @param keys - A full Redis key, or an array of them
+     * @param ttl - Seconds until the keys expire. Must be a positive integer, because
+     *   Redis deletes a key straight away when it is given a TTL of 0 or less.
+     * @returns How many keys had the TTL set. Keys that do not exist are not counted.
+     * @throws {RedisVLError} If ttl is not a positive integer, or Redis fails to set the expiry
+     *
+     * @example
+     * ```typescript
+     * const keys = await index.load([{ title: 'Doc 1' }, { title: 'Doc 2' }]);
+     * const updated = await index.expireKeys(keys, 3600); // 2
+     * ```
+     */
+    async expireKeys(keys: string | string[], ttl: number): Promise<number> {
+        if (!Number.isInteger(ttl) || ttl <= 0) {
+            throw new RedisVLError(`ttl must be a positive integer number of seconds, got ${ttl}`);
+        }
+
+        const keyList = Array.isArray(keys) ? keys : [keys];
+
+        try {
+            let updated = 0;
+
+            for (let i = 0; i < keyList.length; i += KEY_BATCH_SIZE) {
+                const chunk = keyList.slice(i, i + KEY_BATCH_SIZE);
+                const replies = await Promise.all(chunk.map((key) => this.client.expire(key, ttl)));
+                updated += replies.reduce((sum, reply) => sum + reply, 0);
+            }
+
+            return updated;
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to set expiry on keys: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
     }
 
     /**

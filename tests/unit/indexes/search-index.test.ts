@@ -1303,6 +1303,83 @@ describe('SearchIndex', () => {
         });
     });
 
+    describe('expireKeys()', () => {
+        let expire: MockedFunction<(key: string, ttl: number) => Promise<number>>;
+
+        beforeEach(() => {
+            expire = vi.fn().mockResolvedValue(1);
+            (mockClient as any).expire = expire;
+        });
+
+        it('should set the TTL on a single key and return 1', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            const updated = await index.expireKeys('rvl-test:1', 60);
+
+            expect(updated).toBe(1);
+            expect(expire).toHaveBeenCalledTimes(1);
+            expect(expire).toHaveBeenCalledWith('rvl-test:1', 60);
+        });
+
+        it('should set the TTL on every key and count the ones that got it', async () => {
+            expire.mockResolvedValueOnce(1).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+            const index = new SearchIndex(schema, mockClient);
+
+            const updated = await index.expireKeys(['rvl-test:1', 'rvl-test:2', 'rvl-test:3'], 60);
+
+            expect(updated).toBe(2);
+            expect(expire).toHaveBeenCalledTimes(3);
+            expect(expire).toHaveBeenNthCalledWith(1, 'rvl-test:1', 60);
+            expect(expire).toHaveBeenNthCalledWith(2, 'rvl-test:2', 60);
+            expect(expire).toHaveBeenNthCalledWith(3, 'rvl-test:3', 60);
+        });
+
+        it('should handle more keys than fit in one chunk', async () => {
+            const index = new SearchIndex(schema, mockClient);
+            const keys = Array.from({ length: 1200 }, (_, i) => `rvl-test:${i}`);
+
+            const updated = await index.expireKeys(keys, 60);
+
+            expect(updated).toBe(1200);
+            expect(expire).toHaveBeenCalledTimes(1200);
+        });
+
+        it('should return 0 without calling Redis for an empty array', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.expireKeys([], 60)).toBe(0);
+            expect(expire).not.toHaveBeenCalled();
+        });
+
+        describe.each([
+            ['an array of keys', ['rvl-test:1']],
+            ['an empty array', []],
+        ])('ttl validation with %s', (_label, keys) => {
+            // Redis deletes a key when it is given a TTL of 0 or less
+            it.each([0, -5, 1.5, NaN])('should reject a ttl of %s', async (ttl) => {
+                const index = new SearchIndex(schema, mockClient);
+
+                const expiring = index.expireKeys(keys, ttl);
+
+                await expect(expiring).rejects.toThrow(RedisVLError);
+                await expect(expiring).rejects.toThrow(/ttl must be a positive integer/);
+                expect(expire).not.toHaveBeenCalled();
+            });
+        });
+
+        it('should wrap Redis errors in RedisVLError and keep the cause', async () => {
+            const cause = new Error('NOPERM this user has no permissions to run expire');
+            expire.mockRejectedValueOnce(cause);
+            const index = new SearchIndex(schema, mockClient);
+
+            const expiring = index.expireKeys(['rvl-test:1'], 60);
+
+            await expect(expiring).rejects.toThrow(RedisVLError);
+            await expect(expiring).rejects.toThrow(/Failed to set expiry on keys/);
+            await expect(expiring).rejects.toMatchObject({ cause });
+        });
+    });
+
     describe('Data Preprocessing', () => {
         describe('load() with preprocess option', () => {
             it('should apply preprocess function to each document', async () => {

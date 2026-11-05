@@ -192,6 +192,17 @@ const results = await index.search(query);
 const deleted = await index.dropKeys(results.documents.map((doc) => doc.id));
 ```
 
+### Expire Documents
+
+Make documents delete themselves after a number of seconds with `expireKeys()`. Like `dropKeys()`, it takes full Redis keys. It returns how many documents had the expiry set, and `ttl` must be a positive integer:
+
+```typescript
+const keys = await index.load([{ title: 'Laptop' }, { title: 'Mouse' }]);
+
+// Both documents expire in one hour
+const updated = await index.expireKeys(keys, 3600); // 2
+```
+
 ### Drop Index
 
 Delete the entire index and all documents:

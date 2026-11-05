@@ -1335,4 +1335,57 @@ describe('SearchIndex Integration Tests', () => {
             expect((await index.search(new FilterQuery())).total).toBe(0);
         });
     });
+
+    describe('expireKeys()', () => {
+        const buildIndex = async (name: string) => {
+            const schema = IndexSchema.fromObject({
+                index: { name, prefix: name, storage_type: 'hash' },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+            return index;
+        };
+
+        it('should set the TTL only on the named documents', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-some');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }, { title: 'C' }]);
+
+            const updated = await index.expireKeys([keys[0], keys[1]], 100);
+
+            expect(updated).toBe(2);
+            expect(await client.ttl(keys[0])).toBeGreaterThan(0);
+            expect(await client.ttl(keys[0])).toBeLessThanOrEqual(100);
+            expect(await client.ttl(keys[1])).toBeGreaterThan(0);
+            expect(await client.ttl(keys[2])).toBe(-1);
+        });
+
+        it('should accept a single key', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-single');
+            const keys = await index.load([{ title: 'A' }]);
+
+            expect(await index.expireKeys(keys[0], 100)).toBe(1);
+            expect(await client.ttl(keys[0])).toBeGreaterThan(0);
+        });
+
+        it('should not count keys that do not exist', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-missing');
+            const keys = await index.load([{ title: 'A' }]);
+
+            const updated = await index.expireKeys(
+                [keys[0], 'redisvl-test-expirekeys-missing:nope'],
+                100
+            );
+
+            expect(updated).toBe(1);
+        });
+
+        it('should reject a ttl of 0 and leave the documents alone', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-zero');
+            const keys = await index.load([{ title: 'A' }]);
+
+            await expect(index.expireKeys(keys, 0)).rejects.toThrow(RedisVLError);
+            expect(await client.exists(keys[0])).toBe(1);
+        });
+    });
 });
