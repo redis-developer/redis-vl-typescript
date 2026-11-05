@@ -1228,6 +1228,255 @@ describe('SearchIndex', () => {
         });
     });
 
+    describe('dropKeys()', () => {
+        let unlink: MockedFunction<(keys: string | string[]) => Promise<number>>;
+
+        beforeEach(() => {
+            unlink = vi
+                .fn()
+                .mockImplementation(async (keys: string | string[]) =>
+                    Array.isArray(keys) ? keys.length : 1
+                );
+            (mockClient as any).unlink = unlink;
+        });
+
+        it('should unlink a single key and return the count deleted', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            const deleted = await index.dropKeys('rvl-test:1');
+
+            expect(deleted).toBe(1);
+            expect(unlink).toHaveBeenCalledTimes(1);
+            expect(unlink).toHaveBeenCalledWith(['rvl-test:1']);
+        });
+
+        it('should unlink an array of keys in one call', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            const deleted = await index.dropKeys(['rvl-test:1', 'rvl-test:2', 'rvl-test:3']);
+
+            expect(deleted).toBe(3);
+            expect(unlink).toHaveBeenCalledTimes(1);
+            expect(unlink).toHaveBeenCalledWith(['rvl-test:1', 'rvl-test:2', 'rvl-test:3']);
+        });
+
+        it('should unlink large key lists in chunks of 500 and add up the counts', async () => {
+            const index = new SearchIndex(schema, mockClient);
+            const keys = Array.from({ length: 1200 }, (_, i) => `rvl-test:${i}`);
+
+            const deleted = await index.dropKeys(keys);
+
+            expect(deleted).toBe(1200);
+            expect(unlink.mock.calls.map(([chunk]) => chunk.length)).toEqual([500, 500, 200]);
+        });
+
+        it('should return 0 without calling Redis for an empty array', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.dropKeys([])).toBe(0);
+            expect(unlink).not.toHaveBeenCalled();
+        });
+
+        it('should unlink one key at a time on a cluster client', async () => {
+            const clusterClient = { unlink, masters: [] } as unknown as RedisClientType;
+            const index = new SearchIndex(schema, clusterClient);
+
+            const deleted = await index.dropKeys(['rvl-test:1', 'rvl-test:2', 'rvl-test:3']);
+
+            expect(deleted).toBe(3);
+            expect(unlink).toHaveBeenCalledTimes(3);
+            expect(unlink).toHaveBeenNthCalledWith(1, 'rvl-test:1');
+            expect(unlink).toHaveBeenNthCalledWith(2, 'rvl-test:2');
+            expect(unlink).toHaveBeenNthCalledWith(3, 'rvl-test:3');
+        });
+
+        it('should wrap Redis errors in RedisVLError and keep the cause', async () => {
+            const cause = new Error('NOPERM this user has no permissions to run unlink');
+            unlink.mockRejectedValueOnce(cause);
+            const index = new SearchIndex(schema, mockClient);
+
+            const dropping = index.dropKeys(['rvl-test:1']);
+
+            await expect(dropping).rejects.toThrow(RedisVLError);
+            await expect(dropping).rejects.toThrow(/Failed to drop keys/);
+            await expect(dropping).rejects.toMatchObject({ cause });
+        });
+    });
+
+    describe('expireKeys()', () => {
+        let expire: MockedFunction<(key: string, ttl: number) => Promise<number>>;
+
+        beforeEach(() => {
+            expire = vi.fn().mockResolvedValue(1);
+            (mockClient as any).expire = expire;
+        });
+
+        it('should set the TTL on a single key and return 1', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            const updated = await index.expireKeys('rvl-test:1', 60);
+
+            expect(updated).toBe(1);
+            expect(expire).toHaveBeenCalledTimes(1);
+            expect(expire).toHaveBeenCalledWith('rvl-test:1', 60);
+        });
+
+        it('should set the TTL on every key and count the ones that got it', async () => {
+            expire.mockResolvedValueOnce(1).mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+            const index = new SearchIndex(schema, mockClient);
+
+            const updated = await index.expireKeys(['rvl-test:1', 'rvl-test:2', 'rvl-test:3'], 60);
+
+            expect(updated).toBe(2);
+            expect(expire).toHaveBeenCalledTimes(3);
+            expect(expire).toHaveBeenNthCalledWith(1, 'rvl-test:1', 60);
+            expect(expire).toHaveBeenNthCalledWith(2, 'rvl-test:2', 60);
+            expect(expire).toHaveBeenNthCalledWith(3, 'rvl-test:3', 60);
+        });
+
+        it('should handle more keys than fit in one chunk', async () => {
+            const index = new SearchIndex(schema, mockClient);
+            const keys = Array.from({ length: 1200 }, (_, i) => `rvl-test:${i}`);
+
+            const updated = await index.expireKeys(keys, 60);
+
+            expect(updated).toBe(1200);
+            expect(expire).toHaveBeenCalledTimes(1200);
+        });
+
+        it('should return 0 without calling Redis for an empty array', async () => {
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.expireKeys([], 60)).toBe(0);
+            expect(expire).not.toHaveBeenCalled();
+        });
+
+        describe.each([
+            ['an array of keys', ['rvl-test:1']],
+            ['an empty array', []],
+        ])('ttl validation with %s', (_label, keys) => {
+            // Redis deletes a key when it is given a TTL of 0 or less
+            it.each([0, -5, 1.5, NaN])('should reject a ttl of %s', async (ttl) => {
+                const index = new SearchIndex(schema, mockClient);
+
+                const expiring = index.expireKeys(keys, ttl);
+
+                await expect(expiring).rejects.toThrow(RedisVLError);
+                await expect(expiring).rejects.toThrow(/ttl must be a positive integer/);
+                expect(expire).not.toHaveBeenCalled();
+            });
+        });
+
+        it('should wrap Redis errors in RedisVLError and keep the cause', async () => {
+            const cause = new Error('NOPERM this user has no permissions to run expire');
+            expire.mockRejectedValueOnce(cause);
+            const index = new SearchIndex(schema, mockClient);
+
+            const expiring = index.expireKeys(['rvl-test:1'], 60);
+
+            await expect(expiring).rejects.toThrow(RedisVLError);
+            await expect(expiring).rejects.toThrow(/Failed to set expiry on keys/);
+            await expect(expiring).rejects.toMatchObject({ cause });
+        });
+    });
+
+    describe('clear()', () => {
+        let unlink: MockedFunction<(keys: string | string[]) => Promise<number>>;
+        let search: MockedFunction<SearchFunction>;
+
+        const pageOf = (...ids: string[]) => ({
+            total: ids.length,
+            documents: ids.map((id) => ({ id, value: {} })),
+        });
+
+        beforeEach(() => {
+            unlink = vi
+                .fn()
+                .mockImplementation(async (keys: string | string[]) =>
+                    Array.isArray(keys) ? keys.length : 1
+                );
+            (mockClient as any).unlink = unlink;
+            search = mockClient.ft.search as MockedFunction<SearchFunction>;
+        });
+
+        it('should delete the indexed documents batch by batch until none are left', async () => {
+            search
+                .mockResolvedValueOnce(pageOf('rvl-test:1', 'rvl-test:2') as never)
+                .mockResolvedValueOnce(pageOf('rvl-test:3') as never)
+                .mockResolvedValueOnce(pageOf() as never);
+            const index = new SearchIndex(schema, mockClient);
+
+            const deleted = await index.clear();
+
+            expect(deleted).toBe(3);
+            expect(search).toHaveBeenCalledTimes(3);
+            expect(search).toHaveBeenCalledWith('redisvl-test-index', '*', {
+                RETURN: [],
+                LIMIT: { from: 0, size: 500 },
+                DIALECT: 2,
+            });
+            expect(unlink).toHaveBeenCalledTimes(2);
+            expect(unlink).toHaveBeenNthCalledWith(1, ['rvl-test:1', 'rvl-test:2']);
+            expect(unlink).toHaveBeenNthCalledWith(2, ['rvl-test:3']);
+        });
+
+        it('should return 0 without deleting anything for an empty index', async () => {
+            search.mockResolvedValueOnce(pageOf() as never);
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.clear()).toBe(0);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(unlink).not.toHaveBeenCalled();
+        });
+
+        it('should stop instead of looping forever when a batch cannot be deleted', async () => {
+            search.mockResolvedValue(pageOf('rvl-test:1', 'rvl-test:2') as never);
+            unlink.mockResolvedValue(0);
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.clear()).toBe(0);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(unlink).toHaveBeenCalledTimes(1);
+        });
+
+        it('should unlink one key at a time on a cluster client', async () => {
+            const clusterClient = {
+                ft: mockClient.ft,
+                unlink,
+                masters: [],
+            } as unknown as RedisClientType;
+            search
+                .mockResolvedValueOnce(pageOf('rvl-test:1', 'rvl-test:2') as never)
+                .mockResolvedValueOnce(pageOf() as never);
+            const index = new SearchIndex(schema, clusterClient);
+
+            expect(await index.clear()).toBe(2);
+            expect(unlink).toHaveBeenCalledTimes(2);
+            expect(unlink).toHaveBeenNthCalledWith(1, 'rvl-test:1');
+            expect(unlink).toHaveBeenNthCalledWith(2, 'rvl-test:2');
+        });
+
+        it('should wrap search errors in RedisVLError and keep the cause', async () => {
+            const cause = new Error('SEARCH_INDEX_NOT_FOUND Index not found: redisvl-test-index');
+            search.mockRejectedValueOnce(cause);
+            const index = new SearchIndex(schema, mockClient);
+
+            const clearing = index.clear();
+
+            await expect(clearing).rejects.toThrow(RedisVLError);
+            await expect(clearing).rejects.toThrow(/Failed to clear index/);
+            await expect(clearing).rejects.toMatchObject({ cause });
+        });
+
+        it('should wrap delete errors in RedisVLError', async () => {
+            search.mockResolvedValueOnce(pageOf('rvl-test:1') as never);
+            unlink.mockRejectedValueOnce(new Error('NOPERM this user has no permissions'));
+            const index = new SearchIndex(schema, mockClient);
+
+            await expect(index.clear()).rejects.toThrow(/Failed to clear index.*NOPERM/);
+        });
+    });
+
     describe('Data Preprocessing', () => {
         describe('load() with preprocess option', () => {
             it('should apply preprocess function to each document', async () => {

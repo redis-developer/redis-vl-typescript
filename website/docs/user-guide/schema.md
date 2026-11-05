@@ -263,7 +263,7 @@ schema.addFields([field]);
 - `name`: Field name in Redis
 - `dims`: Vector dimensions (must match embedding model)
 - `distanceMetric`: `COSINE`, `L2`, or `IP`
-- `datatype`: `float32` (default) or `float64`
+- `datatype`: `float32` (default), `float64`, `float16`, `bfloat16`, `int8`, or `uint8`
 
 **HNSW-Specific Parameters:**
 - `m`: Number of bi-directional links per node (default: 16)

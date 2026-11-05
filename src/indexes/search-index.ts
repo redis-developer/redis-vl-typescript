@@ -36,6 +36,9 @@ function isMissingIndexError(error: unknown): boolean {
     return MISSING_INDEX_ERROR_FRAGMENTS.some((fragment) => message.includes(fragment));
 }
 
+/** Number of keys sent to Redis in one round trip by `dropKeys()`, `expireKeys()` and `clear()`. */
+const KEY_BATCH_SIZE = 500;
+
 /**
  * Options for creating an index.
  */
@@ -566,6 +569,157 @@ export class SearchIndex {
                 { cause: error instanceof Error ? error : undefined }
             );
         }
+    }
+
+    /**
+     * Delete documents from Redis by key. The index itself is left in place.
+     *
+     * Takes full Redis keys, such as the ones `load()` returns or the `id` on
+     * each search result. This differs from `fetch()` and `fetchMany()`, which
+     * take ids without the prefix.
+     *
+     * Uses `UNLINK`, so Redis frees the memory in the background and a large
+     * delete does not pause the server. On a cluster the keys are unlinked one
+     * at a time, because keys in different slots cannot share one command.
+     *
+     * @param keys - A full Redis key, or an array of them
+     * @returns How many keys were deleted. Keys that do not exist are not counted.
+     * @throws {RedisVLError} If Redis fails to delete the keys
+     *
+     * @example
+     * ```typescript
+     * const keys = await index.load([{ title: 'Doc 1' }, { title: 'Doc 2' }]);
+     * const deleted = await index.dropKeys(keys[0]); // 1
+     * ```
+     */
+    async dropKeys(keys: string | string[]): Promise<number> {
+        try {
+            return await this.unlinkKeys(Array.isArray(keys) ? keys : [keys]);
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to drop keys: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Unlink keys in chunks of {@link KEY_BATCH_SIZE} and add up how many were deleted.
+     */
+    private async unlinkKeys(keys: string[]): Promise<number> {
+        const isCluster = 'masters' in this.client;
+        let deleted = 0;
+
+        for (let i = 0; i < keys.length; i += KEY_BATCH_SIZE) {
+            const chunk = keys.slice(i, i + KEY_BATCH_SIZE);
+
+            if (isCluster) {
+                const counts = await Promise.all(chunk.map((key) => this.client.unlink(key)));
+                deleted += counts.reduce((sum, count) => sum + count, 0);
+            } else {
+                deleted += await this.client.unlink(chunk);
+            }
+        }
+
+        return deleted;
+    }
+
+    /**
+     * Make documents expire: Redis deletes each key `ttl` seconds from now.
+     *
+     * Takes full Redis keys, like `dropKeys()`.
+     *
+     * @param keys - A full Redis key, or an array of them
+     * @param ttl - Seconds until the keys expire. Must be a positive integer, because
+     *   Redis deletes a key straight away when it is given a TTL of 0 or less.
+     * @returns How many keys had the TTL set. Keys that do not exist are not counted.
+     * @throws {RedisVLError} If ttl is not a positive integer, or Redis fails to set the expiry
+     *
+     * @example
+     * ```typescript
+     * const keys = await index.load([{ title: 'Doc 1' }, { title: 'Doc 2' }]);
+     * const updated = await index.expireKeys(keys, 3600); // 2
+     * ```
+     */
+    async expireKeys(keys: string | string[], ttl: number): Promise<number> {
+        if (!Number.isInteger(ttl) || ttl <= 0) {
+            throw new RedisVLError(`ttl must be a positive integer number of seconds, got ${ttl}`);
+        }
+
+        const keyList = Array.isArray(keys) ? keys : [keys];
+
+        try {
+            let updated = 0;
+
+            for (let i = 0; i < keyList.length; i += KEY_BATCH_SIZE) {
+                const chunk = keyList.slice(i, i + KEY_BATCH_SIZE);
+                const replies = await Promise.all(chunk.map((key) => this.client.expire(key, ttl)));
+                updated += replies.reduce((sum, reply) => sum + reply, 0);
+            }
+
+            return updated;
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to set expiry on keys: ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Delete every document in the index, keeping the index itself in place.
+     *
+     * Asks the index for its documents, deletes them in batches with `UNLINK` (see
+     * `dropKeys()`), and repeats until the index is empty. Only documents the
+     * index can see are deleted. A key under the prefix that the index does not
+     * hold, such as a plain string or a document that failed to index, is left alone.
+     * A document still being indexed may need a second `clear()`.
+     *
+     * @returns How many keys were deleted
+     * @throws {RedisVLError} If the index does not exist, or Redis fails to search or delete
+     *
+     * @example
+     * ```typescript
+     * const deleted = await index.clear();
+     * console.log(`Deleted ${deleted} documents`);
+     * ```
+     */
+    async clear(): Promise<number> {
+        try {
+            let deleted = 0;
+            let keys = await this.listIndexedKeys();
+
+            while (keys.length > 0) {
+                const unlinked = await this.unlinkKeys(keys);
+                if (unlinked === 0) {
+                    // The index keeps listing keys Redis cannot delete; stop instead of looping forever
+                    break;
+                }
+                deleted += unlinked;
+                keys = await this.listIndexedKeys();
+            }
+
+            return deleted;
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to clear index '${this.name}': ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Get up to {@link KEY_BATCH_SIZE} keys of documents the index currently holds.
+     */
+    private async listIndexedKeys(): Promise<string[]> {
+        // RETURN 0 asks Redis for the ids only, without the documents' fields
+        const { documents } = await this.client.ft.search(this.name, '*', {
+            RETURN: [],
+            LIMIT: { from: 0, size: KEY_BATCH_SIZE },
+            DIALECT: 2,
+        });
+
+        return documents.map((doc) => doc.id);
     }
 
     /**

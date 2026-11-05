@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createClient, type RedisClientType } from 'redis';
 import {
+    FilterQuery,
     IndexSchema,
     RedisVLError,
     SearchIndex,
@@ -1269,6 +1270,185 @@ describe('SearchIndex Integration Tests', () => {
             expect(normalizedSecondScore).toBeCloseTo(1 - (rawSecondScore ?? 0) / 2, 10);
             expect(normalizedSecondScore).toBeLessThan(1);
             expect(normalizedSecondScore).toBeGreaterThan(0.99);
+        });
+    });
+
+    describe('dropKeys()', () => {
+        const buildIndex = async (name: string) => {
+            const schema = IndexSchema.fromObject({
+                index: { name, prefix: name, storage_type: 'hash' },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+            return index;
+        };
+
+        it('should delete only the named documents and return how many were deleted', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-some');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }, { title: 'C' }]);
+
+            const deleted = await index.dropKeys([keys[0], keys[1]]);
+
+            expect(deleted).toBe(2);
+            expect(await client.exists(keys)).toBe(1);
+            expect(await client.exists(keys[2])).toBe(1);
+            expect(await client.exists([keys[0], keys[1]])).toBe(0);
+        });
+
+        it('should accept a single key', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-single');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }]);
+
+            expect(await index.dropKeys(keys[0])).toBe(1);
+            expect(await client.exists(keys[0])).toBe(0);
+            expect(await client.exists(keys[1])).toBe(1);
+        });
+
+        it('should not count keys that do not exist', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-missing');
+            const keys = await index.load([{ title: 'A' }]);
+
+            const deleted = await index.dropKeys([keys[0], 'redisvl-test-dropkeys-missing:nope']);
+
+            expect(deleted).toBe(1);
+        });
+
+        it('should accept the ids returned by search results', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-search');
+            await index.load([{ title: 'A' }, { title: 'B' }]);
+
+            const results = await index.search(new FilterQuery());
+            const deleted = await index.dropKeys(results.documents.map((doc) => doc.id));
+
+            expect(deleted).toBe(2);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
+        });
+
+        it('should delete more keys than fit in one chunk', async () => {
+            const index = await buildIndex('redisvl-test-dropkeys-chunks');
+            const keys = await index.load(
+                Array.from({ length: 1200 }, (_, i) => ({ title: `Doc ${i}` }))
+            );
+
+            expect(await index.dropKeys(keys)).toBe(1200);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
+        });
+    });
+
+    describe('expireKeys()', () => {
+        const buildIndex = async (name: string) => {
+            const schema = IndexSchema.fromObject({
+                index: { name, prefix: name, storage_type: 'hash' },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+            return index;
+        };
+
+        it('should set the TTL only on the named documents', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-some');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }, { title: 'C' }]);
+
+            const updated = await index.expireKeys([keys[0], keys[1]], 100);
+
+            expect(updated).toBe(2);
+            expect(await client.ttl(keys[0])).toBeGreaterThan(0);
+            expect(await client.ttl(keys[0])).toBeLessThanOrEqual(100);
+            expect(await client.ttl(keys[1])).toBeGreaterThan(0);
+            expect(await client.ttl(keys[2])).toBe(-1);
+        });
+
+        it('should accept a single key', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-single');
+            const keys = await index.load([{ title: 'A' }]);
+
+            expect(await index.expireKeys(keys[0], 100)).toBe(1);
+            expect(await client.ttl(keys[0])).toBeGreaterThan(0);
+        });
+
+        it('should not count keys that do not exist', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-missing');
+            const keys = await index.load([{ title: 'A' }]);
+
+            const updated = await index.expireKeys(
+                [keys[0], 'redisvl-test-expirekeys-missing:nope'],
+                100
+            );
+
+            expect(updated).toBe(1);
+        });
+
+        it('should reject a ttl of 0 and leave the documents alone', async () => {
+            const index = await buildIndex('redisvl-test-expirekeys-zero');
+            const keys = await index.load([{ title: 'A' }]);
+
+            await expect(index.expireKeys(keys, 0)).rejects.toThrow(RedisVLError);
+            expect(await client.exists(keys[0])).toBe(1);
+        });
+    });
+
+    describe('clear()', () => {
+        const buildIndex = async (name: string) => {
+            const schema = IndexSchema.fromObject({
+                index: { name, prefix: name, storage_type: 'hash' },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+            return index;
+        };
+
+        it('should delete every document and keep the index', async () => {
+            const index = await buildIndex('redisvl-test-clear-all');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }, { title: 'C' }]);
+
+            const deleted = await index.clear();
+
+            expect(deleted).toBe(3);
+            expect(await client.exists(keys)).toBe(0);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
+            expect(await index.exists()).toBe(true);
+        });
+
+        it('should delete more documents than fit in one batch', async () => {
+            const index = await buildIndex('redisvl-test-clear-batches');
+            await index.load(Array.from({ length: 1200 }, (_, i) => ({ title: `Doc ${i}` })));
+
+            expect(await index.clear()).toBe(1200);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
+        });
+
+        it('should return 0 for an empty index', async () => {
+            const index = await buildIndex('redisvl-test-clear-empty');
+
+            expect(await index.clear()).toBe(0);
+        });
+
+        it('should leave keys under the prefix that the index does not hold', async () => {
+            const index = await buildIndex('redisvl-test-clear-unindexed');
+            await index.load([{ title: 'A' }]);
+            // A plain string is not a hash, so the index never picks it up
+            await client.set('redisvl-test-clear-unindexed:notes', 'not a document');
+
+            expect(await index.clear()).toBe(1);
+            expect(await client.exists('redisvl-test-clear-unindexed:notes')).toBe(1);
+        });
+
+        it('should reject with RedisVLError when the index does not exist', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-clear-never-created',
+                    prefix: 'redisvl-test-clear-never-created',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await client.ft.dropIndex(index.name).catch(() => undefined);
+
+            await expect(index.clear()).rejects.toThrow(RedisVLError);
         });
     });
 });

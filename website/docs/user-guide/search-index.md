@@ -181,11 +181,37 @@ await index.load([{ id: 'prod-1', title: 'Updated Laptop', category: 'electronic
 
 ### Delete Documents
 
-Remove specific documents:
+Remove specific documents with `dropKeys()`. It takes full Redis keys, including the prefix, such as the ones `load()` returns or the `id` on each search result. It returns how many documents were deleted:
 
 ```typescript
-await index.delete({ ids: ['prod-1', 'prod-2'] });
+// Delete one document
+await index.dropKeys('product:prod-1');
+
+// Delete several, using the ids from a search
+const results = await index.search(query);
+const deleted = await index.dropKeys(results.documents.map((doc) => doc.id));
 ```
+
+### Expire Documents
+
+Make documents delete themselves after a number of seconds with `expireKeys()`. Like `dropKeys()`, it takes full Redis keys. It returns how many documents had the expiry set, and `ttl` must be a positive integer:
+
+```typescript
+const keys = await index.load([{ title: 'Laptop' }, { title: 'Mouse' }]);
+
+// Both documents expire in one hour
+const updated = await index.expireKeys(keys, 3600); // 2
+```
+
+### Clear All Documents
+
+Delete every document but keep the index, so you can load new data into it. `clear()` returns how many documents were deleted:
+
+```typescript
+const deleted = await index.clear();
+```
+
+`clear()` only deletes documents the index can see. A key under the prefix that the index doesn't hold, such as a plain string or a document that failed to index, is left alone. To remove the index and its documents together, use `index.delete({ drop: true })`.
 
 ### Drop Index
 
@@ -202,7 +228,7 @@ RedisVL automatically batches operations for performance:
 ```typescript
 // Load 1000 documents in batches of 100
 const keys = await index.load(largeDataset, {
-    batchSize: 100, // Default: 100
+    batchSize: 100, // Default: 200
 });
 ```
 
