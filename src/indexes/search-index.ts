@@ -36,7 +36,7 @@ function isMissingIndexError(error: unknown): boolean {
     return MISSING_INDEX_ERROR_FRAGMENTS.some((fragment) => message.includes(fragment));
 }
 
-/** Number of keys sent to Redis in one round trip by `dropKeys()` and `expireKeys()`. */
+/** Number of keys sent to Redis in one round trip by `dropKeys()`, `expireKeys()` and `clear()`. */
 const KEY_BATCH_SIZE = 500;
 
 /**
@@ -664,6 +664,62 @@ export class SearchIndex {
                 { cause: error instanceof Error ? error : undefined }
             );
         }
+    }
+
+    /**
+     * Delete every document in the index, keeping the index itself in place.
+     *
+     * Asks the index for its documents, deletes them in batches with `UNLINK` (see
+     * `dropKeys()`), and repeats until the index is empty. Only documents the
+     * index can see are deleted. A key under the prefix that the index does not
+     * hold, such as a plain string or a document that failed to index, is left alone.
+     * A document still being indexed may need a second `clear()`.
+     *
+     * @returns How many keys were deleted
+     * @throws {RedisVLError} If the index does not exist, or Redis fails to search or delete
+     *
+     * @example
+     * ```typescript
+     * const deleted = await index.clear();
+     * console.log(`Deleted ${deleted} documents`);
+     * ```
+     */
+    async clear(): Promise<number> {
+        try {
+            let deleted = 0;
+            let keys = await this.listIndexedKeys();
+
+            while (keys.length > 0) {
+                const unlinked = await this.unlinkKeys(keys);
+                if (unlinked === 0) {
+                    // The index keeps listing keys Redis cannot delete; stop instead of looping forever
+                    break;
+                }
+                deleted += unlinked;
+                keys = await this.listIndexedKeys();
+            }
+
+            return deleted;
+        } catch (error) {
+            throw new RedisVLError(
+                `Failed to clear index '${this.name}': ${error instanceof Error ? error.message : String(error)}`,
+                { cause: error instanceof Error ? error : undefined }
+            );
+        }
+    }
+
+    /**
+     * Get up to {@link KEY_BATCH_SIZE} keys of documents the index currently holds.
+     */
+    private async listIndexedKeys(): Promise<string[]> {
+        // RETURN 0 asks Redis for the ids only, without the documents' fields
+        const { documents } = await this.client.ft.search(this.name, '*', {
+            RETURN: [],
+            LIMIT: { from: 0, size: KEY_BATCH_SIZE },
+            DIALECT: 2,
+        });
+
+        return documents.map((doc) => doc.id);
     }
 
     /**

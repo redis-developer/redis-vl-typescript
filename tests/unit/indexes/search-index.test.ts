@@ -1380,6 +1380,103 @@ describe('SearchIndex', () => {
         });
     });
 
+    describe('clear()', () => {
+        let unlink: MockedFunction<(keys: string | string[]) => Promise<number>>;
+        let search: MockedFunction<SearchFunction>;
+
+        const pageOf = (...ids: string[]) => ({
+            total: ids.length,
+            documents: ids.map((id) => ({ id, value: {} })),
+        });
+
+        beforeEach(() => {
+            unlink = vi
+                .fn()
+                .mockImplementation(async (keys: string | string[]) =>
+                    Array.isArray(keys) ? keys.length : 1
+                );
+            (mockClient as any).unlink = unlink;
+            search = mockClient.ft.search as MockedFunction<SearchFunction>;
+        });
+
+        it('should delete the indexed documents batch by batch until none are left', async () => {
+            search
+                .mockResolvedValueOnce(pageOf('rvl-test:1', 'rvl-test:2') as never)
+                .mockResolvedValueOnce(pageOf('rvl-test:3') as never)
+                .mockResolvedValueOnce(pageOf() as never);
+            const index = new SearchIndex(schema, mockClient);
+
+            const deleted = await index.clear();
+
+            expect(deleted).toBe(3);
+            expect(search).toHaveBeenCalledTimes(3);
+            expect(search).toHaveBeenCalledWith('redisvl-test-index', '*', {
+                RETURN: [],
+                LIMIT: { from: 0, size: 500 },
+                DIALECT: 2,
+            });
+            expect(unlink).toHaveBeenCalledTimes(2);
+            expect(unlink).toHaveBeenNthCalledWith(1, ['rvl-test:1', 'rvl-test:2']);
+            expect(unlink).toHaveBeenNthCalledWith(2, ['rvl-test:3']);
+        });
+
+        it('should return 0 without deleting anything for an empty index', async () => {
+            search.mockResolvedValueOnce(pageOf() as never);
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.clear()).toBe(0);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(unlink).not.toHaveBeenCalled();
+        });
+
+        it('should stop instead of looping forever when a batch cannot be deleted', async () => {
+            search.mockResolvedValue(pageOf('rvl-test:1', 'rvl-test:2') as never);
+            unlink.mockResolvedValue(0);
+            const index = new SearchIndex(schema, mockClient);
+
+            expect(await index.clear()).toBe(0);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(unlink).toHaveBeenCalledTimes(1);
+        });
+
+        it('should unlink one key at a time on a cluster client', async () => {
+            const clusterClient = {
+                ft: mockClient.ft,
+                unlink,
+                masters: [],
+            } as unknown as RedisClientType;
+            search
+                .mockResolvedValueOnce(pageOf('rvl-test:1', 'rvl-test:2') as never)
+                .mockResolvedValueOnce(pageOf() as never);
+            const index = new SearchIndex(schema, clusterClient);
+
+            expect(await index.clear()).toBe(2);
+            expect(unlink).toHaveBeenCalledTimes(2);
+            expect(unlink).toHaveBeenNthCalledWith(1, 'rvl-test:1');
+            expect(unlink).toHaveBeenNthCalledWith(2, 'rvl-test:2');
+        });
+
+        it('should wrap search errors in RedisVLError and keep the cause', async () => {
+            const cause = new Error('SEARCH_INDEX_NOT_FOUND Index not found: redisvl-test-index');
+            search.mockRejectedValueOnce(cause);
+            const index = new SearchIndex(schema, mockClient);
+
+            const clearing = index.clear();
+
+            await expect(clearing).rejects.toThrow(RedisVLError);
+            await expect(clearing).rejects.toThrow(/Failed to clear index/);
+            await expect(clearing).rejects.toMatchObject({ cause });
+        });
+
+        it('should wrap delete errors in RedisVLError', async () => {
+            search.mockResolvedValueOnce(pageOf('rvl-test:1') as never);
+            unlink.mockRejectedValueOnce(new Error('NOPERM this user has no permissions'));
+            const index = new SearchIndex(schema, mockClient);
+
+            await expect(index.clear()).rejects.toThrow(/Failed to clear index.*NOPERM/);
+        });
+    });
+
     describe('Data Preprocessing', () => {
         describe('load() with preprocess option', () => {
             it('should apply preprocess function to each document', async () => {

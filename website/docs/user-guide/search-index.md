@@ -203,6 +203,16 @@ const keys = await index.load([{ title: 'Laptop' }, { title: 'Mouse' }]);
 const updated = await index.expireKeys(keys, 3600); // 2
 ```
 
+### Clear All Documents
+
+Delete every document but keep the index, so you can load new data into it. `clear()` returns how many documents were deleted:
+
+```typescript
+const deleted = await index.clear();
+```
+
+`clear()` only deletes documents the index can see. A key under the prefix that the index doesn't hold, such as a plain string or a document that failed to index, is left alone. To remove the index and its documents together, use `index.delete({ drop: true })`.
+
 ### Drop Index
 
 Delete the entire index and all documents:

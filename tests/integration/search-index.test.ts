@@ -1388,4 +1388,67 @@ describe('SearchIndex Integration Tests', () => {
             expect(await client.exists(keys[0])).toBe(1);
         });
     });
+
+    describe('clear()', () => {
+        const buildIndex = async (name: string) => {
+            const schema = IndexSchema.fromObject({
+                index: { name, prefix: name, storage_type: 'hash' },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await index.create({ overwrite: true, drop: true });
+            return index;
+        };
+
+        it('should delete every document and keep the index', async () => {
+            const index = await buildIndex('redisvl-test-clear-all');
+            const keys = await index.load([{ title: 'A' }, { title: 'B' }, { title: 'C' }]);
+
+            const deleted = await index.clear();
+
+            expect(deleted).toBe(3);
+            expect(await client.exists(keys)).toBe(0);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
+            expect(await index.exists()).toBe(true);
+        });
+
+        it('should delete more documents than fit in one batch', async () => {
+            const index = await buildIndex('redisvl-test-clear-batches');
+            await index.load(Array.from({ length: 1200 }, (_, i) => ({ title: `Doc ${i}` })));
+
+            expect(await index.clear()).toBe(1200);
+            expect((await index.search(new FilterQuery())).total).toBe(0);
+        });
+
+        it('should return 0 for an empty index', async () => {
+            const index = await buildIndex('redisvl-test-clear-empty');
+
+            expect(await index.clear()).toBe(0);
+        });
+
+        it('should leave keys under the prefix that the index does not hold', async () => {
+            const index = await buildIndex('redisvl-test-clear-unindexed');
+            await index.load([{ title: 'A' }]);
+            // A plain string is not a hash, so the index never picks it up
+            await client.set('redisvl-test-clear-unindexed:notes', 'not a document');
+
+            expect(await index.clear()).toBe(1);
+            expect(await client.exists('redisvl-test-clear-unindexed:notes')).toBe(1);
+        });
+
+        it('should reject with RedisVLError when the index does not exist', async () => {
+            const schema = IndexSchema.fromObject({
+                index: {
+                    name: 'redisvl-test-clear-never-created',
+                    prefix: 'redisvl-test-clear-never-created',
+                    storage_type: 'hash',
+                },
+                fields: [{ name: 'title', type: 'text' }],
+            });
+            const index = new SearchIndex(schema, client);
+            await client.ft.dropIndex(index.name).catch(() => undefined);
+
+            await expect(index.clear()).rejects.toThrow(RedisVLError);
+        });
+    });
 });
